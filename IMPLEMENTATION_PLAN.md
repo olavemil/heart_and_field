@@ -41,6 +41,7 @@ Implement as dataclasses. No behaviour yet beyond what the tuple/observable form
 - Fatigue accumulation across a match of N phases.
 
 **Notebook deliverable:** `notebooks/02_phase_sim.ipynb` simulating a full 8-phase match between two rosters, plotting per-phase performance, momentum, and cumulative fatigue. Validate that:
+
 - Mean performance ≈ composite over many runs.
 - Low-awareness players show mood swings uncorrelated with actual performance.
 - Late-game performance drops for low-stamina characters.
@@ -67,7 +68,7 @@ Implement as dataclasses. No behaviour yet beyond what the tuple/observable form
 
 **Exit criteria:** given a sequence of events, the engine produces coherent narration strings using templates only. Two independently authored events referencing `{prior}` read as connected.
 
-## Phase 5 — Schedule, arcs, clocks, save (technical §5.3, §7, §8)
+## Phase 5 — Schedule, arcs, clocks, save (technical §5.3, §7, §8) ✅
 
 - `schedule.py`: `WeekSchedule`, `EventSlot`, `BlockType`, skeleton generator, `force_next`.
 - `arcs.py`: blueprint graph traversal, arc event detection (via `carries_arc_context`).
@@ -76,7 +77,7 @@ Implement as dataclasses. No behaviour yet beyond what the tuple/observable form
 
 **Exit criteria:** a multi-week headless simulation in a notebook runs drama → pregame → phases → postgame, with at least one clock reaching threshold and forcing an event. Save → load → resume produces identical continuation.
 
-## Phase 6 — Ren'Py shell (technical §7.2)
+## Phase 6 — Ren'Py shell (technical §7.2) ✅
 
 - Minimal `game_loop.rpy`, `drama_block.rpy`, `game_block.rpy`, `postgame_block.rpy`.
 - Placeholder `ui_screens.rpy` for schedule overview and relationship panel.
@@ -85,7 +86,7 @@ Implement as dataclasses. No behaviour yet beyond what the tuple/observable form
 
 **Exit criteria:** Ren'Py project runs end-to-end on text only (no sprites, default background). Player can play through a week, save, quit, reload.
 
-## Phase 7 — Visual prototype (technical §9)
+## Phase 7 — Visual prototype (technical §9) ✅
 
 - `visual.py`: `CharacterVisual`, `Expression`, `Pose`, `TeamPalette`, `SpriteLayer`, `render()` dispatching to `_render_flat`.
 - `EXPRESSION_OVERLAYS` + `apply_overlay` with disk cache.
@@ -93,16 +94,24 @@ Implement as dataclasses. No behaviour yet beyond what the tuple/observable form
 - Tier D face pool (~20–30 images) keyed by `age_group × build × gender_presentation`.
 - Background generator (`BACKGROUND_PROMPTS`, `get_background`) with prompt-hash cache.
 - Ren'Py `show_character` / `set_background` labels wired to `CharacterVisual.render()`.
+- **ComfyUI integration** (`comfyui.py`): REST client with txt2img + img2img workflows using Flux 2 Dev (fp8 mixed) + Mistral 3 Small text encoder + Turbo LoRA. Auto-disables after 3 consecutive errors. PIL placeholder fallback when ComfyUI is unavailable. Config serialised with save data. 28 tests covering workflow generation, prompt building, mock server integration, and fallback paths.
+  - Models: `flux2_dev_fp8mixed.safetensors` (diffusion), `mistral_3_small_flux2_bf16.safetensors` (text encoder), `full_encoder_small_decoder.safetensors` (VAE), `Flux_2-Turbo-LoRA_comfyui.safetensors` (LoRA).
+  - ComfyUI desktop app runs on port 8000 (not default 8188).
 
 **Exit criteria:** every scene displays a generated background and character portrait with mood-appropriate tinting. Generation never blocks mid-scene (session-start warm-up or lazy-on-first-access).
 
-## Phase 8 — LLM narration (technical §6.3)
+## Phase 8 — LLM narration (technical §6.3) ✅
 
-- `llm.py`: Ollama client, `build_llm_prompt`, `ollama_generate`, silent fallback to filled template.
-- Per-event-type opt-in flag; default off for low-drama events, on for postgame/vulnerability/romantic.
-- Prompt includes arc summary, previous outcome, cast, filled template, constraint to "keep names and facts."
+- `llm.py`: LM Studio client (OpenAI-compatible API), `build_llm_prompt`, `LLMClient.generate`, silent fallback to filled template. Uses `urllib` (stdlib) — no extra dependency.
+- Per-event-type opt-in via `LLM_OPT_IN_TAGS` (conflict, vulnerability, postgame, romantic, celebration); low-drama events (training, downtime) stay template-only.
+- Prompt includes arc summary, previous outcome, cast names, filled template, system prompt constraining "keep names and facts."
+- `enhance_narration()` validates LLM output retains cast names — falls back if hallucinated.
+- `narrate()` in `narrative.py` accepts `use_llm` + `llm_client` + `event_tags` params.
+- `GameSession` stores `llm_client: LLMClient` and `use_llm: bool`, wired into `narrate_outcome()`.
+- LLM config serialised/deserialised with save data.
+- 21 new tests in `test_llm.py` (prompt building, opt-in logic, mock server integration, fallback paths, config roundtrip). Total: 203 tests, 0 failures.
 
-**Exit criteria:** with LLM enabled, high-drama scenes read more varied than template-only; with LLM disabled or unavailable, game still plays identically using filled templates.
+**Exit criteria:** ✅ with LLM enabled, high-drama scenes read more varied than template-only; with LLM disabled or unavailable, game still plays identically using filled templates.
 
 ## Phase 9 — Content authoring
 

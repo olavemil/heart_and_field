@@ -1,0 +1,271 @@
+"""LLM narration enhancer — rephrases filled templates (technical §6.3).
+
+The LLM is an **enhancer, not a generator**. The filled template is the
+source of truth for names and facts. The LLM rephrases for variety and
+voice. If the LLM is unavailable or errors, the filled template is
+returned silently — the game plays identically either way.
+
+Uses the OpenAI-compatible API exposed by LM Studio (default
+``http://localhost:1234/v1``). Adapting to Ollama or any other
+OpenAI-compatible server requires only changing the base URL.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import urllib.error
+import urllib.request
+from dataclasses import dataclass, field
+from typing import Any, Mapping, Sequence
+
+log = logging.getLogger(__name__)
+
+# --- Configuration -----------------------------------------------------------
+
+DEFAULT_BASE_URL = "http://localhost:1234/v1"
+DEFAULT_MODEL = "llama-3.2-1b-instruct"
+DEFAULT_TIMEOUT = 10  # seconds
+MAX_CONSECUTIVE_ERRORS = 3  # auto-disable after this many failures
+
+# Tags that opt in to LLM enhancement. Low-drama events skip the LLM
+# to keep latency down — template-only narration is fine for training drills.
+LLM_OPT_IN_TAGS: set[str] = {
+    "conflict",
+    "vulnerability",
+    "postgame",
+    "romantic",
+    "celebration",
+}
+
+# --- System prompt -----------------------------------------------------------
+
+SYSTEM_PROMPT = """\
+You are a sports fiction narrator for a football drama game. Your job is to \
+rephrase the following scene text so it reads more vividly and naturally, \
+while obeying these constraints:
+
+1. Keep ALL character names exactly as given.
+2. Keep ALL factual statements (who did what, stat changes, outcomes).
+3. Do NOT invent new plot points or characters.
+4. Match the emotional tone of the original.
+5. Keep the length similar — no more than 50% longer than the original.
+6. Write in third person past tense.
+7. Return ONLY the rewritten text, no commentary or labels.\
+"""
+
+
+# --- Prompt construction -----------------------------------------------------
+
+
+@dataclass
+class LLMPrompt:
+    """Assembled prompt for the LLM."""
+
+    system: str
+    user: str
+    max_tokens: int = 300
+
+
+def build_llm_prompt(
+    filled_template: str,
+    *,
+    arc_summary: str | None = None,
+    previous_summary: str | None = None,
+    cast_names: Sequence[str] = (),
+    branch_summary: str | None = None,
+) -> LLMPrompt:
+    """Construct the LLM prompt from a filled template and context.
+
+    The prompt grounds the LLM with factual context so it rephrases
+    rather than invents.
+    """
+    parts: list[str] = []
+
+    if arc_summary:
+        parts.append(f"Story so far: {arc_summary}")
+    if previous_summary:
+        parts.append(f"Previously: {previous_summary}")
+    if cast_names:
+        parts.append(f"Characters in this scene: {', '.join(cast_names)}")
+
+    parts.append(f"Scene text to rephrase:\n{filled_template}")
+
+    user_msg = "\n\n".join(parts)
+
+    # Estimate max tokens: ~1.5x the input word count, capped.
+    word_count = len(filled_template.split())
+    max_tokens = min(max(word_count * 3, 100), 500)
+
+    return LLMPrompt(system=SYSTEM_PROMPT, user=user_msg, max_tokens=max_tokens)
+
+
+# --- LLM client --------------------------------------------------------------
+
+
+@dataclass
+class LLMClient:
+    """OpenAI-compatible chat client for LM Studio / Ollama / etc.
+
+    Silent fallback: any error returns ``None`` and the caller uses the
+    filled template instead.
+    """
+
+    base_url: str = DEFAULT_BASE_URL
+    model: str = DEFAULT_MODEL
+    timeout: int = DEFAULT_TIMEOUT
+    enabled: bool = True
+    _consecutive_errors: int = field(default=0, repr=False)
+
+    def generate(self, prompt: LLMPrompt) -> str | None:
+        """Send a chat completion request. Returns the response text or
+        ``None`` on any failure.
+
+        Auto-disables after ``MAX_CONSECUTIVE_ERRORS`` consecutive
+        failures so a downed server doesn't add latency to every scene.
+        """
+        if not self.enabled:
+            return None
+
+        try:
+            result = self._call_api(prompt)
+            self._consecutive_errors = 0  # reset on success
+            return result
+        except Exception as exc:
+            self._consecutive_errors += 1
+            if self._consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                log.warning(
+                    "LLM disabled after %d consecutive errors (last: %s)",
+                    self._consecutive_errors,
+                    exc,
+                )
+                self.enabled = False
+            else:
+                log.debug("LLM call failed (attempt %d, silent fallback): %s",
+                          self._consecutive_errors, exc)
+            return None
+
+    def is_available(self) -> bool:
+        """Quick health check — hit the models endpoint."""
+        if not self.enabled:
+            return False
+        try:
+            url = f"{self.base_url}/models"
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    def list_models(self) -> list[str]:
+        """Return available model IDs, or empty list on error."""
+        try:
+            url = f"{self.base_url}/models"
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return [m["id"] for m in data.get("data", [])]
+        except Exception:
+            return []
+
+    def _call_api(self, prompt: LLMPrompt) -> str | None:
+        """Raw HTTP call to the chat completions endpoint."""
+        url = f"{self.base_url}/chat/completions"
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": prompt.system},
+                {"role": "user", "content": prompt.user},
+            ],
+            "max_tokens": prompt.max_tokens,
+            "temperature": 0.7,
+            "stream": False,
+        }
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        choices = data.get("choices", [])
+        if not choices:
+            return None
+        message = choices[0].get("message", {})
+        content = message.get("content", "").strip()
+        return content if content else None
+
+
+# --- High-level enhance function ---------------------------------------------
+
+
+def should_enhance(event_tags: set[str]) -> bool:
+    """Return True if this event type opts in to LLM enhancement."""
+    return bool(event_tags & LLM_OPT_IN_TAGS)
+
+
+def enhance_narration(
+    client: LLMClient,
+    filled_template: str,
+    *,
+    event_tags: set[str] = frozenset(),
+    arc_summary: str | None = None,
+    previous_summary: str | None = None,
+    cast_names: Sequence[str] = (),
+    branch_summary: str | None = None,
+) -> str:
+    """Enhance a filled template via LLM, or return it unchanged.
+
+    Skips the LLM if:
+    - The client is disabled or unavailable.
+    - The event type doesn't opt in (low-drama events).
+    - The LLM returns an empty or error response.
+
+    This function **never raises** — it always returns valid narration.
+    """
+    if not should_enhance(event_tags):
+        return filled_template
+
+    prompt = build_llm_prompt(
+        filled_template,
+        arc_summary=arc_summary,
+        previous_summary=previous_summary,
+        cast_names=cast_names,
+        branch_summary=branch_summary,
+    )
+
+    result = client.generate(prompt)
+    if result is None:
+        return filled_template
+
+    # Sanity check: the LLM response should mention at least one cast name.
+    # If it doesn't, it may have hallucinated — fall back.
+    if cast_names and not any(name in result for name in cast_names):
+        log.debug("LLM response dropped all character names — falling back")
+        return filled_template
+
+    return result
+
+
+# --- Serialisable config (for save.py) ---------------------------------------
+
+
+def llm_config_to_dict(client: LLMClient) -> dict[str, Any]:
+    return {
+        "base_url": client.base_url,
+        "model": client.model,
+        "timeout": client.timeout,
+        "enabled": client.enabled,
+    }
+
+
+def llm_config_from_dict(d: Mapping[str, Any]) -> LLMClient:
+    return LLMClient(
+        base_url=str(d.get("base_url", DEFAULT_BASE_URL)),
+        model=str(d.get("model", DEFAULT_MODEL)),
+        timeout=int(d.get("timeout", DEFAULT_TIMEOUT)),
+        enabled=bool(d.get("enabled", True)),
+    )

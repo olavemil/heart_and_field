@@ -295,17 +295,46 @@ def narrate(
     ctx: NarrationContext,
     rng: _random.Random,
     *,
-    use_llm: bool = False,  # reserved for Phase 8; ignored here
+    use_llm: bool = False,
+    llm_client: "LLMClient | None" = None,
+    event_tags: set[str] = frozenset(),
 ) -> str:
     """Pick a template and return the filled string.
 
     Falls back to `ctx.branch_summary` if no template matches — every event
     has one as a last-resort narration.
+
+    When ``use_llm`` is True and an ``llm_client`` is provided, high-drama
+    events get their filled template rephrased by the LLM. The filled
+    template is always the fallback.
     """
     template = select_template(templates, ctx, rng)
     if template is None:
-        return ctx.branch_summary or ""
-    return fill_template(template, ctx)
+        filled = ctx.branch_summary or ""
+    else:
+        filled = fill_template(template, ctx)
+
+    if use_llm and llm_client is not None:
+        from .llm import enhance_narration
+
+        cast_names = [
+            c.nickname or c.name
+            for c in ctx.cast.values()
+            if hasattr(c, "name")
+        ]
+        filled = enhance_narration(
+            llm_client,
+            filled,
+            event_tags=event_tags,
+            arc_summary=ctx.arc_summary,
+            previous_summary=(
+                ctx.previous_outcome.summary if ctx.previous_outcome else None
+            ),
+            cast_names=cast_names,
+            branch_summary=ctx.branch_summary,
+        )
+
+    return filled
 
 
 # --- Arc summary compression ------------------------------------------------

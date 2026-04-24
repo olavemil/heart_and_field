@@ -95,4 +95,4 @@ Tier promotion (B → A) infers a tuple from the existing flat value plus random
 
 ## Current phase
 
-See `IMPLEMENTATION_PLAN.md`. The project is at Phase 0 — no engine code exists yet. Build simulation end-to-end in notebooks before writing any `.rpy` file.
+See `IMPLEMENTATION_PLAN.md`. The project has completed Phase 8 — LLM narration via LM Studio (OpenAI-compatible API) with silent fallback, per-event opt-in tags, name validation, and full test coverage. Phase 9 (content authoring) is next.
