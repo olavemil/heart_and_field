@@ -16,8 +16,9 @@ from typing import Any, Mapping
 
 from .arcs import ArcGraph
 from .characters import Character, TierACharacter, TierBCharacter
+from .clock import WorldClock
 from .clocks import Clock
-from .events import GameState
+from .events import GameState, _default_clock
 from .outcomes import OutcomeRecord, WeekPhase
 from .schedule import WeekSchedule
 
@@ -44,6 +45,7 @@ def serialise(
     return {
         "version": 1,
         "week_phase": state.week_phase.to_dict(),
+        "world_clock": state.clock.to_dict(),
         "characters": {
             cid: _serialise_character(c)
             for cid, c in state.characters.items()
@@ -80,6 +82,13 @@ def deserialise(
 
     clocks = [Clock.from_dict(c) for c in data.get("clocks", [])]
 
+    clock_data = data.get("world_clock")
+    world_clock = (
+        WorldClock.from_dict(clock_data)
+        if clock_data is not None
+        else _default_clock()
+    )
+
     state = GameState(
         characters=characters,
         outcome_log=[
@@ -89,6 +98,7 @@ def deserialise(
         disabled_event_ids=set(data.get("disabled_event_ids", [])),
         week_phase=WeekPhase.from_dict(data.get("week_phase", {"season": 1, "week": 1})),
         clocks=clocks,
+        clock=world_clock,
     )
 
     schedule = None

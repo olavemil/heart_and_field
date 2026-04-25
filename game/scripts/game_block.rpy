@@ -5,8 +5,10 @@
 # does everything via session.simulate_game_phase().
 
 label game_block:
-    # Set up opponents.
-    $ session.setup_match(opponent_rating=0.5)
+    # Set up opponents. The opponent_name flows through to the status
+    # bar — clock_display() reports "Match vs <name>" for the duration
+    # of the match block.
+    $ session.setup_match(opponent_rating=0.5, opponent_name="Northgate")
 
     e "The match is about to begin."
 

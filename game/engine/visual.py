@@ -158,12 +158,42 @@ class SpriteLayer:
 
     For Phase 7 prototype, ``layers`` is empty and ``render()`` dispatches
     to ``_render_flat`` instead.
+
+    ``expression`` and ``pose`` are optional filters — if set, the layer
+    is only composited when the render call matches. Unset filters mean
+    the layer participates in every render.
     """
 
     name: str  # e.g. "body", "kit", "head", "hair", "expression", "accessory"
     image_path: str | None = None
     tint: tuple[int, int, int] | None = None
     z_order: int = 0
+    expression: "Expression | None" = None
+    pose: "Pose | None" = None
+    tint_strength: float = 0.6  # 0..1; 0 = no tint, 1 = fully replace colour
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "image_path": self.image_path,
+            "tint": list(self.tint) if self.tint else None,
+            "z_order": self.z_order,
+            "expression": self.expression.value if self.expression else None,
+            "pose": self.pose.value if self.pose else None,
+            "tint_strength": self.tint_strength,
+        }
+
+    @classmethod
+    def from_dict(cls, d: Mapping) -> "SpriteLayer":
+        return cls(
+            name=d["name"],
+            image_path=d.get("image_path"),
+            tint=tuple(d["tint"]) if d.get("tint") else None,
+            z_order=int(d.get("z_order", 0)),
+            expression=Expression(d["expression"]) if d.get("expression") else None,
+            pose=Pose(d["pose"]) if d.get("pose") else None,
+            tint_strength=float(d.get("tint_strength", 0.6)),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -302,9 +332,39 @@ class CharacterVisual:
         intensity: float,
         pose: Pose,
     ) -> str:
-        """Layered composite sprite (Phase 10 — stub)."""
-        # For now, fall back to flat.
-        return self._render_flat(expression, intensity)
+        """Composite layered sprite (Phase 10).
+
+        Selects layers whose expression/pose filters match the request,
+        sorts by ``z_order``, applies per-layer palette tinting, and
+        alpha-composites onto a transparent canvas. Result is cached.
+        """
+        cache_path = self._composite_cache_path(expression, pose, intensity)
+        if cache_path.exists():
+            return str(cache_path)
+
+        layers = select_layers(self.layers, expression, pose)
+        if not layers:
+            # Nothing composites for this state — fall back to the flat path
+            # so a character never renders as empty.
+            return self._render_flat(expression, intensity)
+
+        canvas_size = _layer_canvas_size(layers)
+        canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        for layer in layers:
+            layer_img = _load_layer_image(layer, canvas_size)
+            if layer.tint is not None:
+                layer_img = _apply_layer_tint(
+                    layer_img, layer.tint, layer.tint_strength
+                )
+            canvas = Image.alpha_composite(canvas, layer_img)
+
+        # An expression-coloured wash, gentler than the flat path (the
+        # expression layer itself already carries most of the mood).
+        canvas = apply_overlay(canvas, expression, intensity * 0.5)
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        canvas.save(str(cache_path), "PNG")
+        return str(cache_path)
 
     # ------------------------------------------------------------------
     # Base face management
@@ -378,6 +438,178 @@ class CharacterVisual:
             / OVERLAYS_DIR
             / f"{self.character_id}_{expression.value}_{bucket}.png"
         )
+
+    def _composite_cache_path(
+        self, expression: Expression, pose: Pose, intensity: float
+    ) -> Path:
+        bucket = int(intensity * 10)
+        return (
+            self._cache_root
+            / "composites"
+            / f"{self.character_id}_{expression.value}_{pose.value}_{bucket}.png"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Composite sprite helpers (Phase 10)
+# ---------------------------------------------------------------------------
+
+
+def select_layers(
+    layers: Sequence[SpriteLayer],
+    expression: Expression,
+    pose: Pose,
+) -> list[SpriteLayer]:
+    """Return the subset of layers that match this expression + pose.
+
+    Layers with ``expression=None`` and ``pose=None`` are always kept.
+    Specific-expression layers only appear when their expression matches;
+    if no layer matches the request and a NEUTRAL layer exists, we fall
+    back to that so the face is never blank.
+    """
+    kept: list[SpriteLayer] = []
+    any_expression_layer = any(
+        layer.expression is not None for layer in layers
+    )
+    matched_expression = False
+    for layer in layers:
+        if layer.pose is not None and layer.pose is not pose:
+            continue
+        if layer.expression is None:
+            kept.append(layer)
+            continue
+        if layer.expression is expression:
+            kept.append(layer)
+            matched_expression = True
+
+    if any_expression_layer and not matched_expression:
+        # Fall back to NEUTRAL expression layers so the sprite isn't blank.
+        for layer in layers:
+            if layer.expression is Expression.NEUTRAL and (
+                layer.pose is None or layer.pose is pose
+            ):
+                kept.append(layer)
+
+    kept.sort(key=lambda layer: layer.z_order)
+    return kept
+
+
+def _layer_canvas_size(layers: Sequence[SpriteLayer]) -> tuple[int, int]:
+    """Size of the composite canvas — max of all layer image sizes."""
+    w, h = FACE_WIDTH, FACE_HEIGHT
+    for layer in layers:
+        if not layer.image_path:
+            continue
+        p = Path(layer.image_path)
+        if not p.exists():
+            continue
+        try:
+            with Image.open(str(p)) as img:
+                w = max(w, img.width)
+                h = max(h, img.height)
+        except Exception:
+            continue
+    return w, h
+
+
+def _load_layer_image(
+    layer: SpriteLayer, canvas_size: tuple[int, int]
+) -> Image.Image:
+    """Load a layer image, or produce a solid-colour placeholder of the tint."""
+    if layer.image_path and Path(layer.image_path).exists():
+        img = Image.open(layer.image_path).convert("RGBA")
+        if img.size != canvas_size:
+            # Centre-paste onto canvas-sized transparent background.
+            bg = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+            ox = (canvas_size[0] - img.width) // 2
+            oy = (canvas_size[1] - img.height) // 2
+            bg.paste(img, (ox, oy), img)
+            return bg
+        return img
+
+    # No image — produce a tint-coloured rectangle at full alpha so
+    # authored art can be dropped in later without breaking composition.
+    tint = layer.tint or (128, 128, 128)
+    return Image.new("RGBA", canvas_size, tint + (120,))
+
+
+def _apply_layer_tint(
+    img: Image.Image,
+    tint: tuple[int, int, int],
+    strength: float,
+) -> Image.Image:
+    """Blend a tint colour into the image, preserving alpha.
+
+    Strength 0 keeps the original pixels; strength 1 replaces RGB with
+    the tint (alpha unchanged). Intended for kit palettes, hair tinting,
+    etc. — not the emotion overlay (that's ``apply_overlay``).
+    """
+    strength = clamp(strength, 0.0, 1.0)
+    if strength <= 0.0:
+        return img
+
+    rgba = img.convert("RGBA")
+    r, g, b, a = rgba.split()
+    tint_img = Image.new("RGB", rgba.size, tint)
+    blended = Image.blend(Image.merge("RGB", (r, g, b)), tint_img, strength)
+    br, bg_, bb = blended.split()
+    return Image.merge("RGBA", (br, bg_, bb, a))
+
+
+# ---------------------------------------------------------------------------
+# Procedural layer builder (Tier D and warm-up for Tier B without art)
+# ---------------------------------------------------------------------------
+
+
+# Stock hair / build palette pool — seeded pick by character ID keeps the
+# same character visually stable across runs. Authored layer sets replace
+# this at the designer's discretion.
+_HAIR_COLOURS: list[tuple[int, int, int]] = [
+    (30, 20, 10),
+    (60, 40, 20),
+    (120, 80, 40),
+    (200, 180, 100),
+    (50, 50, 50),
+    (150, 40, 20),
+]
+
+_BUILD_TINTS: dict[str, tuple[int, int, int]] = {
+    "lean": (190, 170, 150),
+    "athletic": (200, 180, 160),
+    "stocky": (180, 160, 140),
+}
+
+
+def procedural_layers(
+    spec: FaceGenerationSpec,
+    palette: TeamPalette | None = None,
+) -> list[SpriteLayer]:
+    """Build a placeholder-but-structured layer stack from a character spec.
+
+    Lets the composite path run before authored art exists — the character
+    still has deterministic body/kit/hair/expression layers. Authored
+    content replaces any subset by name.
+    """
+    import random as _random
+
+    rng = _random.Random(spec.seed)
+    palette = palette or TeamPalette()
+    hair = rng.choice(_HAIR_COLOURS)
+    skin = _BUILD_TINTS.get(spec.build, _BUILD_TINTS["athletic"])
+
+    return [
+        SpriteLayer(name="body", tint=skin, z_order=0),
+        SpriteLayer(name="kit", tint=palette.primary, z_order=10),
+        SpriteLayer(name="hair", tint=hair, z_order=20),
+        # Default neutral expression — authored art may add more.
+        SpriteLayer(
+            name="expression",
+            tint=EXPRESSION_TINTS[Expression.NEUTRAL],
+            z_order=30,
+            expression=Expression.NEUTRAL,
+            tint_strength=0.4,
+        ),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -628,6 +860,23 @@ class VisualManager:
         for cid, char in characters.items():
             visual = self.get_visual(char)
             visual.ensure_base_face()
+
+    def populate_procedural_layers(
+        self,
+        characters: dict[str, Character],
+        palette: TeamPalette | None = None,
+    ) -> None:
+        """Give named characters a procedural layer stack.
+
+        Lets the composite path run before authored sprite art exists.
+        Authored ``CharacterVisual.layers`` set directly will not be
+        overwritten.
+        """
+        for char in characters.values():
+            visual = self.get_visual(char)
+            if visual.layers:
+                continue
+            visual.layers = procedural_layers(visual.spec, palette)
 
     def render_character(
         self,

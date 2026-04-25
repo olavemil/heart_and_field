@@ -3,6 +3,7 @@
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
+    LocationCue,
     RelationshipEffect,
     RoleSlot,
     SceneBlock,
@@ -23,6 +24,11 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.9,
+        location=LocationCue(
+            spec_id="suburban_house",
+            node_name="kitchen",
+            graph_id="player_home",
+        ),
         outcomes={
             "easy": BranchOutcome(
                 summary=(

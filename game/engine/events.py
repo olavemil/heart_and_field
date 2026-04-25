@@ -22,8 +22,14 @@ from enum import Enum
 from typing import Callable, Mapping, Sequence
 
 from .characters import Character, TierACharacter, TierBCharacter
+from .clock import Weekday, WorldClock
 from .outcomes import OutcomeRecord, WeekPhase
 from .stats import StatName
+
+
+def _default_clock() -> "WorldClock":
+    """Factory used by ``GameState.clock`` — Monday 08:00 of week 1."""
+    return WorldClock(week=1, weekday=Weekday.MON, hour=8, minute=0)
 
 
 
@@ -78,6 +84,31 @@ class SceneBlock:
     branch: dict[str, str] = field(default_factory=dict)  # choice -> next block
 
 
+@dataclass
+class LocationCue:
+    """Where an event takes place — drives background lookup.
+
+    Three modes:
+
+    - ``graph_id`` set → marquee location, always the same instance
+      (e.g. ``"player_home"``). The graph persists across events.
+    - ``graph_id`` unset → ad-hoc location, a fresh graph is created
+      each time the event runs (and closed after, so the next ad-hoc
+      run gets new visuals or adopts a pool entry).
+    - ``location: None`` on the blueprint → no background lookup.
+
+    For ad-hoc graphs, ``descriptor_overrides`` lets the event nudge the
+    style (e.g. force MoodTone.WARM for a celebration) without committing
+    to a fully-authored descriptor. The base descriptor comes from the
+    session's per-spec defaults.
+    """
+
+    spec_id: str
+    node_name: str
+    graph_id: str | None = None
+    descriptor_overrides: dict = field(default_factory=dict)
+
+
 # --- Stat effects ------------------------------------------------------------
 
 
@@ -97,12 +128,19 @@ class StatEffect:
 
 @dataclass
 class BranchOutcome:
-    """Everything an event authored for a given branch."""
+    """Everything an event authored for a given branch.
+
+    ``duration_minutes`` overrides the blueprint-level default when this
+    branch is reached — the same player choice may resolve to outcomes
+    of different lengths (e.g. "ate with friends" runs longer than
+    "ate alone after the social check failed").
+    """
 
     summary: str
     stat_effects: list[StatEffect] = field(default_factory=list)
     flags: set[str] = field(default_factory=set)
     relationship_effects: list["RelationshipEffect"] = field(default_factory=list)
+    duration_minutes: int | None = None
 
 
 @dataclass
@@ -133,6 +171,8 @@ class EventBlueprint:
     base_weight: float = 1.0
     outcomes: dict[str, BranchOutcome] = field(default_factory=dict)
     carries_arc_context: bool = False
+    location: LocationCue | None = None
+    duration_minutes: int = 60
 
 
 @dataclass
@@ -169,6 +209,9 @@ class GameState:
     disabled_event_ids: set[str] = field(default_factory=set)
     week_phase: WeekPhase = field(default_factory=lambda: WeekPhase(1, 1))
     clocks: list = field(default_factory=list)  # populated in Phase 5
+    # Hour-precision world clock — see ``engine.clock``. Initialised to
+    # Monday 08:00 of the current week; mutated by ``advance_time``.
+    clock: WorldClock = field(default_factory=_default_clock)
 
 
 # --- Eligibility & casting --------------------------------------------------

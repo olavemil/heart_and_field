@@ -23,6 +23,16 @@ define e = Character("Narrator", color="#c8ffc8")
 label start:
     $ session = GameSession.new_game("Alex Morgan", seed=42)
 
+    # Wire the background pipeline. Generated images live under
+    # game/assets/backgrounds/; the manifest persists across saves.
+    # Marquee scenes (player_home, main_school, …) get their entry
+    # node's primary plus 2 subtle-motion variants pre-warmed so the
+    # first visit doesn't pay the full generation cost.
+    python:
+        import os
+        bg_root = os.path.join(config.gamedir, "assets", "backgrounds")
+        session.init_backgrounds(bg_root, warm_marquees=True)
+
     # Create a minimal roster so events can cast.
     python:
         from engine.characters import TierBCharacter, CharacterRole
@@ -80,6 +90,13 @@ label week_loop:
             jump week_end
 
         $ slot = schedule.slots[slot_idx]
+
+        # Fast-forward the world clock to this slot's anchor (no-op if
+        # we're already at or past the anchor on the right weekday).
+        # Match phases share Sat afternoon — only the first one needs
+        # to advance; the rest are inside the same block.
+        if slot.block_type != BlockType.GAME_PHASE or slot.phase_index == 0:
+            $ session.enter_slot(slot_idx)
 
         # Route by block type.
         if slot.block_type == BlockType.DRAMA:

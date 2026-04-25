@@ -15,6 +15,13 @@ label postgame_block(slot_index):
         e "Everyone drifts off alone."
         return
 
+    # Resolve the background, if this event has a location cue.
+    $ scene_info = session.resolve_scene(bp, cast)
+    if scene_info is not None:
+        $ bg_path = session.scene_path(scene_info[0], scene_info[1])
+        if bg_path is not None:
+            scene expression str(bg_path)
+
     $ choices = session.get_choices(bp)
 
     e "After the match"
@@ -44,7 +51,17 @@ label postgame_block(slot_index):
 
     $ record = session.resolve_event(bp, branch, cast, slot_index)
 
-    $ narration = session.narrate_outcome(bp, cast, record)
-    e "[narration]"
+    $ pages = session.narrate_outcome(bp, cast, record)
+    python:
+        for page in pages:
+            renpy.say(e, page)
+
+    if scene_info is not None:
+        python:
+            cue = bp.location
+            close = cue is not None and cue.graph_id is None
+            session.release_scene(scene_info[0], close=close)
+
+    $ session.drain_background_prefetch(max_items=2)
 
     return

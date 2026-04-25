@@ -17,12 +17,15 @@ from engine.visual import (
     Expression,
     FaceGenerationSpec,
     Pose,
+    SpriteLayer,
     TeamPalette,
     VisualManager,
     apply_overlay,
     expression_from_character,
     generate_placeholder_face,
     get_background,
+    procedural_layers,
+    select_layers,
 )
 
 
@@ -297,6 +300,100 @@ class TestBackgroundGeneration:
         p1 = get_background("stadium", cache_root=tmp_path)
         p2 = get_background("stadium", cache_root=tmp_path)
         assert p1 == p2
+
+
+class TestCompositeSprite:
+    """Phase 10 — layered composite rendering."""
+
+    def test_select_layers_filters_by_expression(self):
+        layers = [
+            SpriteLayer(name="body", z_order=0),
+            SpriteLayer(
+                name="smile", z_order=10, expression=Expression.WARM
+            ),
+            SpriteLayer(
+                name="frown", z_order=10, expression=Expression.ANXIOUS
+            ),
+        ]
+        kept = select_layers(layers, Expression.WARM, Pose.STANDING)
+        names = [l.name for l in kept]
+        assert "body" in names and "smile" in names and "frown" not in names
+
+    def test_select_layers_falls_back_to_neutral(self):
+        layers = [
+            SpriteLayer(name="body", z_order=0),
+            SpriteLayer(
+                name="neutral", z_order=10, expression=Expression.NEUTRAL
+            ),
+            SpriteLayer(
+                name="warm", z_order=10, expression=Expression.WARM
+            ),
+        ]
+        # Request an expression with no specific layer; NEUTRAL should fill in.
+        kept = select_layers(layers, Expression.CONFIDENT, Pose.STANDING)
+        names = [l.name for l in kept]
+        assert "neutral" in names and "warm" not in names
+
+    def test_select_layers_sorts_by_z_order(self):
+        layers = [
+            SpriteLayer(name="c", z_order=30),
+            SpriteLayer(name="a", z_order=0),
+            SpriteLayer(name="b", z_order=10),
+        ]
+        kept = select_layers(layers, Expression.NEUTRAL, Pose.STANDING)
+        assert [l.name for l in kept] == ["a", "b", "c"]
+
+    def test_composite_render_produces_file(self, tmp_path: Path):
+        spec = FaceGenerationSpec(character_id="composite_test", seed=321)
+        vis = CharacterVisual(
+            character_id="composite_test",
+            spec=spec,
+            layers=procedural_layers(spec),
+            _cache_root=tmp_path,
+        )
+        path = vis.render(Expression.NEUTRAL, 0.5, Pose.STANDING)
+        assert Path(path).exists()
+        # Composite cache path should be in the composites dir.
+        assert "composites" in path
+
+    def test_composite_cache_varies_by_expression_and_pose(
+        self, tmp_path: Path
+    ):
+        spec = FaceGenerationSpec(character_id="composite_cache", seed=322)
+        layers = procedural_layers(spec)
+        vis = CharacterVisual(
+            character_id="composite_cache",
+            spec=spec,
+            layers=layers,
+            _cache_root=tmp_path,
+        )
+        p1 = vis.render(Expression.CONFIDENT, 0.5, Pose.STANDING)
+        p2 = vis.render(Expression.CONFIDENT, 0.5, Pose.DEJECTED)
+        p3 = vis.render(Expression.ANXIOUS, 0.5, Pose.STANDING)
+        assert len({p1, p2, p3}) == 3
+
+    def test_sprite_layer_round_trip(self):
+        original = SpriteLayer(
+            name="hair",
+            tint=(100, 50, 20),
+            z_order=20,
+            expression=Expression.WARM,
+            pose=Pose.STANDING,
+            tint_strength=0.75,
+        )
+        restored = SpriteLayer.from_dict(original.to_dict())
+        assert restored.name == "hair"
+        assert restored.tint == (100, 50, 20)
+        assert restored.z_order == 20
+        assert restored.expression is Expression.WARM
+        assert restored.pose is Pose.STANDING
+        assert restored.tint_strength == 0.75
+
+    def test_procedural_layers_deterministic(self):
+        spec = FaceGenerationSpec(character_id="pd_det", seed=77)
+        l1 = procedural_layers(spec)
+        l2 = procedural_layers(spec)
+        assert [layer.tint for layer in l1] == [layer.tint for layer in l2]
 
 
 class TestSessionVisualIntegration:

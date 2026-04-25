@@ -12,12 +12,14 @@ from engine.events import cast_event, resolve_outcome
 from engine.narrative import (
     NarrationContext,
     NarrativeTemplate,
+    PAGE_MAX_CHARS,
     SLOT_RESOLVERS,
     TemporalRef,
     build_narration_context,
     compress_arc_summary,
     fill_template,
     narrate,
+    paginate,
     select_template,
     templates_for_event,
 )
@@ -203,14 +205,73 @@ def test_templates_for_event_matches_by_id_and_tags():
 def test_narrate_falls_back_to_branch_summary_when_no_template():
     ctx = NarrationContext(branch_summary="Fallback line.")
     out = narrate([], ctx, random.Random(0))
-    assert out == "Fallback line."
+    assert out == ["Fallback line."]
 
 
 def test_narrate_returns_filled_template():
     player = make_player()
     tpl = NarrativeTemplate(id="t", body="{name:p} walked out.")
     ctx = NarrationContext(target=player, cast={"p": player})
-    assert narrate([tpl], ctx, random.Random(0)) == "Al walked out."
+    assert narrate([tpl], ctx, random.Random(0)) == ["Al walked out."]
+
+
+# --- Pagination -------------------------------------------------------------
+
+
+def test_paginate_short_text_yields_single_page():
+    assert paginate("One quick line.") == ["One quick line."]
+
+
+def test_paginate_empty_yields_single_empty_page():
+    assert paginate("") == [""]
+    assert paginate("   ") == [""]
+
+
+def test_paginate_splits_on_sentence_boundary_when_over_cap():
+    sentences = ["Sentence number {} fills the screen.".format(i) for i in range(8)]
+    text = " ".join(sentences)
+    pages = paginate(text, max_chars=80)
+    assert len(pages) > 1
+    for page in pages:
+        assert len(page) <= 80
+    # Round-trip preserves content (modulo whitespace).
+    assert " ".join(pages).split() == text.split()
+
+
+def test_paginate_paragraph_break_forces_split():
+    text = "First paragraph stays small.\n\nSecond paragraph also small."
+    pages = paginate(text, max_chars=200)
+    assert pages == ["First paragraph stays small.", "Second paragraph also small."]
+
+
+def test_paginate_word_wraps_run_on_with_no_sentence_boundary():
+    text = "word " * 60  # 300 chars of single-word tokens, no punctuation
+    pages = paginate(text.strip(), max_chars=50)
+    assert len(pages) > 1
+    for page in pages:
+        assert len(page) <= 50
+
+
+def test_paginate_no_split_inside_a_word():
+    text = "alpha bravo charlie delta echo foxtrot golf hotel."
+    pages = paginate(text, max_chars=20)
+    for page in pages:
+        # Every page is whole words.
+        assert all(tok in text for tok in page.split())
+
+
+def test_narrate_paginates_long_template_fill_without_llm():
+    player = make_player()
+    long_body = (
+        "{name:p} walked onto the pitch. " * 15
+    ).strip()
+    tpl = NarrativeTemplate(id="t", body=long_body)
+    ctx = NarrationContext(target=player, cast={"p": player})
+    pages = narrate([tpl], ctx, random.Random(0), max_chars=120)
+    assert len(pages) > 1
+    for page in pages:
+        assert len(page) <= 120
+        assert "Al" in page
 
 
 # --- Arc compression --------------------------------------------------------

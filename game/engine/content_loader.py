@@ -12,6 +12,7 @@ import pkgutil
 from pathlib import Path
 from types import ModuleType
 
+from .background_pool import SceneGraphSpec
 from .events import EventBlueprint
 from .narrative import NarrativeTemplate
 
@@ -68,3 +69,35 @@ def load_blueprints_from_path(content_root: Path) -> list[EventBlueprint]:
 
 def load_templates_from_path(content_root: Path) -> list[NarrativeTemplate]:
     return load_templates_from_package(_import_package(content_root))
+
+
+def load_scene_specs_from_package(package: ModuleType) -> list[SceneGraphSpec]:
+    """Import every submodule of `package` and collect `SPECS` lists.
+
+    Scene specs use `spec_id` rather than `id`, so the duplicate check
+    runs on that attribute instead of going through `_collect`.
+    """
+    import importlib
+    import pkgutil
+
+    items: list[SceneGraphSpec] = []
+    seen_ids: set[str] = set()
+    for info in pkgutil.iter_modules(package.__path__):
+        module = importlib.import_module(f"{package.__name__}.{info.name}")
+        entries = getattr(module, "SPECS", [])
+        for entry in entries:
+            if not isinstance(entry, SceneGraphSpec):
+                raise TypeError(
+                    f"{package.__name__}.{info.name}: non-SceneGraphSpec in SPECS"
+                )
+            if entry.spec_id in seen_ids:
+                raise ValueError(
+                    f"duplicate SceneGraphSpec spec_id: {entry.spec_id!r}"
+                )
+            seen_ids.add(entry.spec_id)
+            items.append(entry)
+    return items
+
+
+def load_scene_specs_from_path(content_root: Path) -> list[SceneGraphSpec]:
+    return load_scene_specs_from_package(_import_package(content_root))

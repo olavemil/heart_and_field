@@ -251,6 +251,30 @@ class TestSerialiseDeserialise:
         data = serialise(state)
         assert data["version"] == 1
 
+    def test_world_clock_round_trip(self):
+        from engine.clock import Weekday, WorldClock
+
+        state = _build_state()
+        state.clock = WorldClock(
+            week=3, weekday=Weekday.THU, hour=14, minute=30,
+        )
+        data = serialise(state)
+        restored, _, _ = deserialise(data)
+        assert restored.clock.week == 3
+        assert restored.clock.weekday == Weekday.THU
+        assert restored.clock.hour == 14
+        assert restored.clock.minute == 30
+
+    def test_world_clock_default_when_missing(self):
+        # Older saves had no world_clock field — deserialise must fill
+        # in a sensible default rather than crash.
+        state = _build_state()
+        data = serialise(state)
+        del data["world_clock"]
+        restored, _, _ = deserialise(data)
+        assert restored.clock.week == 1
+        assert restored.clock.hour == 8
+
 
 class TestFileIO:
     def test_save_and_load_json(self, tmp_path: Path):

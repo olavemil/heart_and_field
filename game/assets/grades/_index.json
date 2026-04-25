@@ -1,0 +1,19 @@
+{
+  "hash": "bdd67dfa1dd5",
+  "files": [
+    "time_dawn.png",
+    "time_morning.png",
+    "time_midday.png",
+    "time_afternoon.png",
+    "time_evening.png",
+    "time_night.png",
+    "weather_clear.png",
+    "weather_overcast.png",
+    "weather_rain.png",
+    "mood_neutral.png",
+    "mood_tense.png",
+    "mood_euphoric.png",
+    "mood_melancholy.png",
+    "mood_charged.png"
+  ]
+}

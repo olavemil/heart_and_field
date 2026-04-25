@@ -1,0 +1,90 @@
+"""External-pressure events (design §8.2) — media, contracts, fans."""
+
+from engine.characters import CharacterRole
+from engine.events import (
+    BranchOutcome,
+    EventBlueprint,
+    RoleSlot,
+    SceneBlock,
+    StatEffect,
+    WeightRule,
+)
+from engine.stats import StatName
+
+from ._helpers import is_player
+
+
+BLUEPRINTS = [
+    EventBlueprint(
+        id="external.media_scrum",
+        tags={"external_pressure", "postgame"},
+        participants=[
+            RoleSlot(role="player", filter=is_player),
+            RoleSlot(
+                role="press",
+                filter=lambda c: c.role is CharacterRole.MEDIA,
+                optional=True,
+            ),
+        ],
+        blocks=[SceneBlock(id="main")],
+        base_weight=0.5,
+        weight_modifiers=[
+            WeightRule(
+                predicate=lambda ctx, st: 1.6 if ctx.team_morale < -0.2 else 1.0,
+                description="media heat up after a loss",
+            )
+        ],
+        outcomes={
+            "composed": BranchOutcome(
+                summary=(
+                    "He answered the questions the way he'd been told to. It "
+                    "came out sounding almost true."
+                ),
+                stat_effects=[
+                    StatEffect("player", StatName.CAUTIOUSNESS, 0.02),
+                ],
+                flags={"public"},
+            ),
+            "unravelled": BranchOutcome(
+                summary=(
+                    "Someone asked the wrong question. He gave them the answer "
+                    "they were looking for."
+                ),
+                stat_effects=[
+                    StatEffect("player", StatName.INSECURITY, 0.04),
+                    StatEffect("player", StatName.AGGRESSIVENESS, 0.02),
+                ],
+                flags={"public", "quotable"},
+            ),
+        },
+    ),
+    EventBlueprint(
+        id="external.contract_talk",
+        tags={"external_pressure", "downtime"},
+        participants=[
+            RoleSlot(role="player", filter=is_player),
+        ],
+        blocks=[SceneBlock(id="main")],
+        base_weight=0.3,
+        carries_arc_context=True,
+        outcomes={
+            "focused": BranchOutcome(
+                summary=(
+                    "The agent called. He listened and said he'd think about it."
+                ),
+                stat_effects=[
+                    StatEffect("player", StatName.MOTIVATION, 0.02),
+                ],
+            ),
+            "rattled": BranchOutcome(
+                summary=(
+                    "The numbers weren't the problem. He couldn't get the tone "
+                    "of the call out of his head."
+                ),
+                stat_effects=[
+                    StatEffect("player", StatName.INSECURITY, 0.05),
+                ],
+            ),
+        },
+    ),
+]

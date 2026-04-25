@@ -884,7 +884,7 @@ def background_prompt(location: str, custom: str | None = None) -> str:
     """Build a text prompt for background generation."""
     from .visual import BACKGROUND_PROMPTS
     base = custom or BACKGROUND_PROMPTS.get(location, f"{location}, atmospheric")
-    return f"{base}, high quality, detailed environment, cinematic lighting"
+    return f"{base}, high quality, detailed environment, cinematic lighting, painterly style"
 
 
 # --- Serialisable config -----------------------------------------------------

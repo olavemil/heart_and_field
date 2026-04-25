@@ -290,6 +290,77 @@ def templates_for_event(
 # --- Narrate ----------------------------------------------------------------
 
 
+PAGE_MAX_CHARS = 280
+
+
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+
+
+def paginate(text: str, max_chars: int = PAGE_MAX_CHARS) -> list[str]:
+    """Split a narration string into screen-sized pages.
+
+    Pages are packed greedily up to ``max_chars`` on sentence boundaries
+    (`. ! ?` followed by whitespace). Paragraph breaks (`\\n\\n`) are
+    treated as hard page boundaries. A run-on with no sentence boundary
+    is word-wrapped so no page exceeds the cap. Empty input yields a
+    single empty page so callers can iterate uniformly.
+    """
+    text = text.strip()
+    if not text:
+        return [""]
+
+    pages: list[str] = []
+    for paragraph in re.split(r"\n\s*\n", text):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+        sentences = _SENTENCE_END.split(paragraph)
+        current = ""
+        for sentence in sentences:
+            if not sentence:
+                continue
+            if len(sentence) > max_chars:
+                # Flush current page, then word-wrap the long sentence.
+                if current:
+                    pages.append(current)
+                    current = ""
+                pages.extend(_wrap_words(sentence, max_chars))
+                continue
+            candidate = f"{current} {sentence}".strip() if current else sentence
+            if len(candidate) > max_chars:
+                pages.append(current)
+                current = sentence
+            else:
+                current = candidate
+        if current:
+            pages.append(current)
+    return pages or [""]
+
+
+def _wrap_words(text: str, max_chars: int) -> list[str]:
+    """Word-wrap a long run-on into chunks no larger than ``max_chars``."""
+    out: list[str] = []
+    current = ""
+    for word in text.split():
+        if len(word) > max_chars:
+            if current:
+                out.append(current)
+                current = ""
+            # A single token longer than the cap — hard-slice it.
+            for i in range(0, len(word), max_chars):
+                out.append(word[i : i + max_chars])
+            continue
+        candidate = f"{current} {word}".strip() if current else word
+        if len(candidate) > max_chars:
+            out.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        out.append(current)
+    return out
+
+
 def narrate(
     templates: Sequence[NarrativeTemplate],
     ctx: NarrationContext,
@@ -298,8 +369,9 @@ def narrate(
     use_llm: bool = False,
     llm_client: "LLMClient | None" = None,
     event_tags: set[str] = frozenset(),
-) -> str:
-    """Pick a template and return the filled string.
+    max_chars: int = PAGE_MAX_CHARS,
+) -> list[str]:
+    """Pick a template and return the filled narration as a list of pages.
 
     Falls back to `ctx.branch_summary` if no template matches — every event
     has one as a last-resort narration.
@@ -307,6 +379,10 @@ def narrate(
     When ``use_llm`` is True and an ``llm_client`` is provided, high-drama
     events get their filled template rephrased by the LLM. The filled
     template is always the fallback.
+
+    The result is paginated via :func:`paginate` so long template fills
+    (descriptor-heavy) and LLM-rephrased outputs both split cleanly across
+    screens. Short narration yields a single-page list.
     """
     template = select_template(templates, ctx, rng)
     if template is None:
@@ -334,7 +410,7 @@ def narrate(
             branch_summary=ctx.branch_summary,
         )
 
-    return filled
+    return paginate(filled, max_chars=max_chars)
 
 
 # --- Arc summary compression ------------------------------------------------

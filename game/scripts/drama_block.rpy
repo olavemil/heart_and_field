@@ -18,6 +18,13 @@ label drama_block(slot_index):
         e "Nothing comes of it."
         return
 
+    # Resolve the background, if this event has a location cue.
+    $ scene_info = session.resolve_scene(bp, cast)
+    if scene_info is not None:
+        $ bg_path = session.scene_path(scene_info[0], scene_info[1])
+        if bg_path is not None:
+            scene expression str(bg_path)
+
     # Get player-facing choices.
     $ choices = session.get_choices(bp)
 
@@ -55,7 +62,21 @@ label drama_block(slot_index):
     $ record = session.resolve_event(bp, branch, cast, slot_index)
 
     # Narrate the outcome.
-    $ narration = session.narrate_outcome(bp, cast, record)
-    e "[narration]"
+    $ pages = session.narrate_outcome(bp, cast, record)
+    python:
+        for page in pages:
+            renpy.say(e, page)
+
+    # Reap any prefetched-but-unvisited backgrounds. Ad-hoc graphs close;
+    # marquee graphs (graph_id authored on the cue) stay open across events.
+    if scene_info is not None:
+        python:
+            cue = bp.location
+            close = cue is not None and cue.graph_id is None
+            session.release_scene(scene_info[0], close=close)
+
+    # Drain a few prefetch jobs while the player reads — keeps the
+    # background generator warm without blocking.
+    $ session.drain_background_prefetch(max_items=2)
 
     return

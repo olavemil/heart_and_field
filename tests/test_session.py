@@ -144,9 +144,10 @@ class TestEventFlow:
                 record = session.resolve_event(bp, branch, cast, idx)
                 assert record.event_id == bp.id
                 assert record.branch_taken == branch
-                # Narration should produce a non-empty string.
-                narration = session.narrate_outcome(bp, cast, record)
-                assert len(narration) > 0
+                # Narration is paginated: at least one non-empty page.
+                pages = session.narrate_outcome(bp, cast, record)
+                assert len(pages) > 0
+                assert any(p for p in pages)
 
     def test_select_and_resolve_training_event(self):
         session = _build_session()
@@ -291,8 +292,9 @@ class TestFullWeekHeadless:
 
             branch = list(bp.outcomes.keys())[0]
             record = session.resolve_event(bp, branch, cast, i)
-            narration = session.narrate_outcome(bp, cast, record)
-            assert len(narration) > 0
+            pages = session.narrate_outcome(bp, cast, record)
+            assert len(pages) > 0
+            assert any(p for p in pages)
             events_resolved += 1
 
         # All slots should be resolved.
