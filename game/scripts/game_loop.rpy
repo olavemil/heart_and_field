@@ -33,6 +33,10 @@ label start:
         bg_root = os.path.join(config.gamedir, "assets", "backgrounds")
         session.init_backgrounds(bg_root, warm_marquees=True)
 
+    # Show the persistent status bar overlay (week / weekday / clock /
+    # match label). Visible for the rest of the game.
+    show screen status_bar
+
     # Create a minimal roster so events can cast.
     python:
         from engine.characters import TierBCharacter, CharacterRole

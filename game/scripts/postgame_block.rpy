@@ -18,9 +18,7 @@ label postgame_block(slot_index):
     # Resolve the background, if this event has a location cue.
     $ scene_info = session.resolve_scene(bp, cast)
     if scene_info is not None:
-        $ bg_path = session.scene_path(scene_info[0], scene_info[1])
-        if bg_path is not None:
-            scene expression str(bg_path)
+        $ show_scene_live(session, scene_info[0], scene_info[1])
 
     $ choices = session.get_choices(bp)
 

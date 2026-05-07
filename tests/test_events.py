@@ -236,6 +236,120 @@ def test_select_event_returns_none_when_all_disabled():
     assert select_event([bp], make_ctx(), state, random.Random(0)) is None
 
 
+# --- Quirk bias on selection ------------------------------------------------
+
+
+def test_select_event_quirk_bias_favours_matching_tag():
+    """Vulnerability events get a 1.6× boost when an EMOTIONAL+REACTIVE
+    character is in the eligible pool. With balanced base weights,
+    selection should land on the boosted event much more often than
+    chance over many rolls."""
+    from engine.quirks import Quirk, QuirkDomain, QuirkPattern
+
+    vuln = EventBlueprint(
+        id="vuln",
+        tags={"vulnerability"},
+        participants=[RoleSlot(role="p", filter=lambda c: c.id == "player")],
+        base_weight=1.0,
+        outcomes={"x": BranchOutcome(summary="x")},
+    )
+    other = EventBlueprint(
+        id="other",
+        tags={"training"},
+        participants=[RoleSlot(role="p", filter=lambda c: c.id == "player")],
+        base_weight=1.0,
+        outcomes={"x": BranchOutcome(summary="x")},
+    )
+    player = make_player()
+    player.quirks = [Quirk(QuirkDomain.EMOTIONAL, QuirkPattern.REACTIVE)]
+    state = make_state(player)
+    ctx = make_ctx()
+
+    rng = random.Random(0)
+    counts = {"vuln": 0, "other": 0}
+    for _ in range(400):
+        choice = select_event([vuln, other], ctx, state, rng)
+        counts[choice.id] += 1
+    # Vulnerability should dominate clearly — 1.6× multiplier vs no bias
+    # on the other event. With ~200 trials of equal base weight, the
+    # boosted side wins roughly 60/40 or better.
+    assert counts["vuln"] > counts["other"]
+
+
+def test_select_event_quirk_bias_no_op_without_quirks():
+    """Pre-quirk character rosters must keep their selection
+    distribution unchanged: representative_cast still runs, but the
+    cast's quirk lists are empty so the multiplier is 1.0."""
+    bp_a = EventBlueprint(
+        id="a",
+        tags={"training"},
+        participants=[RoleSlot(role="p", filter=lambda c: c.id == "player")],
+        base_weight=1.0,
+        outcomes={"x": BranchOutcome(summary="x")},
+    )
+    bp_b = EventBlueprint(
+        id="b",
+        tags={"social"},
+        participants=[RoleSlot(role="p", filter=lambda c: c.id == "player")],
+        base_weight=1.0,
+        outcomes={"x": BranchOutcome(summary="x")},
+    )
+    state = make_state(make_player())  # no quirks
+    ctx = make_ctx()
+    rng = random.Random(7)
+
+    counts = {"a": 0, "b": 0}
+    for _ in range(200):
+        choice = select_event([bp_a, bp_b], ctx, state, rng)
+        counts[choice.id] += 1
+    # Roughly even — within 35/65 either way for n=200 at p=0.5.
+    assert 65 < counts["a"] < 135
+
+
+def test_select_event_friction_pair_boosts_conflict_events():
+    """Two characters whose quirks are on the friction table should
+    push conflict-tagged events ahead of neutral ones in selection."""
+    from engine.quirks import Quirk, QuirkDomain, QuirkPattern
+
+    conflict_bp = EventBlueprint(
+        id="conflict_bp",
+        tags={"conflict"},
+        participants=[
+            RoleSlot(role="p", filter=lambda c: c.id == "player"),
+            RoleSlot(role="t", filter=lambda c: c.id == "tm"),
+        ],
+        base_weight=1.0,
+        outcomes={"x": BranchOutcome(summary="x")},
+    )
+    neutral_bp = EventBlueprint(
+        id="neutral_bp",
+        tags={"training"},
+        participants=[
+            RoleSlot(role="p", filter=lambda c: c.id == "player"),
+            RoleSlot(role="t", filter=lambda c: c.id == "tm"),
+        ],
+        base_weight=1.0,
+        outcomes={"x": BranchOutcome(summary="x")},
+    )
+    # Use a friction pair whose individual tag biases are neutral on
+    # the events being tested (PERFORMANCE+PERFORMATIVE ↔ AVOIDANT
+    # neither bias "conflict" nor "training" individually). That way
+    # the cast-level friction bump is the only differentiator.
+    player = make_player()
+    player.quirks = [Quirk(QuirkDomain.PERFORMANCE, QuirkPattern.PERFORMATIVE)]
+    teammate = make_teammate("tm")
+    teammate.quirks = [Quirk(QuirkDomain.PERFORMANCE, QuirkPattern.AVOIDANT)]
+    state = make_state(player, teammate)
+    ctx = make_ctx()
+
+    rng = random.Random(11)
+    counts = {"conflict_bp": 0, "neutral_bp": 0}
+    for _ in range(400):
+        choice = select_event([conflict_bp, neutral_bp], ctx, state, rng)
+        counts[choice.id] += 1
+    assert counts["conflict_bp"] > counts["neutral_bp"]
+
+
 # --- Resolution -------------------------------------------------------------
 
 

@@ -41,6 +41,12 @@ from .color_grades import (
     grade_path,
     time_of_day_for_hour,
 )
+from .overlays import (
+    OverlaySpec,
+    generate_overlay_pngs,
+    overlay_path,
+    overlays_for,
+)
 from .characters import (
     Character,
     CharacterRole,
@@ -155,11 +161,18 @@ class GameSession:
     background_manifest: BackgroundManifest | None = None
     background_generator: BackgroundGenerator | None = None
     grades_root: Path | None = None  # set by ``init_backgrounds``
+    overlays_root: Path | None = None  # set by ``init_backgrounds``
 
     # During match play the status bar swaps from the clock to a label
     # (e.g. "Match vs Northgate"). Set by the match flow (Phase 11.5B);
     # cleared after the match block ends.
     _active_match_label: str | None = None
+
+    # Set by ``enter_slot`` and consumed by the next ``resolve_scene``
+    # that resolves a real ``LocationCue``. Implements the auto-teleport
+    # rule: arriving at a slot's anchored event is free regardless of
+    # where the player was. Transient — not persisted.
+    _pending_slot_teleport: bool = False
     # Default location descriptor per spec_id, used when an ad-hoc
     # ``LocationCue`` doesn't carry overrides. Authors may also call
     # ``session.set_default_descriptor`` at game-setup time.
@@ -424,6 +437,11 @@ class GameSession:
         the number of minutes advanced (0 when already at or past the
         anchor on the right day).
 
+        Sets the auto-teleport flag so the first ``resolve_scene`` in
+        this slot pays no movement cost — the character "shows up" for
+        appointments without spending the usual 30-min between-graph
+        traversal.
+
         Slots without a calendar tag are no-ops, so older flat-list
         schedules continue to work without time advance.
         """
@@ -445,6 +463,10 @@ class GameSession:
             day_delta += 7  # next week's same weekday
         target_minutes = day_delta * 24 * 60 + target_hour * 60
         current_minutes = clock.total_minutes_in_day()
+        # Mark the slot transition regardless of whether the clock
+        # actually advanced — the next event in this slot still gets
+        # the free arrival.
+        self._pending_slot_teleport = True
         if day_delta == 0 and target_minutes <= current_minutes:
             return 0
         delta = target_minutes - current_minutes
@@ -487,6 +509,7 @@ class GameSession:
             self.background_manifest = None
             self.background_generator = None
             self.grades_root = None
+            self.overlays_root = None
             return
         assets_root = Path(assets_root)
         manifest = BackgroundManifest.load(assets_root)
@@ -497,11 +520,13 @@ class GameSession:
             producer=producer or PlaceholderImageProducer(),
             prefetch_scheduler=prefetch_scheduler or DeferredPrefetchScheduler(),
         )
-        # Render the colour-grade PNGs into ``<assets_root>/../grades/``
-        # so they live alongside other generated visual assets. Hash-keyed
-        # cache means this is essentially free on subsequent boots.
+        # Render the colour-grade and overlay PNGs alongside the other
+        # generated visual assets. Both have version-keyed caches so
+        # subsequent boots are effectively free.
         self.grades_root = assets_root.parent / "grades"
         generate_grade_pngs(self.grades_root)
+        self.overlays_root = assets_root.parent / "overlays"
+        generate_overlay_pngs(self.overlays_root)
         if warm_marquees:
             self.warm_marquees()
 
@@ -525,8 +550,18 @@ class GameSession:
 
         Returns ``None`` if the blueprint has no location cue or if the
         background pipeline isn't initialised. Marquee cues return their
-        fixed `graph_id`. Ad-hoc cues create a fresh graph (closed after
+        fixed `graph_id`; ad-hoc cues create a fresh graph (closed after
         ``release_scene``).
+
+        Side effects:
+
+        - Advances the clock by the movement cost from the player's
+          previous location to the cue's resolved location (5 min within
+          a graph, 30 min between graphs, 0 for the first scene of a
+          slot or the first scene of the game).
+        - Updates ``state.current_location`` to the resolved target.
+        - Consumes ``_pending_slot_teleport`` so subsequent moves in the
+          same slot pay the normal cost.
         """
         cue = blueprint.location
         if cue is None or self.background_manifest is None:
@@ -541,12 +576,41 @@ class GameSession:
                 self.background_manifest.create_graph(
                     cue.spec_id, descriptor, graph_id=cue.graph_id
                 )
-            return cue.graph_id, cue.node_name
+            target = (cue.graph_id, cue.node_name)
+        else:
+            # Ad-hoc — fresh graph each call.
+            descriptor = self._descriptor_for(cue)
+            graph = self.background_manifest.create_graph(cue.spec_id, descriptor)
+            target = (graph.graph_id, cue.node_name)
 
-        # Ad-hoc — fresh graph each call.
-        descriptor = self._descriptor_for(cue)
-        graph = self.background_manifest.create_graph(cue.spec_id, descriptor)
-        return graph.graph_id, cue.node_name
+        cost = self._movement_cost(target)
+        if cost > 0:
+            self.state.clock.advance(cost)
+        self.state.current_location = target
+        self._pending_slot_teleport = False
+        return target
+
+    def _movement_cost(self, target: tuple[str, str]) -> int:
+        """Compute the movement cost in minutes from current_location to
+        ``target``. Used by ``resolve_scene``.
+
+        Cost matrix:
+          - first scene ever (current_location is None): 0
+          - same graph + same node (revisit): 0
+          - same graph, different node: 5 min
+          - different graph: 30 min
+          - any case while ``_pending_slot_teleport`` is set: 0
+        """
+        if self._pending_slot_teleport:
+            return 0
+        src = self.state.current_location
+        if src is None:
+            return 0
+        if src == target:
+            return 0
+        if src[0] == target[0]:
+            return 5
+        return 30
 
     def scene_path(self, graph_id: str, node_name: str) -> Path | None:
         """Return the absolute image path for a graph node, generating
@@ -647,6 +711,34 @@ class GameSession:
             mood=mood,
             weather_tendency=tendency,
         )
+
+    def overlays_for_scene(
+        self, graph_id: str, node_name: str
+    ) -> list[tuple[OverlaySpec, Path]]:
+        """Return the overlay stack for a given scene as ``(spec, path)``
+        pairs, in bottom-to-top compositing order.
+
+        Looks up the graph's ``LocationDescriptor.kind`` for the base
+        stack, then merges weather-conditional additions (rain streak
+        when raining, heat shimmer in clear midday outdoor scenes).
+        Returns an empty list when the pipeline isn't initialised or
+        the graph is unknown.
+        """
+        if (
+            self.background_manifest is None
+            or self.overlays_root is None
+        ):
+            return []
+        graph = self.background_manifest.get_graph(graph_id)
+        if graph is None:
+            return []
+        kind = graph.descriptor.kind
+        atm = self.atmosphere()
+        specs = overlays_for(kind, atm)
+        return [
+            (spec, overlay_path(self.overlays_root, spec.overlay))
+            for spec in specs
+        ]
 
     def grade_paths(self) -> tuple[Path, Path, Path] | None:
         """Return absolute PNG paths for the three grade layers in the

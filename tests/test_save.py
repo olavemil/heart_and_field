@@ -275,6 +275,102 @@ class TestSerialiseDeserialise:
         assert restored.clock.week == 1
         assert restored.clock.hour == 8
 
+    def test_secrets_round_trip(self):
+        from engine.secrets import (
+            AgendaAspect,
+            AgendaGoal,
+            AgendaMethod,
+            AspectPhrases,
+            Secret,
+            SecretCategory,
+            SecretMembership,
+            SecretRole,
+        )
+
+        state = _build_state()
+        state.secrets["s.player_agenda"] = Secret(
+            id="s.player_agenda",
+            category=SecretCategory.AGENDA,
+            aspects=[AgendaAspect(
+                id="a1",
+                goal=AgendaGoal.GAIN_LEVERAGE,
+                method=AgendaMethod.OBSERVING,
+                target="rival",
+            )],
+            memberships=[
+                SecretMembership(
+                    character_id="player",
+                    role=SecretRole.OWNER,
+                    exposure=1.0,
+                ),
+            ],
+            exposure_level=0.3,
+            reveal_triggers=["confrontation"],
+            aspect_phrases={
+                "a1": AspectPhrases(
+                    aspect_id="a1",
+                    hidden="something is brewing",
+                    glimpsed="he watches more than he says",
+                    suspected="he wants something specific from her",
+                    known="he is gathering leverage on her",
+                ),
+            },
+        )
+        data = serialise(state)
+        restored, _, _ = deserialise(data)
+        assert "s.player_agenda" in restored.secrets
+        rs = restored.secrets["s.player_agenda"]
+        assert rs.category == SecretCategory.AGENDA
+        assert rs.aspects[0].goal == AgendaGoal.GAIN_LEVERAGE
+        assert rs.memberships[0].character_id == "player"
+        assert rs.aspect_phrases["a1"].suspected == (
+            "he wants something specific from her"
+        )
+
+    def test_quirks_round_trip_tier_a_and_b(self):
+        from engine.quirks import (
+            Quirk,
+            QuirkDomain,
+            QuirkPattern,
+            QuirkReveal,
+            QuirkVisibility,
+        )
+
+        state = _build_state()
+        # Add quirks to a Tier A and a Tier B character.
+        player = state.characters["player"]
+        player.quirks = [
+            Quirk(QuirkDomain.PERFORMANCE, QuirkPattern.SEEKING),
+            Quirk(QuirkDomain.SOCIAL, QuirkPattern.AVOIDANT),
+        ]
+        player.quirk_reveals = {
+            "social_avoidant": QuirkReveal(
+                quirk=Quirk(QuirkDomain.SOCIAL, QuirkPattern.AVOIDANT),
+                visibility=QuirkVisibility.HIDDEN,
+                reveal_event_tags=["vulnerability"],
+                reveal_familiarity=0.6,
+            )
+        }
+
+        teammate = state.characters["npc_tm1"]
+        teammate.quirks = [
+            Quirk(QuirkDomain.COGNITIVE, QuirkPattern.RIGID),
+        ]
+
+        data = serialise(state)
+        restored, _, _ = deserialise(data)
+        assert len(restored.characters["player"].quirks) == 2
+        assert restored.characters["player"].quirks[0] == Quirk(
+            QuirkDomain.PERFORMANCE, QuirkPattern.SEEKING
+        )
+        assert "social_avoidant" in restored.characters["player"].quirk_reveals
+        rev = restored.characters["player"].quirk_reveals["social_avoidant"]
+        assert rev.visibility == QuirkVisibility.HIDDEN
+        assert rev.reveal_familiarity == 0.6
+        assert restored.characters["npc_tm1"].quirks == [
+            Quirk(QuirkDomain.COGNITIVE, QuirkPattern.RIGID)
+        ]
+
 
 class TestFileIO:
     def test_save_and_load_json(self, tmp_path: Path):

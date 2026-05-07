@@ -174,6 +174,36 @@ class EventBlueprint:
     location: LocationCue | None = None
     duration_minutes: int = 60
 
+    # ---- Phase 17 — taxonomy + chaining + secret/quirk gating ---------
+    #
+    # All of these default to empty / None so existing blueprints keep
+    # their behaviour. Authors layering on the addendum §4 model fill
+    # them in incrementally.
+
+    # Canonical addendum §4.3 event id, when applicable.
+    event_id: "EventId | None" = None
+
+    # Outgoing chain edges from this blueprint.
+    chain_edges: list = field(default_factory=list)
+
+    # Quirk bias hooks (addendum §2 + §4.6).
+    boosted_by_quirks: list[tuple] = field(default_factory=list)
+    penalised_by_quirks: list[tuple] = field(default_factory=list)
+
+    # Secret gating (addendum §3.8 + §4.6).
+    requires_aspects: list = field(default_factory=list)
+    boosted_by_aspects: list = field(default_factory=list)
+    requires_secret_role: "SecretRole | None" = None
+    reveals_exposure: float = 0.0
+
+    # Scene routing (addendum §4.6).
+    valid_scene_types: list = field(default_factory=list)
+    preferred_instances: list = field(default_factory=list)
+
+    # Placeholder introduction — when set, firing this event resolves
+    # the named placeholder ids into real characters at cast time.
+    introduces_placeholders: list[str] = field(default_factory=list)
+
 
 @dataclass
 class EventInstance:
@@ -212,6 +242,19 @@ class GameState:
     # Hour-precision world clock — see ``engine.clock``. Initialised to
     # Monday 08:00 of the current week; mutated by ``advance_time``.
     clock: WorldClock = field(default_factory=_default_clock)
+    # World-level secret registry — secrets can have memberships across
+    # multiple characters, so they live here rather than on a single
+    # character record. Phase 13 ships the structure; Phase 14 will
+    # populate ``mechanical`` / ``description`` / ``aspect_phrases``.
+    secrets: dict[str, "Secret"] = field(default_factory=dict)
+    # Stable-id placeholders for characters secrets reference but the
+    # world hasn't introduced yet. Phase 15 — see
+    # ``engine.placeholders.resolve_placeholder``.
+    placeholders: dict[str, "CharacterPlaceholder"] = field(default_factory=dict)
+    # Where the player currently is on the scene graph: ``(graph_id,
+    # node_name)`` or ``None`` before the first scene has been resolved.
+    # Drives movement-cost accounting in ``resolve_scene``.
+    current_location: tuple[str, str] | None = None
 
 
 # --- Eligibility & casting --------------------------------------------------
@@ -292,11 +335,140 @@ def recency_penalty(event_id: str, outcome_log: Sequence[OutcomeRecord]) -> floa
     return 1.0
 
 
+def representative_cast(
+    blueprint: EventBlueprint, state: GameState
+) -> dict[str, Character]:
+    """Pick a deterministic best-effort cast for weight computation.
+
+    Used by ``select_event`` so quirk bias can read the *likely* cast's
+    quirks before the actual RNG-driven cast happens. Picks the first
+    eligible character per role (sorted by id) — does not consume RNG
+    so selection stays reproducible. Optional roles with no candidate
+    are skipped; required roles with no candidate also drop quietly
+    (the slot just doesn't contribute to the quirk signal).
+    """
+    used: set[str] = set()
+    cast: dict[str, Character] = {}
+    chars_by_id = sorted(state.characters.values(), key=lambda c: c.id)
+    for slot in blueprint.participants:
+        for candidate in chars_by_id:
+            if candidate.id in used:
+                continue
+            if slot.filter is not None and not slot.filter(candidate):
+                continue
+            cast[slot.role] = candidate
+            used.add(candidate.id)
+            break
+    return cast
+
+
+def _cast_quirks(cast: Mapping[str, Character]) -> list[list]:
+    """Extract the per-character quirk lists from a cast for use by
+    ``cast_event_weight_multiplier``. Defaults to empty for characters
+    that pre-date the quirks field."""
+    return [list(getattr(c, "quirks", [])) for c in cast.values()]
+
+
+# ---------------------------------------------------------------------------
+# Secret-driven gating (Phase 17 wiring)
+# ---------------------------------------------------------------------------
+
+
+def _cast_aspect_types(
+    cast: Mapping[str, Character], state: GameState
+) -> set:
+    """Collect every ``AspectType`` carried by any secret one of the
+    cast members is a member of. Used by ``boosted_by_aspects`` and
+    ``requires_aspects`` checks.
+    """
+    cast_ids = {c.id for c in cast.values()}
+    types: set = set()
+    for secret in state.secrets.values():
+        if not any(
+            m.character_id in cast_ids for m in secret.memberships
+        ):
+            continue
+        for aspect in secret.aspects:
+            types.add(aspect.type)
+    return types
+
+
+def _cast_has_secret_role(
+    cast: Mapping[str, Character], role, state: GameState
+) -> bool:
+    cast_ids = {c.id for c in cast.values()}
+    for secret in state.secrets.values():
+        for membership in secret.memberships:
+            if membership.character_id in cast_ids and membership.role == role:
+                return True
+    return False
+
+
+def meets_secret_requirements(
+    blueprint: EventBlueprint,
+    cast: Mapping[str, Character],
+    state: GameState,
+) -> bool:
+    """Eligibility check for the addendum §3.8 / §4.6 secret gates.
+
+    - ``requires_aspects``: at least one cast member must be a member
+      of a secret carrying *each* listed aspect type. Empty list = no
+      requirement.
+    - ``requires_secret_role``: at least one cast member must hold a
+      secret in this role.
+
+    Returns ``True`` when no gates are set or all gates are satisfied.
+    """
+    requires_aspects = list(getattr(blueprint, "requires_aspects", []) or [])
+    role = getattr(blueprint, "requires_secret_role", None)
+    if not requires_aspects and role is None:
+        return True
+    cast_types = _cast_aspect_types(cast, state)
+    for at in requires_aspects:
+        if at not in cast_types:
+            return False
+    if role is not None and not _cast_has_secret_role(cast, role, state):
+        return False
+    return True
+
+
+def _aspect_boost_multiplier(
+    blueprint: EventBlueprint,
+    cast: Mapping[str, Character],
+    state: GameState,
+    *,
+    per_match_bump: float = 0.25,
+) -> float:
+    """Soft weight bump per matching ``boosted_by_aspects`` entry.
+
+    A blueprint that authors `boosted_by_aspects=[AspectType.AGENDA,
+    AspectType.HISTORY]` and has a cast where one member carries an
+    AGENDA secret picks up a single bump (×1.25). Two matches stack
+    (×1.5625) — multiplicative composition like the quirk bias.
+    """
+    boosters = list(getattr(blueprint, "boosted_by_aspects", []) or [])
+    if not boosters:
+        return 1.0
+    cast_types = _cast_aspect_types(cast, state)
+    matches = sum(1 for at in boosters if at in cast_types)
+    return (1.0 + per_match_bump) ** matches
+
+
 def compute_weight(
     blueprint: EventBlueprint,
     context: GameContext,
     state: GameState,
+    *,
+    cast: Mapping[str, Character] | None = None,
 ) -> float:
+    """Compute selection weight for ``blueprint`` under ``context`` /
+    ``state``.
+
+    When ``cast`` is provided, quirk-driven event-weight bias is applied:
+    per-character tag multipliers + cast-level affinity/friction bumps.
+    When ``cast`` is ``None``, the function is back-compat with pre-quirk
+    callers — useful for tests that don't care about quirks.
+    """
     w = blueprint.base_weight
     w *= recency_penalty(blueprint.id, state.outcome_log)
     for rule in blueprint.weight_modifiers:
@@ -306,6 +478,14 @@ def compute_weight(
     for clock in getattr(state, "clocks", []) or []:
         if getattr(clock, "target_event_id", None) == blueprint.id:
             w += getattr(clock, "current", 0.0) * CLOCK_WEIGHT_SCALE
+    if cast:
+        # Local import to avoid a circular dependency at module load time
+        # (quirks doesn't import events, but events being imported very
+        # early in some tests means a top-level import could re-enter).
+        from .quirks import cast_event_weight_multiplier
+
+        w *= cast_event_weight_multiplier(_cast_quirks(cast), blueprint.tags)
+        w *= _aspect_boost_multiplier(blueprint, cast, state)
     return max(w, 0.0)
 
 
@@ -315,16 +495,33 @@ def select_event(
     state: GameState,
     rng: _random.Random,
 ) -> EventBlueprint | None:
-    """Choose an event from the candidate pool by weight, or return None if
-    nothing is eligible."""
-    eligible = [
-        e
-        for e in candidates
-        if check_prerequisites(e, state) and can_cast(e, state)
-    ]
+    """Choose an event from the candidate pool by weight, or return None
+    if nothing is eligible.
+
+    Uses a deterministic ``representative_cast`` per blueprint so quirk
+    bias can shift selection based on who's likely to be cast. The
+    actual RNG-driven cast happens later in ``cast_event``; this is a
+    selection-time hint only.
+    """
+    eligible: list[EventBlueprint] = []
+    for e in candidates:
+        if not check_prerequisites(e, state):
+            continue
+        if not can_cast(e, state):
+            continue
+        # Secret-aware gating uses the representative cast; we'd run it
+        # again below for weighting, but eligibility is the right time
+        # to drop blueprints whose secret requirements can't be met.
+        rep = representative_cast(e, state)
+        if not meets_secret_requirements(e, rep, state):
+            continue
+        eligible.append(e)
     if not eligible:
         return None
-    weights = [compute_weight(e, context, state) for e in eligible]
+    weights: list[float] = []
+    for bp in eligible:
+        rep_cast = representative_cast(bp, state)
+        weights.append(compute_weight(bp, context, state, cast=rep_cast))
     if sum(weights) <= 0:
         return None
     return rng.choices(eligible, weights=weights, k=1)[0]
@@ -397,7 +594,64 @@ def resolve_outcome(
         if isinstance(char, TierACharacter):
             char.event_history.append(record)
 
+    # Phase 17 wiring — secret exposure advance + placeholder introduction.
+    _advance_secret_exposure(blueprint, cast, state)
+    _introduce_placeholders(blueprint, state)
+
     return record
+
+
+def _advance_secret_exposure(
+    blueprint: EventBlueprint,
+    cast: Mapping[str, Character],
+    state: GameState,
+) -> None:
+    """Apply ``blueprint.reveals_exposure`` to any cast-member secret
+    whose ``reveal_triggers`` overlaps the blueprint's tags.
+
+    The bump targets the secret's *global* exposure_level (what
+    non-members perceive) — member exposure is governed by the
+    membership's own exposure float and isn't touched here. Capped at
+    1.0 so an event firing repeatedly doesn't push past KNOWN.
+    """
+    bump = float(getattr(blueprint, "reveals_exposure", 0.0) or 0.0)
+    if bump <= 0:
+        return
+    cast_ids = {c.id for c in cast.values()}
+    tags = set(blueprint.tags)
+    for secret in state.secrets.values():
+        if not (set(secret.reveal_triggers) & tags):
+            continue
+        if not any(m.character_id in cast_ids for m in secret.memberships):
+            continue
+        secret.exposure_level = min(1.0, secret.exposure_level + bump)
+
+
+def _introduce_placeholders(
+    blueprint: EventBlueprint, state: GameState
+) -> None:
+    """Resolve any placeholder ids the blueprint declares it
+    introduces. Errors are swallowed so a content typo doesn't crash a
+    play session (the unresolved placeholder simply stays around).
+    """
+    ids = list(getattr(blueprint, "introduces_placeholders", []) or [])
+    if not ids:
+        return
+    # Local import to avoid a circular dep with the placeholders module.
+    from .placeholders import resolve_placeholder
+
+    for pid in ids:
+        if pid not in state.placeholders:
+            continue
+        if pid in state.characters:
+            continue
+        try:
+            resolve_placeholder(state, pid)
+        except (KeyError, ValueError):
+            # Placeholder vanished mid-resolution or id collided after
+            # the pre-check; either way, skip and let dev tooling
+            # surface it via ``placeholders.unresolved_references``.
+            pass
 
 
 # --- Internal mutation helpers ----------------------------------------------

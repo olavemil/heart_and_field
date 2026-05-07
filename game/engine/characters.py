@@ -15,6 +15,7 @@ from typing import Mapping
 
 from .motivators import Motivator
 from .outcomes import OutcomeRecord
+from .quirks import Quirk
 from .relationships import RelationshipState
 from .stats import (
     ObservableName,
@@ -178,6 +179,7 @@ class TierBCharacter:
     motivators: list[Motivator] = field(default_factory=list)
     relationships: dict[str, RelationshipState] = field(default_factory=dict)
     nickname: str | None = None
+    quirks: list[Quirk] = field(default_factory=list)
 
     def observable(self, obs: ObservableName) -> float:
         return compute_observable(self.stats, obs)
@@ -194,6 +196,7 @@ class TierBCharacter:
             "relationships": {
                 cid: rs.to_dict() for cid, rs in self.relationships.items()
             },
+            "quirks": [q.to_dict() for q in self.quirks],
         }
 
     @classmethod
@@ -209,6 +212,7 @@ class TierBCharacter:
                 cid: RelationshipState.from_dict(rs)
                 for cid, rs in d.get("relationships", {}).items()
             },
+            quirks=[Quirk.from_dict(q) for q in d.get("quirks", [])],
         )
 
 
@@ -227,6 +231,10 @@ class TierACharacter:
     relationships: dict[str, RelationshipState] = field(default_factory=dict)
     event_history: list[OutcomeRecord] = field(default_factory=list)
     nickname: str | None = None
+    quirks: list[Quirk] = field(default_factory=list)
+    # Per-quirk visibility hooks. Indexed by ``Quirk.key()`` — characters
+    # without entries here treat all their quirks as ``VISIBLE``.
+    quirk_reveals: dict[str, "QuirkReveal"] = field(default_factory=dict)
 
     def observable(self, obs: ObservableName) -> float:
         return compute_observable(self.stats, obs)
@@ -258,10 +266,16 @@ class TierACharacter:
                 cid: rs.to_dict() for cid, rs in self.relationships.items()
             },
             "event_history": [o.to_dict() for o in self.event_history],
+            "quirks": [q.to_dict() for q in self.quirks],
+            "quirk_reveals": {
+                k: r.to_dict() for k, r in self.quirk_reveals.items()
+            },
         }
 
     @classmethod
     def from_dict(cls, d: Mapping) -> "TierACharacter":
+        from .quirks import QuirkReveal
+
         return cls(
             id=d["id"],
             name=d["name"],
@@ -279,6 +293,11 @@ class TierACharacter:
             event_history=[
                 OutcomeRecord.from_dict(o) for o in d.get("event_history", [])
             ],
+            quirks=[Quirk.from_dict(q) for q in d.get("quirks", [])],
+            quirk_reveals={
+                k: QuirkReveal.from_dict(r)
+                for k, r in d.get("quirk_reveals", {}).items()
+            },
         )
 
 

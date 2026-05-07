@@ -20,7 +20,9 @@ from .clock import WorldClock
 from .clocks import Clock
 from .events import GameState, _default_clock
 from .outcomes import OutcomeRecord, WeekPhase
+from .placeholders import CharacterPlaceholder
 from .schedule import WeekSchedule
+from .secrets import Secret
 
 
 # --- Serialise ---------------------------------------------------------------
@@ -42,10 +44,16 @@ def serialise(
     Returns:
         A nested dict that ``json.dumps`` can handle directly.
     """
+    current_location = (
+        list(state.current_location)
+        if state.current_location is not None
+        else None
+    )
     return {
         "version": 1,
         "week_phase": state.week_phase.to_dict(),
         "world_clock": state.clock.to_dict(),
+        "current_location": current_location,
         "characters": {
             cid: _serialise_character(c)
             for cid, c in state.characters.items()
@@ -54,6 +62,10 @@ def serialise(
         "completed_event_ids": sorted(state.completed_event_ids),
         "disabled_event_ids": sorted(state.disabled_event_ids),
         "clocks": [c.to_dict() for c in state.clocks],
+        "secrets": {sid: s.to_dict() for sid, s in state.secrets.items()},
+        "placeholders": {
+            pid: p.to_dict() for pid, p in state.placeholders.items()
+        },
         "schedule": schedule.to_dict() if schedule is not None else None,
         "arc_graph": arc_graph.to_dict() if arc_graph is not None else None,
     }
@@ -89,6 +101,13 @@ def deserialise(
         else _default_clock()
     )
 
+    loc = data.get("current_location")
+    current_location = (
+        (str(loc[0]), str(loc[1]))
+        if loc is not None and len(loc) == 2
+        else None
+    )
+
     state = GameState(
         characters=characters,
         outcome_log=[
@@ -99,6 +118,15 @@ def deserialise(
         week_phase=WeekPhase.from_dict(data.get("week_phase", {"season": 1, "week": 1})),
         clocks=clocks,
         clock=world_clock,
+        current_location=current_location,
+        secrets={
+            sid: Secret.from_dict(sdata)
+            for sid, sdata in data.get("secrets", {}).items()
+        },
+        placeholders={
+            pid: CharacterPlaceholder.from_dict(pdata)
+            for pid, pdata in data.get("placeholders", {}).items()
+        },
     )
 
     schedule = None

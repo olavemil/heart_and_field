@@ -18,12 +18,13 @@ label drama_block(slot_index):
         e "Nothing comes of it."
         return
 
-    # Resolve the background, if this event has a location cue.
+    # Resolve the background, if this event has a location cue. The
+    # composite stacks the primary background, weather/mood/time
+    # grades, and per-scene noise overlays so the scene reads as
+    # alive without further .rpy plumbing.
     $ scene_info = session.resolve_scene(bp, cast)
     if scene_info is not None:
-        $ bg_path = session.scene_path(scene_info[0], scene_info[1])
-        if bg_path is not None:
-            scene expression str(bg_path)
+        $ show_scene_live(session, scene_info[0], scene_info[1])
 
     # Get player-facing choices.
     $ choices = session.get_choices(bp)
