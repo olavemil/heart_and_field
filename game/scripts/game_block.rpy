@@ -5,10 +5,11 @@
 # does everything via session.simulate_game_phase().
 
 label game_block:
-    # Set up opponents. The opponent_name flows through to the status
-    # bar — clock_display() reports "Match vs <name>" for the duration
-    # of the match block.
-    $ session.setup_match(opponent_rating=0.5, opponent_name="Northgate")
+    # Set up opponents from the season fixture list. Falls back to a
+    # generic opponent if no season is loaded (legacy/test path).
+    $ opp_name = session.setup_match_from_season()
+    if opp_name is None:
+        $ opp_name = "Opponent"
 
     e "The match is about to begin."
 

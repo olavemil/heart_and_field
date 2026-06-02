@@ -1,7 +1,7 @@
 ﻿I'm sorry, but an uncaught exception occurred.
 
 While running game code:
-Exception: DynamicImage 'gui/button/radio_[prefix_]foreground.png': could not find image. ('gui/button/radio_insensitive_foreground.png', 'gui/button/radio_foreground.png', and 1 more.)
+Exception: Could not pickle <module 'time' (built-in)>.
 
 -- Full Traceback ------------------------------------------------------------
 
@@ -30,43 +30,68 @@ Traceback (most recent call last):
         ^^^^^^^^^
     )
     ^
-  File "renpy/display/core.py", line 2700, in interact_core
-    root_widget.visit_all(lambda d: d.per_interact())
-    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/displayable.py", line 457, in visit_all
-    d.visit_all(callback, seen)
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "renpy/display/displayable.py", line 457, in visit_all
-    d.visit_all(callback, seen)
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "renpy/display/displayable.py", line 457, in visit_all
-    d.visit_all(callback, seen)
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
-[Previous line repeated 1 more time]
-  File "renpy/display/screen.py", line 508, in visit_all
-    self.child.visit_all(callback, seen=None)
-    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/displayable.py", line 457, in visit_all
-    d.visit_all(callback, seen)
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "renpy/display/displayable.py", line 457, in visit_all
-    d.visit_all(callback, seen)
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "renpy/display/displayable.py", line 457, in visit_all
-    d.visit_all(callback, seen)
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
-[Previous line repeated 8 more times]
-  File "renpy/display/displayable.py", line 448, in visit_all
-    for d in self.visit():
-             ~~~~~~~~~~^^ 
-  File "renpy/display/image.py", line 799, in visit
-    self.find_target()
-    ~~~~~~~~~~~~~~~~^^
-  File "renpy/display/image.py", line 699, in find_target
-    raise Exception(error)
-Exception: DynamicImage 'gui/button/radio_[prefix_]foreground.png': could not find image. ('gui/button/radio_insensitive_foreground.png', 'gui/button/radio_foreground.png', and 1 more.)
+  File "renpy/display/core.py", line 3248, in interact_core
+    rv = root_widget.event(ev, x, y, 0)
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1281, in event
+    rv = i.event(ev, x - xo, y - yo, cst)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1281, in event
+    rv = i.event(ev, x - xo, y - yo, cst)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1281, in event
+    rv = i.event(ev, x - xo, y - yo, cst)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/screen.py", line 805, in event
+    rv = self.child.event(ev, x, y, st)
+         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1281, in event
+    rv = i.event(ev, x - xo, y - yo, cst)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1510, in event
+    rv = super(Window, self).event(ev, x, y, st)
+         ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 273, in event
+    rv = d.event(ev, x - xo, y - yo, st)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1281, in event
+    rv = i.event(ev, x - xo, y - yo, cst)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1510, in event
+    rv = super(Window, self).event(ev, x, y, st)
+         ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 273, in event
+    rv = d.event(ev, x - xo, y - yo, st)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 1281, in event
+    rv = i.event(ev, x - xo, y - yo, cst)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/layout.py", line 273, in event
+    rv = d.event(ev, x - xo, y - yo, st)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/behavior.py", line 1185, in event
+    return handle_click(self.clicked)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "renpy/display/behavior.py", line 1107, in handle_click
+    rv = run(action)
+         ~~~^^^^^^^^
+  File "renpy/display/behavior.py", line 411, in run
+    return action(*args, **kwargs)
+           ~~~~~~^^^^^^^^^^^^^^^^^
+  File "renpy/common/00action_file.rpy", line 415, in __call__
+    renpy.save(fn, extra_info=save_name)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/loadsave.py", line 184, in save
+    dump((roots, renpy.game.log), logf)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/compat/pickle.py", line 308, in dump
+    pickle.dump(o, f, pickle.HIGHEST_PROTOCOL if highest else PROTOCOL)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/python.py", line 1355, in module_pickle
+    raise Exception("Could not pickle {!r}.".format(module))
+Exception: Could not pickle <module 'time' (built-in)>.
 
 macOS-26.4.1-arm64-arm-64bit arm64
 Ren'Py 8.5.2.26010301
 Field & Heart 0.1
-Fri Apr 24 19:05:49 2026
+Thu May  7 12:38:06 2026

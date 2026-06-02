@@ -2,7 +2,7 @@
 
 import pytest
 
-from engine.background_pool import LocationKind
+from engine.background_pool import LocationKind, MoodTone, Socioeconomic
 from engine.scene_taxonomy import (
     SCENE_ADJACENCY,
     SCENE_CATEGORY,
@@ -11,6 +11,7 @@ from engine.scene_taxonomy import (
     SceneInstance,
     SceneType,
     category_for_scene_type,
+    descriptor_overrides_for_instance,
     instances_of,
     location_kind_for_scene_type,
     neighbors,
@@ -129,3 +130,42 @@ class TestBridge:
         # through to the school visual placeholder.
         assert location_kind_for_scene_type(SceneType.PRESS_ROOM) == LocationKind.SCHOOL
         assert location_kind_for_scene_type(SceneType.COURTROOM) == LocationKind.SCHOOL
+
+
+# --- SceneInstance → descriptor overrides (Phase 21B) -----------------------
+
+
+class TestDescriptorOverrides:
+    def test_every_instance_has_overrides(self):
+        for inst in SceneInstance:
+            overrides = descriptor_overrides_for_instance(inst)
+            assert isinstance(overrides, dict)
+            assert len(overrides) > 0, f"{inst} has no overrides"
+
+    def test_bar_local_is_modest_warm(self):
+        ov = descriptor_overrides_for_instance(SceneInstance.BAR_LOCAL)
+        assert ov["socioeconomic"] == Socioeconomic.MODEST.value
+        assert ov["mood"] == MoodTone.WARM.value
+
+    def test_bar_upscale_is_affluent_cold(self):
+        ov = descriptor_overrides_for_instance(SceneInstance.BAR_UPSCALE)
+        assert ov["socioeconomic"] == Socioeconomic.AFFLUENT.value
+        assert ov["mood"] == MoodTone.COLD.value
+
+    def test_apartment_shared_vs_upscale(self):
+        shared = descriptor_overrides_for_instance(SceneInstance.APARTMENT_SHARED)
+        upscale = descriptor_overrides_for_instance(SceneInstance.APARTMENT_UPSCALE)
+        assert shared["socioeconomic"] == Socioeconomic.MODEST.value
+        assert upscale["socioeconomic"] == Socioeconomic.AFFLUENT.value
+
+    def test_overrides_include_palette(self):
+        ov = descriptor_overrides_for_instance(SceneInstance.MANSION_OWN)
+        assert "palette" in ov
+        assert len(ov["palette"]) > 0
+
+    def test_returns_copy(self):
+        ov1 = descriptor_overrides_for_instance(SceneInstance.BAR_LOCAL)
+        ov2 = descriptor_overrides_for_instance(SceneInstance.BAR_LOCAL)
+        assert ov1 == ov2
+        ov1["extra"] = "mutated"
+        assert "extra" not in ov2

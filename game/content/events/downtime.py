@@ -1,5 +1,6 @@
 """Downtime events (design §8.2) — shared meals, travel, waiting."""
 
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -9,6 +10,8 @@ from engine.events import (
     SceneBlock,
     StatEffect,
 )
+from engine.scene_taxonomy import SceneType
+from engine.secrets import AspectType
 from engine.stats import StatName
 
 from ._helpers import is_player, teammate
@@ -24,6 +27,15 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.9,
+        event_id=EventId(
+            nature=EventNature.INVITATION,
+            domain=EventDomain.RELATIONSHIP,
+            tone=EventTone.WARM,
+        ),
+        valid_scene_types=[
+            SceneType.RESTAURANT, SceneType.CAFE, SceneType.HOUSE,
+        ],
+        boosted_by_aspects=[AspectType.RELATIONSHIP],
         location=LocationCue(
             spec_id="suburban_house",
             node_name="kitchen",
@@ -64,6 +76,12 @@ BLUEPRINTS = [
         participants=[RoleSlot(role="player", filter=is_player)],
         blocks=[SceneBlock(id="main")],
         base_weight=0.5,
+        event_id=EventId(
+            nature=EventNature.ISOLATION,
+            domain=EventDomain.PERSONAL,
+            tone=EventTone.MELANCHOLY,
+        ),
+        valid_scene_types=[SceneType.BUS, SceneType.PLANE, SceneType.CAR],
         outcomes={
             "reflective": BranchOutcome(
                 summary="He spent the ride thinking. It settled something.",

@@ -180,6 +180,7 @@ class TierBCharacter:
     relationships: dict[str, RelationshipState] = field(default_factory=dict)
     nickname: str | None = None
     quirks: list[Quirk] = field(default_factory=list)
+    gender_presentation: str = "masculine"
 
     def observable(self, obs: ObservableName) -> float:
         return compute_observable(self.stats, obs)
@@ -191,6 +192,7 @@ class TierBCharacter:
             "name": self.name,
             "nickname": self.nickname,
             "role": self.role.value,
+            "gender_presentation": self.gender_presentation,
             "stats": {s.value: v for s, v in self.stats.items()},
             "motivators": [m.to_dict() for m in self.motivators],
             "relationships": {
@@ -213,6 +215,7 @@ class TierBCharacter:
                 for cid, rs in d.get("relationships", {}).items()
             },
             quirks=[Quirk.from_dict(q) for q in d.get("quirks", [])],
+            gender_presentation=str(d.get("gender_presentation", "masculine")),
         )
 
 
@@ -235,6 +238,7 @@ class TierACharacter:
     # Per-quirk visibility hooks. Indexed by ``Quirk.key()`` — characters
     # without entries here treat all their quirks as ``VISIBLE``.
     quirk_reveals: dict[str, "QuirkReveal"] = field(default_factory=dict)
+    gender_presentation: str = "masculine"
 
     def observable(self, obs: ObservableName) -> float:
         return compute_observable(self.stats, obs)
@@ -260,6 +264,7 @@ class TierACharacter:
             "name": self.name,
             "nickname": self.nickname,
             "role": self.role.value,
+            "gender_presentation": self.gender_presentation,
             "stats": {s.value: t.to_dict() for s, t in self.stats.items()},
             "motivators": [m.to_dict() for m in self.motivators],
             "relationships": {
@@ -298,6 +303,7 @@ class TierACharacter:
                 k: QuirkReveal.from_dict(r)
                 for k, r in d.get("quirk_reveals", {}).items()
             },
+            gender_presentation=str(d.get("gender_presentation", "masculine")),
         )
 
 

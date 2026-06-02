@@ -39,6 +39,7 @@ label save_game:
 
 label load_game:
     python:
+        renpy.not_infinite_loop(600)
         import os
         loaded = _fh_load_json()
         if loaded is not None:
@@ -47,7 +48,11 @@ label load_game:
             # warm_marquees is idempotent: marquee graphs already on disk
             # keep their existing variants; new authored marquees are
             # picked up on load.
-            session.init_backgrounds(bg_root, warm_marquees=True)
+            session.init_backgrounds(
+                bg_root,
+                comfyui_client=session.comfyui_client,
+                warm_marquees=True,
+            )
     if loaded is not None:
         e "Game loaded. Season [session.state.week_phase.season], Week [session.state.week_phase.week]."
         jump week_loop

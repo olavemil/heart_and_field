@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "faces": [
+    {
+      "filename": "masculine_young_000.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "masculine_young_001.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "masculine_young_002.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "masculine_adult_000.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "masculine_adult_001.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "masculine_adult_002.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "masculine_veteran_000.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "veteran"
+    },
+    {
+      "filename": "masculine_veteran_001.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "veteran"
+    },
+    {
+      "filename": "masculine_veteran_002.png",
+      "gender_presentation": "masculine",
+      "age_bucket": "veteran"
+    },
+    {
+      "filename": "feminine_young_000.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "feminine_young_001.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "feminine_young_002.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "feminine_adult_000.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "feminine_adult_001.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "feminine_adult_002.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "feminine_veteran_000.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "veteran"
+    },
+    {
+      "filename": "feminine_veteran_001.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "veteran"
+    },
+    {
+      "filename": "feminine_veteran_002.png",
+      "gender_presentation": "feminine",
+      "age_bucket": "veteran"
+    },
+    {
+      "filename": "androgynous_young_000.png",
+      "gender_presentation": "androgynous",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "androgynous_young_001.png",
+      "gender_presentation": "androgynous",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "androgynous_young_002.png",
+      "gender_presentation": "androgynous",
+      "age_bucket": "young"
+    },
+    {
+      "filename": "androgynous_adult_000.png",
+      "gender_presentation": "androgynous",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "androgynous_adult_001.png",
+      "gender_presentation": "androgynous",
+      "age_bucket": "adult"
+    },
+    {
+      "filename": "androgynous_adult_002.png",
+      "gender_presentation": "androgynous",
+      "age_bucket": "adult"
+    }
+  ]
+}

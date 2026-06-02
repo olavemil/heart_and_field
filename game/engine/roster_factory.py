@@ -118,6 +118,8 @@ def generate_roster(
     player_role: CharacterRole = CharacterRole.STRIKER,
     player_name: tuple[str, str] | None = None,
     player_id: str = "player",
+    player_descriptor: "CharacterDescriptor | None" = None,
+    player_quirks: "list[Quirk] | None" = None,
 ) -> Roster:
     """Build a full squad + coaching staff.
 
@@ -128,12 +130,33 @@ def generate_roster(
     """
     composition = composition or default_squad_composition(sport)
 
+    used_ids: set[str] = set()
+    if with_player:
+        used_ids.add(player_id)
+
+    def _unique_character(role: CharacterRole) -> TierBCharacter:
+        """Generate a Tier B character whose id doesn't collide with
+        any previously generated character in this roster."""
+        max_attempts = 10
+        for _ in range(max_attempts):
+            c = generate_character(role, rng)
+            if c.id not in used_ids:
+                used_ids.add(c.id)
+                return c
+        raise RuntimeError(
+            f"failed to generate unique character id after {max_attempts} "
+            f"attempts — possible name/suffix exhaustion"
+        )
+
     teammates: list[TierBCharacter] = []
     for role, count in composition.role_counts.items():
         for _ in range(count):
-            teammates.append(generate_character(role, rng))
+            teammates.append(_unique_character(role))
 
-    staff = generate_coaching_staff(rng)
+    staff_roles = [CharacterRole.MANAGER, CharacterRole.PHYSIO]
+    coaching_staff: list[TierBCharacter] = []
+    for sr in staff_roles:
+        coaching_staff.append(_unique_character(sr))
 
     player: TierACharacter | None = None
     if with_player:
@@ -143,9 +166,11 @@ def generate_roster(
             tier="A",
             character_id=player_id,
             name=player_name,
+            descriptor=player_descriptor,
+            quirks=player_quirks,
         )
 
-    return Roster(player=player, teammates=teammates, coaching_staff=staff)
+    return Roster(player=player, teammates=teammates, coaching_staff=coaching_staff)
 
 
 # ===========================================================================

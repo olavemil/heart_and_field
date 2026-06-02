@@ -5,6 +5,7 @@ only passes characters with matching disposition or flag.
 """
 
 from engine.characters import CharacterRole, TierACharacter, TierBCharacter
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -13,6 +14,8 @@ from engine.events import (
     SceneBlock,
     StatEffect,
 )
+from engine.scene_taxonomy import SceneType
+from engine.secrets import AspectType
 from engine.stats import StatName
 
 from ._helpers import is_player
@@ -44,6 +47,16 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.6,
+        event_id=EventId(
+            nature=EventNature.INVITATION,
+            domain=EventDomain.RELATIONSHIP,
+            tone=EventTone.ROMANTIC,
+        ),
+        valid_scene_types=[
+            SceneType.RESTAURANT, SceneType.CAFE, SceneType.PARK,
+            SceneType.APARTMENT,
+        ],
+        boosted_by_aspects=[AspectType.RELATIONSHIP, AspectType.AGENDA],
         outcomes={
             "closer": BranchOutcome(
                 summary=(

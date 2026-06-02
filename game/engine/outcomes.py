@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
+
+if TYPE_CHECKING:
+    from .event_taxonomy import EventId
 
 
 @dataclass(frozen=True)
@@ -39,9 +42,12 @@ class OutcomeRecord:
     arc_summary: str | None = None  # accumulated digest if carries_arc_context
     stat_deltas: dict[str, dict[str, float]] = field(default_factory=dict)
     flags: set[str] = field(default_factory=set)
+    # Canonical EventId triple from the blueprint, when set. Used by
+    # chain bias logic to look up outgoing edges.
+    taxonomy_id: "EventId | None" = None
 
     def to_dict(self) -> dict:
-        return {
+        d: dict = {
             "event_id": self.event_id,
             "timestamp": self.timestamp.to_dict(),
             "participants": dict(self.participants),
@@ -53,9 +59,15 @@ class OutcomeRecord:
             },
             "flags": sorted(self.flags),
         }
+        if self.taxonomy_id is not None:
+            d["taxonomy_id"] = self.taxonomy_id.to_dict()
+        return d
 
     @classmethod
     def from_dict(cls, d: Mapping) -> "OutcomeRecord":
+        from .event_taxonomy import EventId
+
+        tid = d.get("taxonomy_id")
         return cls(
             event_id=d["event_id"],
             timestamp=WeekPhase.from_dict(d["timestamp"]),
@@ -68,4 +80,5 @@ class OutcomeRecord:
                 for cid, deltas in d.get("stat_deltas", {}).items()
             },
             flags=set(d.get("flags", [])),
+            taxonomy_id=EventId.from_dict(tid) if tid is not None else None,
         )

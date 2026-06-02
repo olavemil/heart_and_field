@@ -19,6 +19,7 @@ import numpy as np
 from .arcs import ArcGraph, build_arc_graph, find_prior_arc_outcome
 from .background_generator import (
     BackgroundGenerator,
+    ComfyUIImageProducer,
     DeferredPrefetchScheduler,
     PlaceholderImageProducer,
 )
@@ -50,10 +51,13 @@ from .overlays import (
 from .characters import (
     Character,
     CharacterRole,
+    Disposition,
     TierACharacter,
     TierBCharacter,
     TierDSeed,
 )
+from .sprite_pool import GenderPresentation
+from .quirks import Quirk
 from .clocks import Clock, check_triggers, force_insert_triggered, tick_clocks
 from .content_loader import (
     load_blueprints_from_path,
@@ -87,6 +91,11 @@ from .schedule import BlockType, EventSlot, WeekSchedule, generate_week
 from .simulation import PhaseResult, Sport, self_evaluate, simulate_phase, team_morale_delta
 from .stats import StatName, StatTuple
 from .visual import VisualManager
+from .stock_faces import StockFacePool
+from .roster_factory import Roster, generate_roster, generate_season_opponents
+from .league import LeagueConfig, LeagueFormat, LeagueTier, Season, TIER_SKILL_RANGES, generate_season
+from .scene_taxonomy import location_kind_for_scene_type
+from .world_genesis import generate_secret_web
 
 
 # --- Tag routing: which blueprint tags go in which block type ----------------
@@ -118,6 +127,23 @@ class ClockDisplay:
     next_slot_in_minutes: int
     transition_warning: bool
     match_label: str | None = None
+
+
+@dataclass
+class PlayerCustomisation:
+    """Player-facing overrides for the generated character.
+
+    Every field is optional — ``None`` means "randomise this axis".
+    Passed to :meth:`GameSession.new_game` when the player wants to
+    shape their character rather than accept the default.
+    """
+
+    name: str | None = None
+    role: CharacterRole | None = None
+    gender_presentation: GenderPresentation | None = None
+    disposition: Disposition | None = None
+    quirks: list[Quirk] | None = None
+    stats: dict[StatName, float] | None = None
 
 
 BLOCK_TAGS: dict[BlockType, set[str]] = {
@@ -200,8 +226,26 @@ class GameSession:
         roster: dict[str, TierBCharacter] | None = None,
         seed: int | None = None,
         content_root: Path | None = None,
+        customisation: PlayerCustomisation | None = None,
+        sport: Sport = Sport.SOCCER,
+        league_config: LeagueConfig | None = None,
     ) -> "GameSession":
-        """Bootstrap a fresh game."""
+        """Bootstrap a fresh game.
+
+        When ``roster`` is provided the legacy path runs: the caller's
+        handcrafted characters are injected directly (useful for tests
+        and the old Ren'Py start label). When ``roster`` is ``None`` the
+        full 18A/B/C pipeline fires: ``generate_roster`` builds the
+        squad, ``generate_secret_web`` weaves a secret network, and the
+        player character picks up any overrides from ``customisation``.
+
+        ``customisation`` lets the Ren'Py opening flow pin individual
+        axes (name, role, quirks, starting stats) while leaving the rest
+        to randomisation. ``player_name`` is always used as the display
+        name even when ``customisation.name`` is set.
+        """
+        from .character_factory import generate_character
+
         rng = _random.Random(seed)
         np_rng = np.random.default_rng(seed)
 
@@ -211,21 +255,120 @@ class GameSession:
         scene_specs = _load_scene_specs_safe(root / "scenes")
         arc_graph = build_arc_graph(blueprints)
 
-        player = TierACharacter(
-            id="player",
-            name=player_name,
-            role=CharacterRole.STRIKER,
-            stats={sn: StatTuple(value=0.5) for sn in StatName},
-        )
+        # --- Build the cast -----------------------------------------------
 
-        characters: dict[str, Character] = {"player": player}
-        if roster:
+        if roster is not None:
+            # Legacy path: caller provides a handcrafted roster.
+            player_role = (
+                customisation.role
+                if customisation is not None and customisation.role is not None
+                else CharacterRole.STRIKER
+            )
+            player_gp = (
+                customisation.gender_presentation.value
+                if customisation is not None and customisation.gender_presentation is not None
+                else "masculine"
+            )
+            player = TierACharacter(
+                id="player",
+                name=player_name,
+                role=player_role,
+                stats={sn: StatTuple(value=0.5) for sn in StatName},
+                gender_presentation=player_gp,
+            )
+            characters: dict[str, Character] = {"player": player}
             characters.update(roster)
+        else:
+            # Full pipeline: generate the squad from the master seed.
+            from .character_factory import quirks_for_disposition, random_descriptor
+
+            player_role = (
+                customisation.role
+                if customisation is not None and customisation.role is not None
+                else CharacterRole.STRIKER
+            )
+            player_quirks = (
+                customisation.quirks
+                if customisation is not None and customisation.quirks is not None
+                else None
+            )
+            # If no explicit quirks but a disposition was chosen, derive
+            # thematic quirks from the disposition.
+            if (
+                player_quirks is None
+                and customisation is not None
+                and customisation.disposition is not None
+            ):
+                player_quirks = quirks_for_disposition(
+                    customisation.disposition, rng
+                )
+            player_gender = (
+                customisation.gender_presentation
+                if customisation is not None and customisation.gender_presentation is not None
+                else None
+            )
+            player_descriptor = random_descriptor(
+                rng, gender_presentation=player_gender
+            )
+            generated_roster = generate_roster(
+                rng,
+                sport=sport,
+                with_player=True,
+                player_role=player_role,
+                player_name=(player_name.split()[0], player_name.split()[-1])
+                if " " in player_name
+                else (player_name, ""),
+                player_id="player",
+                player_descriptor=player_descriptor,
+                player_quirks=player_quirks,
+            )
+
+            # Apply player customisation overrides.
+            player = generated_roster.player
+            assert player is not None
+            player.name = player_name
+            if player_quirks is not None:
+                player.quirks = list(player_quirks)
+            if (
+                customisation is not None
+                and customisation.stats is not None
+            ):
+                for sn, val in customisation.stats.items():
+                    if sn in player.stats:
+                        player.stats[sn] = StatTuple(value=val)
+
+            characters = {c.id: c for c in generated_roster.all_characters()}
 
         state = GameState(
             characters=characters,
             week_phase=WeekPhase(season=1, week=1),
         )
+
+        # --- League + season (only on the generated path) -----------------
+
+        if roster is None:
+            lc = league_config or LeagueConfig()
+            skill_low, skill_high = TIER_SKILL_RANGES[lc.tier]
+            opponent_clubs = generate_season_opponents(
+                rng,
+                count=lc.opponent_count,
+                sport=sport,
+                skill_range=(skill_low, skill_high),
+            )
+            season = generate_season(rng, lc, opponent_clubs)
+            state.season = season
+
+        # --- Secret web (only on the generated path) ----------------------
+
+        if roster is None:
+            character_label = f"{player_name} — {player_role.value}"
+            secrets, placeholders = generate_secret_web(
+                rng,
+                characters=characters,
+                character_label=character_label,
+            )
+            state.secrets = secrets
+            state.placeholders = placeholders
 
         session = cls(
             state=state,
@@ -235,10 +378,13 @@ class GameSession:
             templates=templates,
             rng=rng,
             np_rng=np_rng,
+            sport=sport,
             scene_specs={s.spec_id: s for s in scene_specs},
         )
-        # Wire ComfyUI into the visual manager.
+        # Wire ComfyUI and stock face pool into the visual manager.
         session.visual_manager.comfyui = session.comfyui_client
+        stock_root = root.parent / "assets" / "stock_faces"
+        session.visual_manager.stock_pool = StockFacePool.load(stock_root)
         # Warm up visuals for the starting roster.
         session.visual_manager.warm_up(characters)
         return session
@@ -290,8 +436,10 @@ class GameSession:
         session.use_llm = bool(data.get("use_llm", False))
         if "comfyui_config" in data:
             session.comfyui_client = comfyui_config_from_dict(data["comfyui_config"])
-        # Wire ComfyUI into the visual manager.
+        # Wire ComfyUI and stock face pool into the visual manager.
         session.visual_manager.comfyui = session.comfyui_client
+        stock_root = root.parent / "assets" / "stock_faces"
+        session.visual_manager.stock_pool = StockFacePool.load(stock_root)
         # Warm up visuals for loaded roster.
         session.visual_manager.warm_up(state.characters)
         return session
@@ -347,6 +495,9 @@ class GameSession:
         self.match_results.clear()
         self.team_goals = 0
         self.opp_goals = 0
+        # Advance the season's match-week pointer.
+        if self.state.season is not None:
+            self.state.season.advance_week()
 
     # ------------------------------------------------------------------
     # Event selection & resolution
@@ -484,6 +635,7 @@ class GameSession:
         assets_root: Path,
         *,
         producer=None,
+        comfyui_client=None,
         prefetch_scheduler=None,
         warm_marquees: bool = False,
     ) -> None:
@@ -494,10 +646,15 @@ class GameSession:
         repo. Idempotent — re-running rebuilds against the on-disk
         manifest, useful after a save load.
 
-        ``producer`` defaults to ``PlaceholderImageProducer`` (solid colours)
-        until the SD pipeline is wired in. ``prefetch_scheduler`` defaults
-        to ``DeferredPrefetchScheduler`` so prefetch jobs queue up and
-        ``drain_background_prefetch`` runs them on idle ticks.
+        ``producer`` takes priority if given explicitly. Otherwise, if
+        ``comfyui_client`` is provided and available, a
+        ``ComfyUIImageProducer`` is used. Falls back to
+        ``PlaceholderImageProducer`` when neither is set or ComfyUI is
+        unreachable.
+
+        ``prefetch_scheduler`` defaults to ``DeferredPrefetchScheduler``
+        so prefetch jobs queue up and ``drain_background_prefetch`` runs
+        them on idle ticks.
 
         When ``warm_marquees`` is True, every blueprint with a marquee
         ``LocationCue`` (one carrying a stable ``graph_id``) gets its
@@ -514,10 +671,17 @@ class GameSession:
         assets_root = Path(assets_root)
         manifest = BackgroundManifest.load(assets_root)
         self.background_manifest = manifest
+
+        if producer is None and comfyui_client is not None:
+            if comfyui_client.is_available():
+                producer = ComfyUIImageProducer(client=comfyui_client)
+        if producer is None:
+            producer = PlaceholderImageProducer()
+
         self.background_generator = BackgroundGenerator(
             manifest=manifest,
             specs=self.scene_specs,
-            producer=producer or PlaceholderImageProducer(),
+            producer=producer,
             prefetch_scheduler=prefetch_scheduler or DeferredPrefetchScheduler(),
         )
         # Render the colour-grade and overlay PNGs alongside the other
@@ -553,6 +717,10 @@ class GameSession:
         fixed `graph_id`; ad-hoc cues create a fresh graph (closed after
         ``release_scene``).
 
+        When the blueprint has no explicit ``location`` but declares
+        ``valid_scene_types``, a matching scene spec is selected and an
+        ad-hoc ``LocationCue`` is synthesised automatically.
+
         Side effects:
 
         - Advances the clock by the movement cost from the player's
@@ -564,6 +732,8 @@ class GameSession:
           same slot pay the normal cost.
         """
         cue = blueprint.location
+        if cue is None and blueprint.valid_scene_types:
+            cue = self._cue_from_scene_types(blueprint.valid_scene_types)
         if cue is None or self.background_manifest is None:
             return None
         if cue.spec_id not in self.scene_specs:
@@ -790,15 +960,42 @@ class GameSession:
             return 0
         return drain(max_items)
 
+    def _cue_from_scene_types(self, scene_types: list) -> LocationCue | None:
+        """Synthesise an ad-hoc ``LocationCue`` from ``valid_scene_types``.
+
+        Tries each scene type in order, mapping via
+        ``location_kind_for_scene_type`` and then checking whether a
+        matching ``SceneGraphSpec`` is loaded. Returns the first match
+        or ``None`` if no spec is available.
+        """
+        for st in scene_types:
+            kind = location_kind_for_scene_type(st)
+            if kind is None:
+                continue
+            for spec in self.scene_specs.values():
+                if spec.kind == kind:
+                    node = spec.entry_nodes[0] if spec.entry_nodes else spec.nodes[0]
+                    return LocationCue(spec_id=spec.spec_id, node_name=node)
+        return None
+
     def _descriptor_for(self, cue: LocationCue) -> LocationDescriptor:
         base = self.default_location_descriptors.get(cue.spec_id)
         if base is None:
             spec = self.scene_specs[cue.spec_id]
             base = LocationDescriptor(kind=spec.kind)
-        if not cue.descriptor_overrides:
-            return base
         merged = base.to_dict()
-        merged.update(cue.descriptor_overrides)
+        # Apply instance-level style overrides (socioeconomic, mood, palette)
+        if cue.scene_instance is not None:
+            from .scene_taxonomy import SceneInstance, descriptor_overrides_for_instance
+            try:
+                instance = SceneInstance(cue.scene_instance)
+                instance_overrides = descriptor_overrides_for_instance(instance)
+                merged.update(instance_overrides)
+            except ValueError:
+                pass  # unknown instance value — ignore
+        # Explicit per-event overrides take priority
+        if cue.descriptor_overrides:
+            merged.update(cue.descriptor_overrides)
         return LocationDescriptor.from_dict(merged)
 
     def narrate_outcome(
@@ -870,6 +1067,35 @@ class GameSession:
         self.opp_goals = 0
         # Status bar swap: covers the four-hour afternoon block.
         self._active_match_label = f"Match vs {opponent_name}"
+
+    def setup_match_from_season(self) -> str | None:
+        """Set up this week's match from the season fixture list.
+
+        Returns the opponent's club name, or ``None`` if no fixture
+        exists for the current season week (e.g. bye week or season
+        complete). Falls back to generic opponent if no season is
+        loaded.
+        """
+        season = self.state.season
+        if season is None:
+            self.setup_match()
+            return None
+        fixture = season.current_fixture()
+        if fixture is None:
+            self.setup_match()
+            return None
+        opp_name = fixture.opponent_of(season.config.club_name)
+        if opp_name is None:
+            self.setup_match()
+            return None
+        opp_club = season.opponent_club_by_name(opp_name)
+        if opp_club is not None:
+            self.setup_match(
+                opponent=opp_club.seeds, opponent_name=opp_name,
+            )
+        else:
+            self.setup_match(opponent_name=opp_name)
+        return opp_name
 
     def roster_players(self) -> list[Character]:
         """Return the playable roster (all characters in state)."""
@@ -943,6 +1169,10 @@ class GameSession:
         self._active_match_label = None
         self.state.clock.fast_forward_to_slot(Slot.EVENING)
 
+        # Record result in the season table + simulate other league
+        # fixtures for this week.
+        self._record_match_in_season()
+
         return {
             "perceived": perceived,
             "mood_delta": mood_delta,
@@ -951,6 +1181,16 @@ class GameSession:
             "opp_goals": self.opp_goals,
             "team_morale": self.team_morale,
         }
+
+    def _record_match_in_season(self) -> None:
+        """Record the player's match result + simulate other fixtures."""
+        season = self.state.season
+        if season is None:
+            return
+        season.record_result(
+            season.current_week, self.team_goals, self.opp_goals,
+        )
+        season.simulate_other_results(season.current_week, self.rng)
 
     # ------------------------------------------------------------------
     # Slot queries

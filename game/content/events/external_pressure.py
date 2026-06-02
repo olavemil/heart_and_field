@@ -1,6 +1,7 @@
 """External-pressure events (design §8.2) — media, contracts, fans."""
 
 from engine.characters import CharacterRole
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -9,6 +10,7 @@ from engine.events import (
     StatEffect,
     WeightRule,
 )
+from engine.scene_taxonomy import SceneType
 from engine.stats import StatName
 
 from ._helpers import is_player
@@ -28,6 +30,13 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.5,
+        event_id=EventId(
+            nature=EventNature.OBSERVATION,
+            domain=EventDomain.INSTITUTIONAL,
+            tone=EventTone.NEUTRAL,
+        ),
+        valid_scene_types=[SceneType.PRESS_ROOM, SceneType.STUDIO],
+        reveals_exposure=0.1,
         weight_modifiers=[
             WeightRule(
                 predicate=lambda ctx, st: 1.6 if ctx.team_morale < -0.2 else 1.0,
@@ -67,6 +76,12 @@ BLUEPRINTS = [
         blocks=[SceneBlock(id="main")],
         base_weight=0.3,
         carries_arc_context=True,
+        event_id=EventId(
+            nature=EventNature.NEGOTIATION,
+            domain=EventDomain.INSTITUTIONAL,
+            tone=EventTone.TENSE,
+        ),
+        valid_scene_types=[SceneType.OFFICE],
         outcomes={
             "focused": BranchOutcome(
                 summary=(

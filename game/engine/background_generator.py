@@ -137,6 +137,196 @@ def _hsv_to_rgb(h: float, s: float, v: float) -> tuple[int, int, int]:
 
 
 # ---------------------------------------------------------------------------
+# ComfyUI image producer
+# ---------------------------------------------------------------------------
+
+
+# Node-level prompt phrases. Each node name gets a supplementary fragment
+# that steers the generation toward the right composition.
+_NODE_PROMPT_HINTS: dict[str, str] = {
+    "front_door": "exterior entrance view, door and porch, street visible",
+    "living_room": "living room interior, sofa and coffee table",
+    "kitchen": "kitchen interior, counters and cabinets",
+    "bedroom": "bedroom interior, bed and nightstand",
+    "bathroom": "bathroom interior, sink and mirror",
+    "hallway": "narrow hallway interior, doors on both sides",
+    "courtyard": "outdoor courtyard, paved ground, building walls around",
+    "classroom": "classroom interior, desks and whiteboard",
+    "locker_bay": "row of lockers in corridor, school setting",
+    "gym": "indoor gymnasium, wooden floor, high ceiling",
+    "office": "small office interior, desk and chair, shelves",
+    "street_view": "street exterior, buildings and pavement",
+    "bar_counter": "bar counter interior, bottles and stools",
+    "dining_area": "dining area, tables with chairs, ambient lighting",
+    "lobby": "hotel or building lobby, reception area",
+    "balcony": "balcony exterior, railing, view of surroundings",
+}
+
+_BG_PROMPT_PREFIX = (
+    "background scene for a visual novel, wide-angle interior or exterior, "
+    "no people, no text, detailed environment, painterly style, "
+)
+_BG_NEGATIVE_PROMPT = (
+    "people, person, figure, silhouette, text, watermark, logo, "
+    "blurry, low quality, distorted, nsfw"
+)
+
+# Variant generation uses low denoise to keep spatial layout identical
+# while introducing subtle ambient shifts (flickering light, swaying
+# curtains, shifting shadows).
+_VARIANT_DENOISE = 0.35
+_VARIANT_PROMPT_SUFFIX = ", subtle ambient variation, slightly different lighting"
+
+
+@dataclass
+class ComfyUIImageProducer:
+    """Real image producer backed by ComfyUI.
+
+    Primary images (variant_index=0):
+    - Without anchor: txt2img from descriptor + node prompt.
+    - With anchor: img2img from anchor with moderate denoise (0.65) so
+      the new room inherits palette and lighting from its sibling.
+
+    Variants (variant_index >= 1):
+    - img2img from the primary image at low denoise (0.35) for subtle
+      ambient motion (light flicker, shadow shift).
+
+    Falls back to ``PlaceholderImageProducer`` when ComfyUI returns None.
+    """
+
+    client: "ComfyUIClient"
+    width: int = 1280
+    height: int = 720
+    primary_steps: int = 28
+    primary_cfg: float = 4.5
+    # Denoise for anchored primaries — high enough to change composition,
+    # low enough to lock palette and lighting family.
+    anchor_denoise: float = 0.65
+    variant_steps: int = 20
+    variant_cfg: float = 4.5
+    variant_denoise: float = _VARIANT_DENOISE
+    _fallback: PlaceholderImageProducer = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._fallback = PlaceholderImageProducer(
+            width=self.width, height=self.height
+        )
+
+    def produce(
+        self,
+        *,
+        descriptor: LocationDescriptor,
+        spec: SceneGraphSpec,
+        node_name: str,
+        seed: int,
+        anchor_path: Path | None,
+        out_path: Path,
+        variant_index: int = 0,
+    ) -> None:
+        prompt = self._build_prompt(descriptor, node_name)
+
+        if variant_index > 0:
+            image_bytes = self._produce_variant(
+                prompt, seed=seed, anchor_path=anchor_path or out_path
+            )
+        elif anchor_path is not None:
+            image_bytes = self._produce_anchored(
+                prompt, seed=seed, anchor_path=anchor_path
+            )
+        else:
+            image_bytes = self._produce_fresh(prompt, seed=seed)
+
+        if image_bytes is not None:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_bytes(image_bytes)
+        else:
+            # ComfyUI unavailable or errored — fall back to placeholder
+            self._fallback.produce(
+                descriptor=descriptor,
+                spec=spec,
+                node_name=node_name,
+                seed=seed,
+                anchor_path=anchor_path,
+                out_path=out_path,
+                variant_index=variant_index,
+            )
+
+    # ------------------------------------------------------------------
+    # Internal generation paths
+    # ------------------------------------------------------------------
+
+    def _produce_fresh(self, prompt: str, *, seed: int) -> bytes | None:
+        """txt2img — first node in a graph, no anchor."""
+        return self.client.txt2img(
+            prompt,
+            seed=seed,
+            width=self.width,
+            height=self.height,
+            steps=self.primary_steps,
+            cfg=self.primary_cfg,
+            denoise=1.0,
+            filename_prefix="fh_bg",
+        )
+
+    def _produce_anchored(
+        self, prompt: str, *, seed: int, anchor_path: Path
+    ) -> bytes | None:
+        """img2img from a sibling node's image — inherits palette/lighting."""
+        uploaded_name = self._upload_anchor(anchor_path)
+        if uploaded_name is None:
+            return None
+        return self.client.img2img(
+            prompt,
+            input_image=uploaded_name,
+            seed=seed,
+            width=self.width,
+            height=self.height,
+            steps=self.primary_steps,
+            cfg=self.primary_cfg,
+            denoise=self.anchor_denoise,
+            filename_prefix="fh_bg",
+        )
+
+    def _produce_variant(
+        self, prompt: str, *, seed: int, anchor_path: Path
+    ) -> bytes | None:
+        """img2img at low denoise — subtle ambient shift."""
+        uploaded_name = self._upload_anchor(anchor_path)
+        if uploaded_name is None:
+            return None
+        variant_prompt = prompt + _VARIANT_PROMPT_SUFFIX
+        return self.client.img2img(
+            variant_prompt,
+            input_image=uploaded_name,
+            seed=seed,
+            width=self.width,
+            height=self.height,
+            steps=self.variant_steps,
+            cfg=self.variant_cfg,
+            denoise=self.variant_denoise,
+            filename_prefix="fh_bgv",
+        )
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _upload_anchor(self, anchor_path: Path) -> str | None:
+        """Read anchor image from disk and upload to ComfyUI."""
+        if not anchor_path.exists():
+            return None
+        image_bytes = anchor_path.read_bytes()
+        return self.client.upload_image(image_bytes, anchor_path.name)
+
+    @staticmethod
+    def _build_prompt(descriptor: LocationDescriptor, node_name: str) -> str:
+        """Compose the generation prompt from descriptor + node hints."""
+        base = descriptor.to_prompt_fragment()
+        node_hint = _NODE_PROMPT_HINTS.get(node_name, node_name.replace("_", " "))
+        return f"{_BG_PROMPT_PREFIX}{base}, {node_hint}"
+
+
+# ---------------------------------------------------------------------------
 # Prefetch scheduler seam
 # ---------------------------------------------------------------------------
 

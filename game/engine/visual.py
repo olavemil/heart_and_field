@@ -25,6 +25,7 @@ from PIL import Image, ImageDraw
 
 from .characters import Character, TierACharacter, TierBCharacter, TierDSeed
 from .comfyui import ComfyUIClient, face_prompt, background_prompt
+from .stock_faces import StockFacePool
 from .stats import ObservableName, StatName, clamp, stat_value
 
 
@@ -237,10 +238,12 @@ class FaceGenerationSpec:
                 role=character.role.value,
             )
         cid = character.id
+        gp = getattr(character, "gender_presentation", "masculine")
         return cls(
             character_id=cid,
             seed=cls.seed_from_id(cid),
             role=character.role.value,
+            gender_presentation=gp,
         )
 
     def to_dict(self) -> dict:
@@ -259,8 +262,8 @@ class FaceGenerationSpec:
 # ---------------------------------------------------------------------------
 
 # Default dimensions for generated face images.
-FACE_WIDTH = 256
-FACE_HEIGHT = 256
+FACE_WIDTH = 512
+FACE_HEIGHT = 512
 
 # Cache directory relative to the game root.
 GENERATED_DIR = "generated"
@@ -283,6 +286,7 @@ class CharacterVisual:
     layers: list[SpriteLayer] = field(default_factory=list)
     _cache_root: Path = field(default_factory=lambda: Path("game") / GENERATED_DIR)
     _comfyui: ComfyUIClient | None = field(default=None, repr=False)
+    _stock_face_path: Path | None = field(default=None, repr=False)
 
     # ------------------------------------------------------------------
     # Public API — Ren'Py only calls this
@@ -388,7 +392,12 @@ class CharacterVisual:
         return img
 
     def _try_comfyui_face(self) -> Image.Image | None:
-        """Attempt to generate a face via ComfyUI. Returns None on failure."""
+        """Attempt to generate a face via ComfyUI.
+
+        When a stock face is assigned, uses img2img with the stock face
+        as an anchor (low denoise keeps the structural likeness).  Falls
+        back to txt2img only when no stock face is available.
+        """
         if self._comfyui is None or not self._comfyui.enabled:
             return None
         try:
@@ -399,16 +408,34 @@ class CharacterVisual:
                 build=self.spec.build,
                 gender_presentation=self.spec.gender_presentation,
             )
-            data = self._comfyui.txt2img(
-                prompt,
-                seed=self.spec.seed,
-                width=FACE_WIDTH,
-                height=FACE_HEIGHT,
-                filename_prefix=f"fh_face_{self.character_id}",
-            )
+            data: bytes | None = None
+            if self._stock_face_path is not None and self._stock_face_path.exists():
+                stock_bytes = self._stock_face_path.read_bytes()
+                uploaded = self._comfyui.upload_image(
+                    stock_bytes,
+                    f"fh_stock_{self.character_id}.png",
+                )
+                if uploaded:
+                    data = self._comfyui.img2img(
+                        prompt,
+                        input_image=uploaded,
+                        seed=self.spec.seed,
+                        width=FACE_WIDTH,
+                        height=FACE_HEIGHT,
+                        steps=47,
+                        denoise=0.40,
+                        filename_prefix=f"fh_face_{self.character_id}",
+                    )
+            if data is None:
+                data = self._comfyui.txt2img(
+                    prompt,
+                    seed=self.spec.seed,
+                    width=FACE_WIDTH,
+                    height=FACE_HEIGHT,
+                    filename_prefix=f"fh_face_{self.character_id}",
+                )
             if data:
-                img = Image.open(io.BytesIO(data)).convert("RGBA")
-                return img
+                return Image.open(io.BytesIO(data)).convert("RGBA")
         except Exception:
             pass
         return None
@@ -824,6 +851,7 @@ class VisualManager:
     visuals: dict[str, CharacterVisual] = field(default_factory=dict)
     cache_root: Path = field(default_factory=lambda: Path("game") / GENERATED_DIR)
     comfyui: ComfyUIClient | None = None
+    stock_pool: StockFacePool | None = None
 
     def get_visual(
         self,
@@ -843,11 +871,17 @@ class VisualManager:
             return self.visuals[cid]
 
         spec = FaceGenerationSpec.from_character(character, cid)
+        stock_path: Path | None = None
+        if self.stock_pool is not None:
+            stock_path = self.stock_pool.select(
+                spec.gender_presentation, spec.seed,
+            )
         visual = CharacterVisual(
             character_id=cid,
             spec=spec,
             _cache_root=self.cache_root,
             _comfyui=self.comfyui,
+            _stock_face_path=stock_path,
         )
         self.visuals[cid] = visual
         return visual

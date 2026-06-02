@@ -1,0 +1,180 @@
+"""Institutional-domain events — front office, media, board politics."""
+
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.events import (
+    BranchOutcome,
+    EventBlueprint,
+    RelationshipEffect,
+    RoleSlot,
+    SceneBlock,
+    StatEffect,
+)
+from engine.scene_taxonomy import SceneType
+from engine.stats import StatName
+
+from ._helpers import is_player, not_player
+
+
+BLUEPRINTS = [
+    # --- institutional.celebration.triumphant ---
+    EventBlueprint(
+        id="inst.award_ceremony",
+        tags={"institutional", "celebration"},
+        participants=[
+            RoleSlot(role="player", filter=is_player),
+            RoleSlot(role="presenter", filter=not_player, optional=True),
+        ],
+        blocks=[SceneBlock(id="main")],
+        base_weight=0.3,
+        event_id=EventId(
+            nature=EventNature.CELEBRATION,
+            domain=EventDomain.INSTITUTIONAL,
+            tone=EventTone.TRIUMPHANT,
+        ),
+        valid_scene_types=[SceneType.BOARDROOM, SceneType.PRESS_ROOM],
+        outcomes={
+            "gracious": BranchOutcome(
+                summary="He thanked the people he was supposed to thank. The room clapped.",
+                stat_effects=[
+                    StatEffect("player", StatName.CONFIDENCE, 0.03),
+                    StatEffect("player", StatName.LEADERSHIP, 0.02),
+                ],
+                flags={"public"},
+            ),
+            "hollow": BranchOutcome(
+                summary="The trophy was heavier than he expected. Lighter than what it cost.",
+                stat_effects=[
+                    StatEffect("player", StatName.REFLECTION, 0.03),
+                ],
+            ),
+        },
+    ),
+    # --- institutional.confrontation.hostile ---
+    EventBlueprint(
+        id="inst.board_clash",
+        tags={"institutional", "conflict"},
+        participants=[
+            RoleSlot(role="player", filter=is_player),
+            RoleSlot(role="official",
+                     filter=lambda c: c.role.value in {"manager", "media", "other"}),
+        ],
+        blocks=[SceneBlock(id="main")],
+        base_weight=0.3,
+        event_id=EventId(
+            nature=EventNature.CONFRONTATION,
+            domain=EventDomain.INSTITUTIONAL,
+            tone=EventTone.HOSTILE,
+        ),
+        valid_scene_types=[SceneType.OFFICE, SceneType.BOARDROOM],
+        outcomes={
+            "defiant": BranchOutcome(
+                summary="He said what he thought about the decision. The room went cold.",
+                stat_effects=[
+                    StatEffect("player", StatName.AGGRESSIVENESS, 0.03),
+                    StatEffect("player", StatName.LEADERSHIP, 0.02),
+                ],
+                flags={"public"},
+            ),
+            "complied": BranchOutcome(
+                summary="He signed where they pointed. His hand was steady.",
+                stat_effects=[
+                    StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
+                    StatEffect("player", StatName.INSECURITY, 0.02),
+                ],
+            ),
+        },
+    ),
+    # --- institutional.isolation.tense ---
+    EventBlueprint(
+        id="inst.suspended",
+        tags={"institutional", "solo"},
+        participants=[RoleSlot(role="player", filter=is_player)],
+        blocks=[SceneBlock(id="main")],
+        base_weight=0.2,
+        event_id=EventId(
+            nature=EventNature.ISOLATION,
+            domain=EventDomain.INSTITUTIONAL,
+            tone=EventTone.TENSE,
+        ),
+        valid_scene_types=[SceneType.APARTMENT, SceneType.HOUSE],
+        outcomes={
+            "stewed": BranchOutcome(
+                summary="The phone didn't ring. He checked it anyway.",
+                stat_effects=[
+                    StatEffect("player", StatName.INSECURITY, 0.04),
+                    StatEffect("player", StatName.REFLECTION, 0.02),
+                ],
+            ),
+            "used_it": BranchOutcome(
+                summary="The time off was enforced. He filled it with something useful.",
+                stat_effects=[
+                    StatEffect("player", StatName.INTROSPECTION, 0.03),
+                ],
+            ),
+        },
+    ),
+    # --- institutional.negotiation.hostile ---
+    EventBlueprint(
+        id="inst.transfer_demand",
+        tags={"institutional", "conflict"},
+        participants=[
+            RoleSlot(role="player", filter=is_player),
+            RoleSlot(role="official",
+                     filter=lambda c: c.role.value in {"manager", "other"}),
+        ],
+        blocks=[SceneBlock(id="main")],
+        base_weight=0.2,
+        event_id=EventId(
+            nature=EventNature.NEGOTIATION,
+            domain=EventDomain.INSTITUTIONAL,
+            tone=EventTone.HOSTILE,
+        ),
+        valid_scene_types=[SceneType.OFFICE, SceneType.BOARDROOM],
+        outcomes={
+            "held_firm": BranchOutcome(
+                summary="He repeated his position. The silence stretched.",
+                stat_effects=[
+                    StatEffect("player", StatName.CONFIDENCE, 0.02),
+                    StatEffect("player", StatName.AGGRESSIVENESS, 0.02),
+                ],
+            ),
+            "caved": BranchOutcome(
+                summary="He agreed to their terms. The walk to the car park was long.",
+                stat_effects=[
+                    StatEffect("player", StatName.INSECURITY, 0.04),
+                ],
+            ),
+        },
+    ),
+    # --- institutional.revelation.tense ---
+    EventBlueprint(
+        id="inst.leaked_news",
+        tags={"institutional", "external_pressure"},
+        participants=[
+            RoleSlot(role="player", filter=is_player),
+        ],
+        blocks=[SceneBlock(id="main")],
+        base_weight=0.3,
+        event_id=EventId(
+            nature=EventNature.REVELATION,
+            domain=EventDomain.INSTITUTIONAL,
+            tone=EventTone.TENSE,
+        ),
+        valid_scene_types=[SceneType.APARTMENT, SceneType.LOCKER_ROOM],
+        reveals_exposure=0.15,
+        outcomes={
+            "prepared": BranchOutcome(
+                summary="He saw the headline before anyone asked. He had his answer ready.",
+                stat_effects=[
+                    StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
+                ],
+            ),
+            "blindsided": BranchOutcome(
+                summary="Someone showed him the article. He read it twice.",
+                stat_effects=[
+                    StatEffect("player", StatName.INSECURITY, 0.04),
+                ],
+            ),
+        },
+    ),
+]

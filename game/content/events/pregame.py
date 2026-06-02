@@ -1,5 +1,6 @@
 """Pregame events (design §8.1) — the dressing room, rituals, nerves."""
 
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -7,6 +8,7 @@ from engine.events import (
     SceneBlock,
     StatEffect,
 )
+from engine.scene_taxonomy import SceneType
 from engine.stats import StatName
 
 from ._helpers import is_player, teammate
@@ -25,6 +27,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=1.0,
+        event_id=EventId(
+            nature=EventNature.COLLABORATION,
+            domain=EventDomain.SPORT,
+            tone=EventTone.WARM,
+        ),
+        valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TUNNEL],
         outcomes={
             "rousing": BranchOutcome(
                 summary="The speech worked. The room leaned in.",
@@ -51,6 +59,12 @@ BLUEPRINTS = [
         participants=[RoleSlot(role="player", filter=is_player)],
         blocks=[SceneBlock(id="main")],
         base_weight=0.7,
+        event_id=EventId(
+            nature=EventNature.ISOLATION,
+            domain=EventDomain.PERSONAL,
+            tone=EventTone.MELANCHOLY,
+        ),
+        valid_scene_types=[SceneType.LOCKER_ROOM],
         outcomes={
             "centred": BranchOutcome(
                 summary="The ritual worked. He felt ready.",

@@ -1,5 +1,6 @@
 """Postgame events (design §8.1) — the dressing room after the whistle."""
 
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -9,6 +10,7 @@ from engine.events import (
     StatEffect,
     WeightRule,
 )
+from engine.scene_taxonomy import SceneType
 from engine.stats import StatName
 
 from ._helpers import is_player, teammate
@@ -24,6 +26,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.8,
+        event_id=EventId(
+            nature=EventNature.CELEBRATION,
+            domain=EventDomain.SPORT,
+            tone=EventTone.TRIUMPHANT,
+        ),
+        valid_scene_types=[SceneType.LOCKER_ROOM],
         weight_modifiers=[
             WeightRule(
                 predicate=lambda ctx, st: 2.2 if ctx.team_morale > 0.25 else 0.3,
@@ -59,6 +67,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.9,
+        event_id=EventId(
+            nature=EventNature.CONSOLATION,
+            domain=EventDomain.SPORT,
+            tone=EventTone.MELANCHOLY,
+        ),
+        valid_scene_types=[SceneType.LOCKER_ROOM],
         weight_modifiers=[
             WeightRule(
                 predicate=lambda ctx, st: 2.2 if ctx.team_morale < -0.25 else 0.2,

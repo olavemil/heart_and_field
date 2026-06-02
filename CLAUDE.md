@@ -95,4 +95,4 @@ Tier promotion (B → A) infers a tuple from the existing flat value plus random
 
 ## Current phase
 
-See `IMPLEMENTATION_PLAN.md`. The project has completed Phase 8 — LLM narration via LM Studio (OpenAI-compatible API) with silent fallback, per-event opt-in tags, name validation, and full test coverage. Phase 9 (content authoring) is next.
+See `IMPLEMENTATION_PLAN.md`. The project has completed Phase 21 — real visuals: ComfyUIImageProducer replaces placeholder PNGs with SD3.5/Flux 2 generation via ComfyUI, SceneInstance→LocationDescriptor bridge for styled variant rendering, and session auto-selection of real vs placeholder producer. Phase 22 is next.

@@ -27,7 +27,7 @@ from __future__ import annotations
 import random as _random
 from typing import Iterable, Literal
 
-from .characters import CharacterRole, TierACharacter, TierBCharacter
+from .characters import CharacterRole, Disposition, TierACharacter, TierBCharacter
 from .quirks import Quirk, QuirkDomain, QuirkPattern
 from .sprite_pool import (
     AgeBucket,
@@ -312,6 +312,60 @@ def random_quirks(
     return out
 
 
+# Disposition-themed quirk pools. When the player picks a disposition
+# during character creation, this table selects thematic quirks instead
+# of purely random ones. Each entry is a list of candidate quirks —
+# ``quirks_for_disposition`` draws 1–2 from the list.
+
+_DISPOSITION_QUIRKS: dict[Disposition, list[Quirk]] = {
+    Disposition.CALM: [
+        Quirk(domain=QuirkDomain.EMOTIONAL, pattern=QuirkPattern.AVOIDANT),
+        Quirk(domain=QuirkDomain.COGNITIVE, pattern=QuirkPattern.RIGID),
+        Quirk(domain=QuirkDomain.SOCIAL, pattern=QuirkPattern.AVOIDANT),
+    ],
+    Disposition.FIERY: [
+        Quirk(domain=QuirkDomain.EMOTIONAL, pattern=QuirkPattern.REACTIVE),
+        Quirk(domain=QuirkDomain.PERFORMANCE, pattern=QuirkPattern.COMPULSIVE),
+        Quirk(domain=QuirkDomain.SOCIAL, pattern=QuirkPattern.REACTIVE),
+    ],
+    Disposition.GUARDED: [
+        Quirk(domain=QuirkDomain.SOCIAL, pattern=QuirkPattern.AVOIDANT),
+        Quirk(domain=QuirkDomain.EMOTIONAL, pattern=QuirkPattern.RIGID),
+        Quirk(domain=QuirkDomain.COGNITIVE, pattern=QuirkPattern.AVOIDANT),
+    ],
+    Disposition.WARM: [
+        Quirk(domain=QuirkDomain.SOCIAL, pattern=QuirkPattern.SEEKING),
+        Quirk(domain=QuirkDomain.EMOTIONAL, pattern=QuirkPattern.SEEKING),
+        Quirk(domain=QuirkDomain.PERFORMANCE, pattern=QuirkPattern.PERFORMATIVE),
+    ],
+    Disposition.COMPETITIVE: [
+        Quirk(domain=QuirkDomain.PERFORMANCE, pattern=QuirkPattern.COMPULSIVE),
+        Quirk(domain=QuirkDomain.COGNITIVE, pattern=QuirkPattern.REACTIVE),
+        Quirk(domain=QuirkDomain.PHYSICAL, pattern=QuirkPattern.SEEKING),
+    ],
+    Disposition.WITHDRAWN: [
+        Quirk(domain=QuirkDomain.SOCIAL, pattern=QuirkPattern.AVOIDANT),
+        Quirk(domain=QuirkDomain.EMOTIONAL, pattern=QuirkPattern.AVOIDANT),
+        Quirk(domain=QuirkDomain.COGNITIVE, pattern=QuirkPattern.RIGID),
+    ],
+}
+
+
+def quirks_for_disposition(
+    disposition: Disposition,
+    rng: _random.Random,
+    *,
+    count_range: tuple[int, int] = (1, 2),
+) -> list[Quirk]:
+    """Draw thematic quirks matching a disposition."""
+    pool = _DISPOSITION_QUIRKS.get(disposition, [])
+    if not pool:
+        return random_quirks(rng, count_range=count_range)
+    count = rng.randint(*count_range)
+    count = min(count, len(pool))
+    return rng.sample(pool, k=count)
+
+
 # ===========================================================================
 # Visual descriptor
 # ===========================================================================
@@ -394,6 +448,8 @@ def generate_character(
         else random_quirks(rng, count_range=quirk_count_range, role=role)
     )
 
+    gender_str = chosen_descriptor.gender_presentation.value
+
     if tier == "A":
         return TierACharacter(
             id=cid,
@@ -401,6 +457,7 @@ def generate_character(
             role=role,
             stats=random_stats_tuple(role, rng),
             quirks=chosen_quirks,
+            gender_presentation=gender_str,
         )
     return TierBCharacter(
         id=cid,
@@ -408,12 +465,13 @@ def generate_character(
         role=role,
         stats=random_stats_flat(role, rng),
         quirks=chosen_quirks,
+        gender_presentation=gender_str,
     )
 
 
 def _slug_id(first: str, last: str, rng: _random.Random) -> str:
-    """Build a slug like ``"alex_carter_3f2"`` — name fragments plus a
-    short rng-derived suffix so duplicate names get distinct ids."""
+    """Build a slug like ``"alex_carter_3f2a1b"`` — name fragments plus a
+    rng-derived suffix so duplicate names get distinct ids."""
     base = f"{first.lower()}_{last.lower()}".replace(" ", "_")
-    suffix = format(rng.randint(0, 0xFFF), "03x")
+    suffix = format(rng.randint(0, 0xFFFFFF), "06x")
     return f"{base}_{suffix}"

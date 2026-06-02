@@ -1,5 +1,6 @@
 """Celebration events (design §8.2) — moments where joy gets expressed."""
 
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -9,6 +10,7 @@ from engine.events import (
     StatEffect,
     WeightRule,
 )
+from engine.scene_taxonomy import SceneType
 from engine.stats import StatName
 
 from ._helpers import is_player, teammate
@@ -24,6 +26,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.7,
+        event_id=EventId(
+            nature=EventNature.CELEBRATION,
+            domain=EventDomain.SPORT,
+            tone=EventTone.TRIUMPHANT,
+        ),
+        valid_scene_types=[SceneType.PITCH],
         weight_modifiers=[
             WeightRule(
                 predicate=lambda ctx, st: 1.8 if ctx.momentum > 0.3 else 0.6,

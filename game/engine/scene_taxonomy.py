@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from .background_pool import LocationKind
+from .background_pool import LocationKind, Socioeconomic, MoodTone
 
 
 # ===========================================================================
@@ -313,3 +313,98 @@ def location_kind_for_scene_type(scene_type: SceneType) -> LocationKind | None:
     """Bridge from narrative ``SceneType`` → visual ``LocationKind``.
     Returns ``None`` for transit types (no LocationKind yet)."""
     return _SCENE_TYPE_TO_LOCATION_KIND.get(scene_type)
+
+
+# ===========================================================================
+# SceneInstance → LocationDescriptor overrides
+# ===========================================================================
+
+
+# Each SceneInstance maps to a dict of LocationDescriptor field overrides.
+# These are merged on top of the default descriptor for the spec,
+# so only the fields that differentiate the instance need listing.
+# The dict values use enum instances, not strings — consumers merge via
+# LocationDescriptor.from_dict after converting to a plain dict.
+
+_SCENE_INSTANCE_DESCRIPTOR_OVERRIDES: dict[SceneInstance, dict] = {
+    # Apartments
+    SceneInstance.APARTMENT_SHARED: {
+        "socioeconomic": Socioeconomic.MODEST.value,
+        "palette": "cluttered shared space, mismatched furniture",
+    },
+    SceneInstance.APARTMENT_SOLO: {
+        "socioeconomic": Socioeconomic.COMFORTABLE.value,
+        "palette": "tidy studio, personal touches",
+    },
+    SceneInstance.APARTMENT_UPSCALE: {
+        "socioeconomic": Socioeconomic.AFFLUENT.value,
+        "palette": "modern luxury, floor-to-ceiling windows, designer furniture",
+    },
+    # Houses
+    SceneInstance.HOUSE_FAMILY: {
+        "socioeconomic": Socioeconomic.COMFORTABLE.value,
+        "mood": MoodTone.WARM.value,
+        "palette": "family photos, well-worn furniture, toys",
+    },
+    SceneInstance.HOUSE_RENTED: {
+        "socioeconomic": Socioeconomic.MODEST.value,
+        "mood": MoodTone.NEUTRAL.value,
+        "palette": "generic furnishings, bare walls",
+    },
+    # Mansions
+    SceneInstance.MANSION_OWN: {
+        "socioeconomic": Socioeconomic.AFFLUENT.value,
+        "mood": MoodTone.WARM.value,
+        "palette": "grand hall, marble floors, art collection",
+    },
+    SceneInstance.MANSION_EVENT: {
+        "socioeconomic": Socioeconomic.AFFLUENT.value,
+        "mood": MoodTone.COLD.value,
+        "palette": "event setup, catering, formal decor",
+    },
+    # Bars
+    SceneInstance.BAR_LOCAL: {
+        "socioeconomic": Socioeconomic.MODEST.value,
+        "mood": MoodTone.WARM.value,
+        "palette": "dim pub, wooden bar, sports on TV",
+    },
+    SceneInstance.BAR_UPSCALE: {
+        "socioeconomic": Socioeconomic.AFFLUENT.value,
+        "mood": MoodTone.COLD.value,
+        "palette": "cocktail bar, mood lighting, polished surfaces",
+    },
+    # Restaurants
+    SceneInstance.RESTAURANT_CASUAL: {
+        "socioeconomic": Socioeconomic.COMFORTABLE.value,
+        "mood": MoodTone.WARM.value,
+        "palette": "casual dining, checkered tablecloths, chalkboard menu",
+    },
+    SceneInstance.RESTAURANT_FORMAL: {
+        "socioeconomic": Socioeconomic.AFFLUENT.value,
+        "mood": MoodTone.COLD.value,
+        "palette": "fine dining, white linen, crystal glassware",
+    },
+    # Hotels
+    SceneInstance.HOTEL_AWAY: {
+        "socioeconomic": Socioeconomic.COMFORTABLE.value,
+        "mood": MoodTone.NEUTRAL.value,
+        "palette": "standard hotel room, suitcase, city view",
+    },
+    SceneInstance.HOTEL_LAYOVER: {
+        "socioeconomic": Socioeconomic.MODEST.value,
+        "mood": MoodTone.COLD.value,
+        "palette": "budget hotel, minimal decor, highway view",
+    },
+}
+
+
+def descriptor_overrides_for_instance(
+    instance: SceneInstance,
+) -> dict:
+    """Return LocationDescriptor field overrides for a SceneInstance.
+
+    The returned dict is suitable for merging via
+    ``LocationDescriptor.from_dict(base.to_dict() | overrides)``.
+    Returns an empty dict for unknown instances.
+    """
+    return dict(_SCENE_INSTANCE_DESCRIPTOR_OVERRIDES.get(instance, {}))

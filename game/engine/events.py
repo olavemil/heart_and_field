@@ -106,6 +106,7 @@ class LocationCue:
     spec_id: str
     node_name: str
     graph_id: str | None = None
+    scene_instance: str | None = None  # SceneInstance value, e.g. "bar_local"
     descriptor_overrides: dict = field(default_factory=dict)
 
 
@@ -255,6 +256,9 @@ class GameState:
     # node_name)`` or ``None`` before the first scene has been resolved.
     # Drives movement-cost accounting in ``resolve_scene``.
     current_location: tuple[str, str] | None = None
+    # League season — fixtures, standings, opponent clubs. ``None`` for
+    # legacy / test sessions that don't use the league system.
+    season: "Season | None" = None
 
 
 # --- Eligibility & casting --------------------------------------------------
@@ -322,6 +326,7 @@ def _try_cast(
 RECENCY_WINDOW = 6  # events back to consider
 RECENCY_FLOOR = 0.2  # multiplier applied if the event fired just now
 CLOCK_WEIGHT_SCALE = 2.5
+CHAIN_BIAS_BOOST = 1.8  # multiplier for chain-edge continuations
 
 
 def recency_penalty(event_id: str, outcome_log: Sequence[OutcomeRecord]) -> float:
@@ -454,6 +459,33 @@ def _aspect_boost_multiplier(
     return (1.0 + per_match_bump) ** matches
 
 
+def _chain_bias(
+    blueprint: EventBlueprint, state: GameState
+) -> float:
+    """Return a weight multiplier > 1 when the most recent outcome has
+    a chain edge pointing at ``blueprint.event_id``.
+
+    If the blueprint has no ``event_id``, or the most recent outcome has
+    no ``taxonomy_id``, returns 1.0 (no bias). Only the *last* outcome
+    is considered — chaining is a next-beat nudge, not an accumulation.
+    """
+    if blueprint.event_id is None:
+        return 1.0
+    if not state.outcome_log:
+        return 1.0
+    last = state.outcome_log[-1]
+    last_tid = getattr(last, "taxonomy_id", None)
+    if last_tid is None:
+        return 1.0
+    from .event_taxonomy import chains_from
+
+    edges = chains_from(last_tid)
+    for edge in edges:
+        if edge.to_id == blueprint.event_id:
+            return CHAIN_BIAS_BOOST
+    return 1.0
+
+
 def compute_weight(
     blueprint: EventBlueprint,
     context: GameContext,
@@ -486,6 +518,11 @@ def compute_weight(
 
         w *= cast_event_weight_multiplier(_cast_quirks(cast), blueprint.tags)
         w *= _aspect_boost_multiplier(blueprint, cast, state)
+
+    # Chain bias: boost this blueprint if the most recent outcome chains
+    # into it via an EventChainEdge.
+    w *= _chain_bias(blueprint, state)
+
     return max(w, 0.0)
 
 
@@ -583,6 +620,7 @@ def resolve_outcome(
         arc_summary=arc_summary,
         stat_deltas=stat_deltas,
         flags=set(outcome.flags),
+        taxonomy_id=blueprint.event_id,
     )
     state.outcome_log.append(record)
     state.completed_event_ids.add(blueprint.id)

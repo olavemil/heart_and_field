@@ -1,5 +1,6 @@
 """Training-block events (design §8.2). Low-stakes, high-frequency."""
 
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -9,6 +10,7 @@ from engine.events import (
     StatEffect,
     WeightRule,
 )
+from engine.scene_taxonomy import SceneType
 from engine.stats import StatName
 
 from ._helpers import is_player, not_player, teammate
@@ -24,6 +26,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=1.0,
+        event_id=EventId(
+            nature=EventNature.COLLABORATION,
+            domain=EventDomain.SPORT,
+            tone=EventTone.NEUTRAL,
+        ),
+        valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.GYM, SceneType.PITCH],
         outcomes={
             "good": BranchOutcome(
                 summary=(
@@ -71,6 +79,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.6,
+        event_id=EventId(
+            nature=EventNature.OBSERVATION,
+            domain=EventDomain.SPORT,
+            tone=EventTone.NEUTRAL,
+        ),
+        valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         weight_modifiers=[
             WeightRule(
                 predicate=lambda ctx, st: 1.5 if ctx.momentum > 0.2 else 1.0,
@@ -107,6 +121,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.8,
+        event_id=EventId(
+            nature=EventNature.COLLABORATION,
+            domain=EventDomain.SPORT,
+            tone=EventTone.WARM,
+        ),
+        valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         outcomes={
             "receptive": BranchOutcome(
                 summary="The note landed. He tried the adjustment immediately.",

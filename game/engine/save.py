@@ -19,6 +19,7 @@ from .characters import Character, TierACharacter, TierBCharacter
 from .clock import WorldClock
 from .clocks import Clock
 from .events import GameState, _default_clock
+from .league import Season
 from .outcomes import OutcomeRecord, WeekPhase
 from .placeholders import CharacterPlaceholder
 from .schedule import WeekSchedule
@@ -66,6 +67,7 @@ def serialise(
         "placeholders": {
             pid: p.to_dict() for pid, p in state.placeholders.items()
         },
+        "season": state.season.to_dict() if state.season is not None else None,
         "schedule": schedule.to_dict() if schedule is not None else None,
         "arc_graph": arc_graph.to_dict() if arc_graph is not None else None,
     }
@@ -127,6 +129,11 @@ def deserialise(
             pid: CharacterPlaceholder.from_dict(pdata)
             for pid, pdata in data.get("placeholders", {}).items()
         },
+        season=(
+            Season.from_dict(data["season"])
+            if data.get("season") is not None
+            else None
+        ),
     )
 
     schedule = None

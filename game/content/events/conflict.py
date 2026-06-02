@@ -4,6 +4,7 @@ Includes a simple arc (blame → apology) to exercise prereqs and
 `carries_arc_context` in Phase 3's tests.
 """
 
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -13,6 +14,8 @@ from engine.events import (
     StatEffect,
     WeightRule,
 )
+from engine.scene_taxonomy import SceneType
+from engine.secrets import AspectType
 from engine.stats import StatName
 
 from ._helpers import is_player, not_player, teammate
@@ -28,6 +31,14 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.4,
+        event_id=EventId(
+            nature=EventNature.CONFRONTATION,
+            domain=EventDomain.RELATIONSHIP,
+            tone=EventTone.HOSTILE,
+        ),
+        valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TRAINING_GROUND],
+        boosted_by_aspects=[AspectType.HISTORY],
+        reveals_exposure=0.1,
         weight_modifiers=[
             WeightRule(
                 predicate=lambda ctx, st: 2.0 if ctx.team_morale < -0.2 else 1.0,
@@ -74,6 +85,12 @@ BLUEPRINTS = [
         ],
         blocks=[SceneBlock(id="main")],
         base_weight=0.7,
+        event_id=EventId(
+            nature=EventNature.ADMISSION,
+            domain=EventDomain.RELATIONSHIP,
+            tone=EventTone.MELANCHOLY,
+        ),
+        valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.PARK],
         prerequisites=["conflict.blame_assignment"],
         carries_arc_context=True,
         outcomes={

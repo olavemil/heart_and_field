@@ -181,12 +181,14 @@ Layered visual treatment on top of Phase 10.5's single-image scenes. Four indepe
 
 - New `image scene_live` per addendum §1.4 — variant crossfade base + grain + per-scene overlays + time grade + mood grade.
 - `drama_block.rpy` / `postgame_block.rpy` switch from `scene expression str(bg_path)` to:
+
   ```
   $ scene_info = session.resolve_scene(bp, cast)
   if scene_info is not None:
       $ session.set_active_scene(*scene_info)
       scene scene_live
   ```
+
   with `set_active_scene` storing variants + overlays + grades on a small `ActiveScene` struct that the ATL displayables read from.
 - Crossfade timer (60–90 s) lives in ATL, not Python. Variant pointer cycles `image_paths[(i+1) % len(image_paths)]`.
 - No automated tests — manual smoke checklist:
@@ -200,6 +202,7 @@ Layered visual treatment on top of Phase 10.5's single-image scenes. Four indepe
 **Exit criteria:** background animation visibly conveys time-of-day, weather, and mood without regenerating images mid-scene; variant crossfade reads as breathing motion (not a hard cut to a different shot); marquee scenes pre-warm at game start, ad-hoc scenes promote on revisit.
 
 **Deferred from this phase:**
+
 - Real img2img variants (still placeholder until SD pipeline lands)
 - `SceneType` / `SceneInstance` enum + global `SCENE_ADJACENCY` (Phase 16)
 - Camera-angle variants and parallax depth (separate feature)
@@ -352,6 +355,7 @@ characters in Phase 15.
 - 33 tests in `tests/test_secrets.py` — exposure-band thresholds (and clamping), `AspectPhrases.by_band`, all five aspect dataclasses round-trip via `aspect_from_dict`, `Secret.membership_for` / `aspect_for`, full secret persistence, MetaSecret round-trip + invalid-state validation, observer reveal (member exposure, non-member default, tag-trigger bump, familiarity bump, SUSPECTED cap, unrelated tag no-op), phrase lookup edge cases (HIDDEN → None, missing aspect → None, missing phrases → None). Plus a save-level round-trip test in `tests/test_save.py`.
 
 **Further work:**
+
 - Wire secret-driven event gating into `select_event` (analogue of quirk bias) once `requires_aspects` / `boosted_by_aspects` / `requires_secret_role` move from `EventBlueprint` design (addendum §3.8) into the actual blueprint dataclass.
 
 ## Phase 14 — Secret LLM pipeline (addendum §3.6) ✅
@@ -362,7 +366,7 @@ secret at character / world initialisation; results cache on the
 ``Secret`` so play never blocks on the LLM.
 
 - New `engine/secret_llm.py`:
-  - `compose_mechanical_description(secret, cast)` — deterministic, no LLM. Five templates (one per AspectType). Renders every aspect to a sentence and joins with `. `. Holder name resolved via `primary_holder()` (OWNER → PARTICIPANT → WITNESS → SUSPECT priority). Unmapped character ids fall through as the id itself so missing placeholder bindings show up in dev.
+  - `compose_mechanical_description(secret, cast)` — deterministic, no LLM. Five templates (one per AspectType). Renders every aspect to a sentence and joins with `.`. Holder name resolved via `primary_holder()` (OWNER → PARTICIPANT → WITNESS → SUSPECT priority). Unmapped character ids fall through as the id itself so missing placeholder bindings show up in dev.
   - `flavor_secret(client, secret, *, cast, character_label)` — LLM call 1. Uses `LLMPrompt`/`LLMClient` from Phase 8. Falls back to the mechanical sentence on any failure (disabled, error, empty response).
   - `generate_aspect_phrases(client, aspect, *, mechanical, description)` — LLM call 2 (one per aspect). Asks for strict JSON with the four band keys; rejects malformed JSON, non-string values, and empty values. Falls back to a deterministic phrase set that escalates the mechanical sentence across the four bands so reveal logic still has *something* at every band even with the LLM offline.
   - `reformulate_secret(client, description, aspect_phrases, mechanical)` — LLM call 3, optional consistency pass. Returns the input unchanged on failure. `needs_consistency_pass(secret)` heuristic triggers it on 3+ aspects.
@@ -430,6 +434,7 @@ placeholders actually shift play.
 - 50 tests: `engine/event_taxonomy` (15 — `EventId` round-trip incl. key parser, `VALID_EVENT_COMBINATIONS` coverage and uniqueness, chain edge persistence + endpoint validity + dimension filter), `engine/scene_taxonomy` (17), `engine/events` wiring (18 — eligibility gates with and without matching secrets, `requires_secret_role` blocking and passing, `boosted_by_aspects` shifting selection over many trials, `reveals_exposure` advancing only on tag-trigger overlap and only for cast-member secrets, exposure capping at 1.0, placeholder introduction including silent skip on missing/already-resolved ids).
 
 **Further work:**
+
 - Compose chain edges into the actual selection pipeline (currently `chain_edges` data exists on blueprints but selection doesn't yet prefer chained follow-ups). Likely a separate "chain bias" multiplier on `compute_weight` keyed off the most recent outcome.
 - Author content blueprints against the `EventId` triple — replace ad-hoc string ids in `game/content/events/` with `event_id=EventId(...)` once content authoring resumes.
 - Hook `valid_scene_types` / `preferred_instances` into `LocationCue` resolution so events declaring scene preferences get matched to graphs of the right kind.
@@ -479,44 +484,75 @@ so every roll is reproducible from a seed.
 - Tests: deterministic from seed, role distribution matches
   composition, generated rosters cast existing blueprints (smoke).
 
-### 18C — Secret web generator
+### 18C — Secret web generator ✅
 
 - New `engine/world_genesis.py`:
-  - `generate_secret_web(rng, *, characters, secret_count_range)` —
-    creates N secrets across the roster with cross-references that
-    spawn `CharacterPlaceholder`s for unbound targets.
-  - Runs `engine.secret_llm.initialise_secret` on each generated
-    secret (with the world's `LLMClient` if available; falls back to
-    deterministic phrases otherwise — the existing graceful path).
-  - Surfaces `unresolved_references(state)` after generation so the
-    integration tests can assert every placeholder is bookkept.
-- Tests: secrets reference real characters where possible, fall back
-  to placeholders otherwise; `unresolved_references` is empty after
-  the bookkeeping pass; `initialise_secret` runs once per secret.
+  - `generate_secret_web(rng, *, characters, secret_count_range, llm_client, character_label)` —
+    draws N secrets (N ∈ `secret_count_range`) across the five `SecretCategory` values.
+    Per-category generators (`_generate_connection_secret`, `_generate_agenda_secret`,
+    `_generate_taboo_secret`, `_generate_history_secret`, `_generate_identity_secret`)
+    produce aspects, memberships, and reveal triggers.
+  - External-vs-internal relation classification (`_EXTERNAL_RELATIONS`, `_INTERNAL_RELATIONS`,
+    `_MIXED_RELATIONS`) decides whether a relationship target comes from the cast or spawns a
+    `CharacterPlaceholder`. `_RELATION_TO_ROLE` maps relation types to placeholder roles.
+  - `_link_shared_character_secrets` wires `SecretRelation` cross-references between secrets
+    sharing a character membership.
+  - `_build_placeholders` creates `CharacterPlaceholder` entries for every aspect target not in
+    the cast, tracking `secret_ids` and inferring `required_role` / `required_relation` from
+    the aspect.
+  - Owner spreading: `_pick_owner` prefers unused characters so secrets distribute across the
+    cast rather than clustering.
+  - Runs `engine.secret_llm.initialise_secret` on each generated secret (with the world's
+    `LLMClient` if available; falls back to a disabled client producing deterministic
+    mechanical descriptions and fallback phrases otherwise).
+  - Returns `(dict[str, Secret], dict[str, CharacterPlaceholder])` ready for `GameState`.
+  - Fix: `unresolved_references` in `placeholders.py` now also filters `state.placeholders`,
+    matching its docstring intent ("neither in characters nor in placeholders is a content bug").
+- 35 tests in `tests/test_world_genesis.py` covering: integration (returns dicts, count within
+  range, every secret has membership + aspect, real character references, unresolved_references
+  empty after bookkeeping, determinism, different seeds diverge, initialise_secret called once
+  per secret with counting client, no-LLM fallback, placeholder secret_id tracking, owner
+  spread), per-category generators (aspect types, external/internal relation paths, no-placeholder
+  categories), cross-secret linking (shared character creates relations, no link without shared
+  character), placeholder builder (unbound target creation, existing character skip), cast map,
+  save round-trip (serialise/deserialise preserves secrets + placeholders, unresolved_references
+  empty after round-trip), edge cases (single character cast, zero secrets, large secret count,
+  all categories reachable over 50 seeds). Total: 747 tests, 0 failures.
 
-### 18D — `GameSession.new_game()` integration
+### 18D — `GameSession.new_game()` integration ✅
 
-- Extends `new_game(player_name, *, seed, customisation=None, …)` so
-  the existing hardcoded Ren'Py roster path becomes a thin
-  customisation override. With no customisation, the full 18A/B/C
-  pipeline runs with the master seed.
-- New `PlayerCustomisation` dataclass: name, role, optional quirk
-  list, optional descriptor, optional starting stats. Empty fields
-  fall through to randomisation.
-- Ren'Py opening flow: name entry, role pick, "randomise me" /
-  "customise" branch. Wires through `session.new_game(...)`.
-- Tests: customisation overrides applied, master seed produces an
-  identical world on re-run, save round-trip preserves the generated
-  cast and secrets.
+- `new_game(player_name, *, seed, customisation, roster, sport, content_root)` now has two paths:
+  - **Generated path** (default, `roster=None`): calls `generate_roster(rng, sport=sport)` to build
+    the full squad (15 Tier B teammates + manager + physio + Tier A player), then
+    `generate_secret_web(rng, characters=…)` to weave secrets across the cast. The player picks up
+    any overrides from `PlayerCustomisation`.
+  - **Legacy path** (`roster=dict`): caller provides handcrafted characters directly. No secrets
+    generated. Player gets flat 0.5 stats. Existing test helpers continue to work unchanged.
+- New `PlayerCustomisation` dataclass in `engine/session.py`: `name` (unused — `player_name` arg
+  always wins), `role: CharacterRole | None`, `quirks: list[Quirk] | None`,
+  `stats: dict[StatName, float] | None`. All optional — `None` means randomise.
+- Ren'Py `game_loop.rpy` start label rewritten: name input via `renpy.input`, role menu
+  (Striker/Midfielder/Defender/Goalkeeper), `PlayerCustomisation` wired through
+  `GameSession.new_game(…)`. Hardcoded roster removed entirely.
+- 21 tests in `tests/test_new_game_integration.py`:
+  - Generated path: player is Tier A with given name, full squad (≥10 chars), coaching staff
+    present, secrets generated with mechanical descriptions, `unresolved_references` empty, player
+    has quirks and varied stats.
+  - Legacy path: injected roster present, player has flat stats, no secrets.
+  - Customisation: role override, quirks override, stats override, role override on legacy path,
+    `player_name` always wins over `customisation.name`.
+  - Determinism: same seed → identical world, different seed → different world.
+  - Save round-trip: characters + secrets + placeholders preserved, player data preserved, secret
+    mechanical descriptions preserved.
+- Total: 768 tests, 0 failures.
 
-**Exit criteria for Phase 18:** typing `start` in Ren'Py produces a
-randomly-generated world with named teammates, coach, opponent club,
-secret memberships across the squad, and a first-week schedule —
-without any hardcoded character data in the .rpy files. Re-running
-with the same seed produces an identical world; running with a
-different seed produces a meaningfully different one.
+**Exit criteria for Phase 18:** ✅ `GameSession.new_game("Alex", seed=42)` produces a
+randomly-generated world with named teammates, coach, secret memberships across the squad,
+and loads content for the first week — without any hardcoded character data in `.rpy` files.
+Re-running with the same seed produces an identical world; running with a different seed
+produces a meaningfully different one.
 
-## Phase 19 — Content pass + chain bias
+## Phase 19 — Content pass + chain bias ✅
 
 - Migrate existing `game/content/events/*.py` blueprints to use
   `EventId` triples.
@@ -527,19 +563,158 @@ different seed produces a meaningfully different one.
 - Author blueprints for each `VALID_EVENT_COMBINATIONS` triple
   missing today.
 
-## Phase 20 — League and progression (operational)
+**Delivered (Phase 19):**
 
-- League / club metadata (named opponents with fixed seeds).
-- Season structure, standings, end-of-season events.
-- Settings UI (LLM endpoint, model, on/off; visual generation
-  toggle).
+Engine wiring:
 
-## Phase 21 — Real visuals
+- `_chain_bias()` in `events.py` — reads the most recent `OutcomeRecord.taxonomy_id`,
+  looks up outgoing `EventChainEdge`s via `chains_from()`, and boosts by `CHAIN_BIAS_BOOST`
+  (1.8×) when the blueprint's `event_id` matches an edge's `to_id`. Integrated into
+  `compute_weight()`.
+- `OutcomeRecord.taxonomy_id` field added — set by `resolve_outcome()` from
+  `blueprint.event_id`, serialised/deserialised, backward-compatible (defaults `None`).
+- `_cue_from_scene_types()` in `session.py` — when a blueprint has `valid_scene_types`
+  but no explicit `location`, synthesises an ad-hoc `LocationCue` by mapping scene types
+  through `location_kind_for_scene_type()` and matching against loaded `SceneGraphSpec`s.
+  Integrated into `resolve_scene()`.
 
-- Real `ImageProducer` for SD3.5 + img2img on graph anchors
-  (replaces the placeholder PNG producer).
-- `SceneInstance` propagation into `LocationDescriptor` so the
-  generator can render a `BAR_LOCAL` differently from a `BAR_UPSCALE`.
+Content:
+
+- All 21 existing blueprints migrated to `EventId` triples with `valid_scene_types`,
+  and strategic `boosted_by_aspects` / `reveals_exposure` fields populated.
+- 35 new blueprints authored across 5 new content files (`sport.py`, `relationship.py`,
+  `institutional.py`, `personal.py`, `secret.py`) — achieving 51/51 coverage of
+  `VALID_EVENT_COMBINATIONS`.
+- Secret-domain blueprints use `requires_aspects` and `requires_secret_role` gates.
+
+Tests: 15 new tests in `test_phase19.py` (783 total, 0 failures).
+
+## Phase 20 — League and progression ✅
+
+Configurable league system: sport selection, league tier/format, season
+structure with round-robin fixtures, standings table, and opponent
+integration into the match flow.
+
+### 20A — League config model ✅
+
+- New `engine/league.py`:
+  - `LeagueFormat` enum (`OPEN` / `CLOSED`) — open leagues have
+    promotion/relegation narrative hooks; closed leagues don't.
+  - `LeagueTier` enum (`PROFESSIONAL` / `SEMI_PRO` / `AMATEUR`) — shapes
+    opponent skill range via `TIER_SKILL_RANGES` and narrative tone
+    (sponsor pressure vs grassroots community).
+  - `LeagueConfig` frozen dataclass: `club_name`, `opponent_count`,
+    `league_format`, `tier`. Properties: `total_clubs`, `season_weeks`
+    (= 2 × opponent_count for home+away round-robin). Round-trips via
+    `to_dict` / `from_dict`.
+  - `Fixture` dataclass: week, home/away clubs, goals, played flag.
+    Helpers: `result_for(club)` → W/D/L, `goals_for/against`,
+    `opponent_of`. Round-trips.
+  - `LeagueStanding` dataclass: W/D/L/GF/GA with computed `points`
+    (3 for win + 1 for draw), `goal_difference`, `sort_key`.
+  - `Season` dataclass: config, opponent clubs, fixtures list,
+    current_week pointer. Helpers: `fixture_for_week`, `current_fixture`,
+    `standings()` (sorted table), `player_position()`,
+    `record_result(week, home_goals, away_goals)`,
+    `simulate_other_results(week, rng)` (Poisson model keyed off club
+    skill rating with home advantage), `advance_week()`.
+  - `generate_fixtures(club_names, rng)` — standard circle-method
+    round-robin (home+away), shuffled for variety.
+  - `generate_season(rng, config, clubs)` — composes fixture list from
+    config + opponent clubs.
+  - `OpponentClub` serialisation: `_opponent_club_to_dict` /
+    `_opponent_club_from_dict` (deferred from Phase 18B review).
+
+### 20B — GameState + save wiring ✅
+
+- `GameState.season: Season | None` field added to `events.py`.
+- `save.py` updated: serialises/deserialises season (backward-compatible —
+  legacy saves without season load as `None`).
+
+### 20C — Session integration ✅
+
+- `new_game()` accepts `league_config: LeagueConfig | None` parameter.
+  On the generated path (roster=None), generates opponent clubs via
+  `generate_season_opponents()` with skill range from `TIER_SKILL_RANGES[tier]`,
+  then builds a `Season` via `generate_season()`. Legacy path skips.
+- `setup_match_from_season()` — pulls the current fixture from the season,
+  resolves the opponent club, and calls `setup_match()` with the club's
+  Tier D seeds and name. Falls back to generic opponent if no season loaded.
+- `evaluate_match()` now calls `_record_match_in_season()` which records
+  the player's result and simulates all other league fixtures for that week.
+- `advance_week()` also advances `season.current_week`.
+
+### 20D — Ren'Py flow ✅
+
+- `game_loop.rpy` start label extended with:
+  - Sport selection menu (Soccer/Rugby/Basketball).
+  - League tier menu (Professional/Semi-Pro/Amateur).
+  - League format menu (Open/Closed).
+  - Club name input.
+  - `LeagueConfig` wired through `GameSession.new_game()`.
+- `game_loop.rpy` week_loop shows upcoming fixture and league position.
+- `game_block.rpy` uses `setup_match_from_season()` instead of hardcoded
+  opponent.
+
+### Phase 18B fix (shipped with 20) ✅
+
+- `_slug_id` suffix widened from 12-bit to 24-bit (collision-safe).
+- `generate_roster()` enforces unique character IDs via set tracking +
+  retry (up to 10 attempts). Staff generation inlined with same
+  uniqueness check.
+
+Tests: 59 new tests in `test_league.py` (842 total, 0 failures):
+
+- `TestLeagueConfig`: 6 tests (defaults, properties, round-trip, tier
+  skill ranges, pro>amateur ordering).
+- `TestFixture`: 7 tests (W/D/L results, unplayed, uninvolved, goals,
+  opponent_of, round-trip).
+- `TestLeagueStanding`: 4 tests (points, GD, sort order, round-trip).
+- `TestFixtureGeneration`: 7 tests (even/odd counts, pair completeness,
+  12-team scale, single team, determinism, seed variation).
+- `TestOpponentClubSerialisation`: 2 tests (round-trip, empty seeds).
+- `TestSeason`: 14 tests (fixture count, club names, total weeks,
+  current fixture, every-week coverage, empty standings, record result,
+  standings after results, position, simulate others, advance, complete,
+  lookup, determinism, seed divergence).
+- `TestSeasonSerialisation`: 4 tests (empty round-trip, with results,
+  save.py round-trip, legacy no-season).
+- `TestHelpers`: 5 tests (mean skill, None/empty club, Poisson
+  non-negative, Poisson mean convergence).
+- `TestNewGameLeague`: 5 tests (creates season, custom config, legacy
+  no season, determinism, tier skill impact).
+- `TestSessionSeasonFlow`: 4 tests (setup from season, advance week,
+  save round-trip, no-season fallback).
+
+**Exit criteria:** ✅ `GameSession.new_game("Alex", seed=42, league_config=LeagueConfig(tier=LeagueTier.PROFESSIONAL))`
+produces a 12-club league with round-robin fixtures, skill-appropriate opponents, and a
+standings table. Match results flow into the table; other fixtures simulate automatically.
+Ren'Py start flow lets the player choose sport, league tier, format, and club name.
+
+## Phase 21 — Real visuals ✅
+
+- `ComfyUIImageProducer` in `background_generator.py` — real `ImageProducer`
+  backed by `ComfyUIClient`. Three generation paths:
+  - **Fresh** (txt2img): first node in a graph, no anchor.
+  - **Anchored** (img2img, denoise 0.65): subsequent nodes inherit palette/lighting
+    from a sibling image.
+  - **Variant** (img2img, denoise 0.35): subtle ambient shift for crossfade motion.
+  - Falls back to `PlaceholderImageProducer` when ComfyUI returns `None`.
+  - Node-level prompt hints (`_NODE_PROMPT_HINTS`) steer composition per room type.
+  - Prompt built from `LocationDescriptor.to_prompt_fragment()` + node hint + prefix.
+- `SceneInstance` → `LocationDescriptor` bridge in `scene_taxonomy.py`:
+  - `descriptor_overrides_for_instance()` returns socioeconomic, mood, palette
+    overrides per instance (e.g. `BAR_LOCAL` → modest/warm/dim pub vs
+    `BAR_UPSCALE` → affluent/cold/cocktail bar).
+  - All 13 `SceneInstance` values have authored overrides.
+- `LocationCue.scene_instance` field added to `events.py`.
+- `GameSession._descriptor_for()` merges instance overrides between base
+  descriptor and per-event overrides (instance < explicit overrides priority).
+- `GameSession.init_backgrounds()` accepts optional `comfyui_client` parameter;
+  auto-selects `ComfyUIImageProducer` when client is available, falls back to
+  placeholder otherwise.
+- 18 new tests (12 in `test_comfyui_producer.py`, 6 in `test_scene_taxonomy.py`).
+  860 total tests passing.
 
 ## Cross-cutting concerns (maintained throughout)
 

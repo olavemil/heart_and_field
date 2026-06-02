@@ -5,6 +5,7 @@ Mentor and rival arcs run on long cadence — low base weight plus
 """
 
 from engine.characters import CharacterRole
+from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     EventBlueprint,
@@ -14,6 +15,8 @@ from engine.events import (
     SceneBlock,
     StatEffect,
 )
+from engine.scene_taxonomy import SceneType
+from engine.secrets import AspectType
 from engine.stats import StatName
 
 from ._helpers import is_player, teammate
@@ -45,6 +48,13 @@ BLUEPRINTS = [
         blocks=[SceneBlock(id="main")],
         base_weight=0.5,
         carries_arc_context=True,
+        event_id=EventId(
+            nature=EventNature.CONSOLATION,
+            domain=EventDomain.RELATIONSHIP,
+            tone=EventTone.WARM,
+        ),
+        valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TRAINING_GROUND],
+        boosted_by_aspects=[AspectType.HISTORY],
         location=LocationCue(
             spec_id="school",
             node_name="locker_bay",
@@ -89,6 +99,12 @@ BLUEPRINTS = [
         blocks=[SceneBlock(id="main")],
         base_weight=0.4,
         carries_arc_context=True,
+        event_id=EventId(
+            nature=EventNature.COMPETITION,
+            domain=EventDomain.RELATIONSHIP,
+            tone=EventTone.TENSE,
+        ),
+        valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         outcomes={
             "meets_it": BranchOutcome(
                 summary=(

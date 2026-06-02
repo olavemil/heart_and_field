@@ -138,6 +138,8 @@ def unresolved_references(
         for ref_id in placeholder_ids_in_secret(secret):
             if ref_id in state.characters:
                 continue
+            if ref_id in state.placeholders:
+                continue
             out.setdefault(ref_id, set()).add(sid)
     return out
 

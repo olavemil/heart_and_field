@@ -12,8 +12,12 @@ init python:
     if game_dir not in sys.path:
         sys.path.insert(0, game_dir)
 
-    from engine.session import GameSession
+    from engine.session import GameSession, PlayerCustomisation
     from engine.schedule import BlockType
+    from engine.characters import CharacterRole, Disposition
+    from engine.simulation import Sport
+    from engine.league import LeagueConfig, LeagueFormat, LeagueTier
+    from engine.sprite_pool import GenderPresentation
 
 define e = Character("Narrator", color="#c8ffc8")
 
@@ -21,58 +25,129 @@ define e = Character("Narrator", color="#c8ffc8")
 # --- New game ---------------------------------------------------------------
 
 label start:
-    $ session = GameSession.new_game("Alex Morgan", seed=42)
+    # --- Player setup ---
+    $ player_name = ""
+    $ player_role = CharacterRole.STRIKER
+    $ player_gender = GenderPresentation.MASCULINE
+    $ player_disposition = Disposition.COMPETITIVE
+    $ chosen_sport = Sport.SOCCER
+    $ chosen_tier = LeagueTier.SEMI_PRO
+    $ chosen_format = LeagueFormat.OPEN
+    $ club_name = "Ashworth Town"
 
-    # Wire the background pipeline. Generated images live under
-    # game/assets/backgrounds/; the manifest persists across saves.
-    # Marquee scenes (player_home, main_school, …) get their entry
-    # node's primary plus 2 subtle-motion variants pre-warmed so the
-    # first visit doesn't pay the full generation cost.
+    menu:
+        "How do you present yourself?"
+
+        "Masculine":
+            $ player_gender = GenderPresentation.MASCULINE
+        "Feminine":
+            $ player_gender = GenderPresentation.FEMININE
+        "Androgynous":
+            $ player_gender = GenderPresentation.ANDROGYNOUS
+
     python:
+        player_name = renpy.input("What is your name?", default="Alex Morgan", length=40)
+        player_name = player_name.strip() or "Alex Morgan"
+
+    menu:
+        "What kind of personality do you have?"
+
+        "Competitive — driven to win, pushes hard":
+            $ player_disposition = Disposition.COMPETITIVE
+        "Fiery — passionate, intense, quick to react":
+            $ player_disposition = Disposition.FIERY
+        "Calm — composed under pressure, steady":
+            $ player_disposition = Disposition.CALM
+        "Warm — team player, builds bonds easily":
+            $ player_disposition = Disposition.WARM
+        "Guarded — careful, keeps people at arm's length":
+            $ player_disposition = Disposition.GUARDED
+        "Withdrawn — quiet, introspective, hard to read":
+            $ player_disposition = Disposition.WITHDRAWN
+
+    menu:
+        "Choose your sport:"
+
+        "Soccer":
+            $ chosen_sport = Sport.SOCCER
+        "Rugby":
+            $ chosen_sport = Sport.RUGBY
+        "Basketball":
+            $ chosen_sport = Sport.BASKETBALL
+
+    menu:
+        "Choose your position:"
+
+        "Striker":
+            $ player_role = CharacterRole.STRIKER
+        "Midfielder":
+            $ player_role = CharacterRole.MIDFIELDER
+        "Defender":
+            $ player_role = CharacterRole.DEFENDER
+        "Goalkeeper":
+            $ player_role = CharacterRole.GOALKEEPER
+
+    menu:
+        "Choose your league level:"
+
+        "Professional — elite competition, high pressure":
+            $ chosen_tier = LeagueTier.PROFESSIONAL
+        "Semi-Professional — competitive, balanced":
+            $ chosen_tier = LeagueTier.SEMI_PRO
+        "Amateur — grassroots, community feel":
+            $ chosen_tier = LeagueTier.AMATEUR
+
+    menu:
+        "League format:"
+
+        "Open — promotion and relegation":
+            $ chosen_format = LeagueFormat.OPEN
+        "Closed — fixed membership":
+            $ chosen_format = LeagueFormat.CLOSED
+
+    python:
+        club_name = renpy.input("Your club's name?", default="Ashworth Town", length=40)
+        club_name = club_name.strip() or "Ashworth Town"
+
+    # Generate the world from a master seed. The full roster, coaching
+    # staff, secret web, and league season are produced deterministically.
+    python:
+        renpy.not_infinite_loop(600)
+        import time as _time
+        _master_seed = int(_time.time()) & 0xFFFFFFFF
+
+        customisation = PlayerCustomisation(
+            name=player_name,
+            role=player_role,
+            gender_presentation=player_gender,
+            disposition=player_disposition,
+        )
+        league_config = LeagueConfig(
+            club_name=club_name,
+            league_format=chosen_format,
+            tier=chosen_tier,
+        )
+        session = GameSession.new_game(
+            player_name,
+            seed=_master_seed,
+            customisation=customisation,
+            sport=chosen_sport,
+            league_config=league_config,
+        )
+
+    # Wire the background pipeline (uses ComfyUI when available).
+    python:
+        renpy.not_infinite_loop(600)
         import os
         bg_root = os.path.join(config.gamedir, "assets", "backgrounds")
-        session.init_backgrounds(bg_root, warm_marquees=True)
+        session.init_backgrounds(
+            bg_root,
+            comfyui_client=session.comfyui_client,
+            warm_marquees=True,
+        )
 
-    # Show the persistent status bar overlay (week / weekday / clock /
-    # match label). Visible for the rest of the game.
+    # Show the persistent status bar overlay.
     show screen status_bar
-
-    # Create a minimal roster so events can cast.
-    python:
-        from engine.characters import TierBCharacter, CharacterRole
-        from engine.stats import StatName
-
-        roster = {
-            "tm_jordan": TierBCharacter(
-                id="tm_jordan", name="Jordan Lee",
-                role=CharacterRole.MIDFIELDER,
-                stats={
-                    StatName.STAMINA: 0.7, StatName.COLLABORATION: 0.6,
-                    StatName.LEADERSHIP: 0.5, StatName.SPEED: 0.6,
-                    StatName.STRENGTH: 0.5, StatName.FINESSE: 0.6,
-                    StatName.CONFIDENCE: 0.5, StatName.MOTIVATION: 0.6,
-                },
-            ),
-            "tm_sam": TierBCharacter(
-                id="tm_sam", name="Sam Carter",
-                role=CharacterRole.DEFENDER,
-                stats={
-                    StatName.STAMINA: 0.7, StatName.STRENGTH: 0.7,
-                    StatName.SPEED: 0.5, StatName.FINESSE: 0.4,
-                    StatName.COLLABORATION: 0.6, StatName.CAUTIOUSNESS: 0.7,
-                    StatName.CONFIDENCE: 0.5, StatName.MOTIVATION: 0.5,
-                },
-            ),
-            "coach_williams": TierBCharacter(
-                id="coach_williams", name="Coach Williams",
-                role=CharacterRole.MANAGER,
-                stats={
-                    StatName.LEADERSHIP: 0.9, StatName.MOTIVATION: 0.7,
-                },
-            ),
-        }
-        for cid, char in roster.items():
-            session.state.characters[cid] = char
 
     e "Welcome to Field & Heart."
     e "Season [session.state.week_phase.season], Week [session.state.week_phase.week]."
@@ -85,6 +160,19 @@ label start:
 label week_loop:
     $ schedule = session.start_week()
     e "A new week begins."
+
+    # Show the upcoming fixture if a season is loaded.
+    if session.state.season is not None:
+        $ fixture = session.state.season.current_fixture()
+        if fixture is not None:
+            $ opp = fixture.opponent_of(session.state.season.config.club_name)
+            if fixture.home == session.state.season.config.club_name:
+                e "This week: [session.state.season.config.club_name] vs [opp] (Home)"
+            else:
+                e "This week: [opp] vs [session.state.season.config.club_name] (Away)"
+        $ pos = session.state.season.player_position()
+        $ total = session.state.season.config.total_clubs
+        e "League position: [pos] of [total]"
 
     # Process each slot in order.
     $ slot_idx = 0

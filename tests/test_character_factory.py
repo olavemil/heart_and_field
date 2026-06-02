@@ -260,4 +260,4 @@ class TestSlugId:
     def test_slug_id_format(self):
         sid = _slug_id("Alex", "Carter", random.Random(0))
         assert sid.startswith("alex_carter_")
-        assert len(sid.rsplit("_", 1)[1]) == 3
+        assert len(sid.rsplit("_", 1)[1]) == 6
