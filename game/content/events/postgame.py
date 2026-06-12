@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -24,7 +25,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="mate", filter=teammate(), optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you take in the win?",
+            options={
+                "shared": "Celebrate together",
+                "private": "Process it alone",
+            },
+        ))],
         base_weight=0.8,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
@@ -65,7 +72,13 @@ BLUEPRINTS = [
         participants=[
             RoleSlot(role="player", filter=is_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you handle the silence?",
+            options={
+                "carried": "Sit with it",
+                "lashed": "Let it out",
+            },
+        ))],
         base_weight=0.9,
         event_id=EventId(
             nature=EventNature.CONSOLATION,

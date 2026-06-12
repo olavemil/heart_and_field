@@ -7,6 +7,7 @@ Includes a simple arc (blame → apology) to exercise prereqs and
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -29,7 +30,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="target", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you respond to the blame?",
+            options={
+                "escalate": "Call him out",
+                "hold_back": "Let it go",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -83,7 +90,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="target", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you say sorry?",
+            options={
+                "sincere": "Mean it",
+                "deflect": "Defend yourself",
+            },
+        ))],
         base_weight=0.7,
         event_id=EventId(
             nature=EventNature.ADMISSION,

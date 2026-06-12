@@ -4,6 +4,7 @@ from engine.characters import CharacterRole
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RoleSlot,
     SceneBlock,
@@ -28,7 +29,13 @@ BLUEPRINTS = [
                 optional=True,
             ),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you handle the questions?",
+            options={
+                "composed": "Stick to the script",
+                "unravelled": "Say what you feel",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.OBSERVATION,
@@ -73,7 +80,13 @@ BLUEPRINTS = [
         participants=[
             RoleSlot(role="player", filter=is_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your approach?",
+            options={
+                "focused": "Take your time",
+                "rattled": "Let it worry you",
+            },
+        ))],
         base_weight=0.3,
         carries_arc_context=True,
         event_id=EventId(

@@ -118,7 +118,13 @@ BLUEPRINTS = [
             RoleSlot(role="coach",
                      filter=lambda c: c.role.value in {"manager", "assistant_coach"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your response?",
+            options={
+                "conceded": "Trust the decision",
+                "pushed_back": "Explain your view",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -153,7 +159,13 @@ BLUEPRINTS = [
         id="sport.solo_warmdown",
         tags={"training", "solo"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you recover?",
+            options={
+                "processed": "Sit with it",
+                "spiralled": "Run it out",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.ISOLATION,
@@ -187,7 +199,13 @@ BLUEPRINTS = [
             RoleSlot(role="coach",
                      filter=lambda c: c.role.value in {"manager", "assistant_coach"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your approach?",
+            options={
+                "selected": "Push for the shirt",
+                "benched": "Accept the outcome",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.NEGOTIATION,
@@ -220,7 +238,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="analyst", filter=not_player, optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you respond?",
+            options={
+                "faced_it": "Face the numbers",
+                "dismissed": "Dismiss the data",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.REVELATION,

@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -24,7 +25,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="presenter", filter=not_player, optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you receive this?",
+            options={
+                "gracious": "Thank them sincerely",
+                "hollow": "Dwell on the cost",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
@@ -58,7 +65,13 @@ BLUEPRINTS = [
             RoleSlot(role="official",
                      filter=lambda c: c.role.value in {"manager", "media", "other"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your move?",
+            options={
+                "defiant": "Speak your mind",
+                "complied": "Sign as instructed",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -89,7 +102,13 @@ BLUEPRINTS = [
         id="inst.suspended",
         tags={"institutional", "solo"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How will you spend this?",
+            options={
+                "stewed": "Wait for your chance",
+                "used_it": "Make it productive",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.ISOLATION,
@@ -122,7 +141,13 @@ BLUEPRINTS = [
             RoleSlot(role="official",
                      filter=lambda c: c.role.value in {"manager", "other"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you negotiate?",
+            options={
+                "held_firm": "Hold your ground",
+                "caved": "Accept their terms",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.NEGOTIATION,
@@ -153,7 +178,13 @@ BLUEPRINTS = [
         participants=[
             RoleSlot(role="player", filter=is_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your strategy?",
+            options={
+                "prepared": "Get ahead of it",
+                "blindsided": "Let it break",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REVELATION,

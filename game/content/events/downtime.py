@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     LocationCue,
     RelationshipEffect,
@@ -25,7 +26,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="companion", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How's the meal?",
+            options={
+                "easy": "Enjoy the company",
+                "silent": "Sit quietly",
+            },
+        ))],
         base_weight=0.9,
         event_id=EventId(
             nature=EventNature.INVITATION,

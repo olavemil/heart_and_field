@@ -8,6 +8,7 @@ from engine.characters import CharacterRole
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     LocationCue,
     RelationshipEffect,
@@ -45,7 +46,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="mentor", filter=_senior_pro),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you hear him out?",
+            options={
+                "lands": "Take it to heart",
+                "brushed_off": "Dismiss it",
+            },
+        ))],
         base_weight=0.5,
         carries_arc_context=True,
         event_id=EventId(
@@ -96,7 +103,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="rival", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you respond?",
+            options={
+                "meets_it": "Hold his gaze",
+                "backs_down": "Walk away",
+            },
+        ))],
         base_weight=0.4,
         carries_arc_context=True,
         event_id=EventId(

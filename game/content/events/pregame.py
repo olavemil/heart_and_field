@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RoleSlot,
     SceneBlock,
@@ -25,7 +26,13 @@ BLUEPRINTS = [
                 filter=lambda c: c.role.value in {"manager", "midfielder", "defender"},
             ),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your message?",
+            options={
+                "rousing": "Fire them up",
+                "flat": "Keep it brief",
+            },
+        ))],
         base_weight=1.0,
         event_id=EventId(
             nature=EventNature.COLLABORATION,
@@ -57,7 +64,13 @@ BLUEPRINTS = [
         id="pregame.ritual",
         tags={"pregame", "solo"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Run through your ritual?",
+            options={
+                "centred": "Really focus on it",
+                "hollow": "Go through the motions",
+            },
+        ))],
         base_weight=0.7,
         event_id=EventId(
             nature=EventNature.ISOLATION,

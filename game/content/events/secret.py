@@ -203,7 +203,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="partner", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you tell them?",
+            options={
+                "received_well": "Share the secret",
+                "too_much": "Confess it all",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.ADMISSION,
@@ -249,7 +255,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="revealer", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you respond?",
+            options={
+                "damage_control": "Get ahead of it",
+                "overwhelmed": "Stay silent",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.REVELATION,
@@ -285,7 +297,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="discovered_by", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What do you do?",
+            options={
+                "explained": "Explain yourself",
+                "stonewalled": "Act innocent",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REVELATION,
@@ -324,7 +342,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="counterpart", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you use it?",
+            options={
+                "gained_ground": "Use what you know",
+                "overplayed": "Play your hand",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.NEGOTIATION,
@@ -360,7 +384,13 @@ BLUEPRINTS = [
         id="secret.carrying_alone",
         tags={"solo", "secret", "vulnerability"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What do you do with it?",
+            options={
+                "endured": "Bear it alone",
+                "numb": "Let it fade",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.ISOLATION,

@@ -335,7 +335,13 @@ BLUEPRINTS = [
         id="rel.left_out",
         tags={"social", "vulnerability"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your story?",
+            options={
+                "accepted": "Sit with it",
+                "bitter": "Brush it off",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.ISOLATION,
@@ -367,7 +373,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="other", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Can you compromise?",
+            options={
+                "agreed": "Find middle ground",
+                "stalemated": "Hold your line",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.NEGOTIATION,
@@ -410,7 +422,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="subject", filter=teammate(), optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What captures you?",
+            options={
+                "noticed": "Pay attention",
+                "missed": "Let your mind drift",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.OBSERVATION,
@@ -440,7 +458,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="rejecter", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you react?",
+            options={
+                "fought": "Try to fight back",
+                "absorbed": "Take it silently",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REJECTION,
@@ -479,7 +503,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="former_friend", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What do you do?",
+            options={
+                "let_go": "Let it be",
+                "clung": "Cling to what was",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REJECTION,
@@ -511,7 +541,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="speaker", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you say anything?",
+            options={
+                "confronted": "Turn and confront",
+                "stored": "Walk past unseen",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REVELATION,
@@ -550,7 +586,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="listener", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you own it?",
+            options={
+                "owned_it": "Stand by it",
+                "backtracked": "Laugh it off",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REVELATION,

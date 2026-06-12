@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -24,7 +25,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="partner", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do the drills feel today?",
+            options={
+                "good": "Find the rhythm",
+                "awkward": "Force the pace",
+            },
+        ))],
         base_weight=1.0,
         event_id=EventId(
             nature=EventNature.COLLABORATION,
@@ -77,7 +84,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="audience", filter=not_player, optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Show them what you've got?",
+            options={
+                "landed": "Go for it",
+                "missed": "Play it safe",
+            },
+        ))],
         base_weight=0.6,
         event_id=EventId(
             nature=EventNature.OBSERVATION,
@@ -119,7 +132,13 @@ BLUEPRINTS = [
                 filter=lambda c: c.role.value in {"manager", "assistant_coach"},
             ),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you take the feedback?",
+            options={
+                "receptive": "Learn from it",
+                "defensive": "Brush it off",
+            },
+        ))],
         base_weight=0.8,
         event_id=EventId(
             nature=EventNature.COLLABORATION,
