@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -26,7 +27,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="interest", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you say it?",
+            options={
+                "said_it": "Say what you feel",
+                "held_back": "Keep it to yourself",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.ADMISSION,
@@ -65,7 +72,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="mate", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you settle in?",
+            options={
+                "loosened_up": "Join the moment",
+                "awkward": "Stay on the edge",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
@@ -102,7 +115,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="companion", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you share the moment?",
+            options={
+                "shared": "Tell them everything",
+                "understated": "Let them notice it",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
@@ -139,7 +158,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="partner", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How does the work unfold?",
+            options={
+                "clicked": "Let conversation flow",
+                "strained": "Stay focused on the task",
+            },
+        ))],
         base_weight=0.6,
         event_id=EventId(
             nature=EventNature.COLLABORATION,
@@ -182,7 +207,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="other", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What do you do?",
+            options={
+                "surfaced": "Name what's between you",
+                "swallowed": "Let it go unsaid",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -219,7 +250,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="friend", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Can you reach them?",
+            options={
+                "helped": "Sit with them in it",
+                "empty": "Try to fix what's broken",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.CONSOLATION,
@@ -257,7 +294,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="supporter", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you accept their reassurance?",
+            options={
+                "landed": "Let it in",
+                "resisted": "Stay in doubt",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.CONSOLATION,

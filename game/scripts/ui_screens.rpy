@@ -16,8 +16,8 @@ screen schedule_overview():
 
         text "Week Schedule" size 28
 
-        if session and session.schedule:
-            for i, slot_info in enumerate(session.slot_summary()):
+        if fh.session and fh.session.schedule:
+            for i, slot_info in enumerate(fh.session.slot_summary()):
                 hbox:
                     spacing 20
                     $ btype = slot_info["block_type"].replace("_", " ").title()
@@ -46,11 +46,11 @@ screen relationship_panel():
 
         text "Relationships" size 28
 
-        if session:
-            $ player = session.state.characters.get("player")
+        if fh.session:
+            $ player = fh.session.state.characters.get("player")
             if player:
                 for cid, rel in player.relationships.items():
-                    $ other = session.state.characters.get(cid)
+                    $ other = fh.session.state.characters.get(cid)
                     if other:
                         hbox:
                             spacing 20

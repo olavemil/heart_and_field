@@ -4,15 +4,20 @@
 # result. No rendering logic here — the engine handles everything.
 # Swapping prototype → final must not touch this file.
 
+init python:
+    from engine.visual import Pose as _FHPose
+
+    # Pose lookup bound at init so label bodies don't import into the
+    # pickled store (22A hygiene).
+    _FH_POSE_MAP = {p.value: p for p in _FHPose}
+
+
 label show_character(character, expression=None, intensity=None, mood=0.0, pose_name="standing"):
     # Derive pose enum from string.
     python:
-        from engine.visual import Pose, Expression
+        pose = _FH_POSE_MAP.get(pose_name, _FHPose.STANDING)
 
-        pose_map = {p.value: p for p in Pose}
-        pose = pose_map.get(pose_name, Pose.STANDING)
-
-        sprite_path = session.visual_manager.render_character(
+        sprite_path = fh.session.visual_manager.render_character(
             character,
             expression=expression,
             intensity=intensity,
@@ -33,7 +38,7 @@ label hide_character:
 
 label set_background(location):
     python:
-        bg_path = session.visual_manager.render_background(location)
+        bg_path = fh.session.visual_manager.render_background(location)
 
     if bg_path:
         scene expression bg_path

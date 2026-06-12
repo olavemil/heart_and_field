@@ -135,17 +135,20 @@ init python:
 
 screen status_bar():
     zorder 100
-    $ d = session.clock_display()
-    frame:
-        align (1.0, 0.0)
-        padding (16, 12)
-        background "#000000aa"
-        vbox:
-            spacing 2
-            if d.match_label:
-                text d.match_label size 22 color "#ffd"
-            else:
-                text "Week [d.week!q] · [d.weekday.value.capitalize()!q]" size 18 color "#dde"
-                text "[d.slot.value.capitalize()!q] · [d.hour_minute!q]" size 22 color "#fff"
-                if d.transition_warning:
-                    text "[d.slot.value.capitalize()!q] ending soon" size 12 color "#fc8"
+    # Guard: the screen is re-shown on load before the first interaction;
+    # fh.session is rebuilt in after_load, but stay safe if it's absent.
+    if fh.session is not None:
+        $ d = fh.session.clock_display()
+        frame:
+            align (1.0, 0.0)
+            padding (16, 12)
+            background "#000000aa"
+            vbox:
+                spacing 2
+                if d.match_label:
+                    text d.match_label size 22 color "#ffd"
+                else:
+                    text "Week [d.week!q] · [d.weekday.value.capitalize()!q]" size 18 color "#dde"
+                    text "[d.slot.value.capitalize()!q] · [d.hour_minute!q]" size 22 color "#fff"
+                    if d.transition_warning:
+                        text "[d.slot.value.capitalize()!q] ending soon" size 12 color "#fc8"

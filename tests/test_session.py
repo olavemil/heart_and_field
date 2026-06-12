@@ -356,3 +356,134 @@ class TestSlotSummary:
         assert "block_type" in first
         assert "index" in first
         assert "resolved" in first
+
+
+class TestBlockRouting:
+    """Every authored blueprint must be reachable from some block (22B)."""
+
+    def _authored_blueprints(self):
+        from pathlib import Path
+
+        from engine.content_loader import load_blueprints_from_path
+
+        content_root = Path(__file__).resolve().parent.parent / "game" / "content"
+        return load_blueprints_from_path(content_root / "events")
+
+    def test_every_blueprint_routes_to_a_block(self):
+        from engine.session import BLOCK_TAGS, IN_MATCH_TAGS
+
+        routable = set().union(*BLOCK_TAGS.values())
+        unreachable = [
+            bp.id
+            for bp in self._authored_blueprints()
+            if not bp.tags & IN_MATCH_TAGS and not bp.tags & routable
+        ]
+        assert unreachable == [], (
+            f"blueprints unreachable via BLOCK_TAGS: {unreachable}"
+        )
+
+    def test_in_match_blueprints_excluded_from_slots(self):
+        from engine.session import IN_MATCH_TAGS
+
+        session = _build_session()
+        session.blueprints = self._authored_blueprints()
+        for block_type in BlockType:
+            for bp in session.blueprints_for_block(block_type):
+                assert not bp.tags & IN_MATCH_TAGS, (
+                    f"{bp.id} is in-match but routed to {block_type}"
+                )
+
+
+class TestSceneIntro:
+    """Phase 22D: engine-built pre-choice scene setting."""
+
+    def _blueprint(self, **kwargs):
+        from engine.event_taxonomy import (
+            EventDomain,
+            EventId,
+            EventNature,
+            EventTone,
+        )
+        from engine.events import EventBlueprint, LocationCue, RoleSlot
+
+        defaults = dict(
+            id="test.intro",
+            tags={"conflict"},
+            participants=[RoleSlot(role="player", filter=lambda c: True)],
+            outcomes={},
+            location=LocationCue(spec_id="school", node_name="locker_bay"),
+            event_id=EventId(
+                nature=EventNature.CONFRONTATION,
+                domain=EventDomain.RELATIONSHIP,
+                tone=EventTone.HOSTILE,
+            ),
+        )
+        defaults.update(kwargs)
+        return EventBlueprint(**defaults)
+
+    def test_intro_names_location_and_cast(self):
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "target": session.state.characters["tm_jordan"],
+        }
+        intro = session.scene_intro(self._blueprint(), cast)
+        assert "Locker bay." in intro
+        assert "Jordan Lee" in intro
+        # HOSTILE tone contributes an atmosphere line.
+        assert intro.count(".") >= 3
+
+    def test_intro_solo_no_cue_is_empty_without_tone(self):
+        from engine.event_taxonomy import (
+            EventDomain,
+            EventId,
+            EventNature,
+            EventTone,
+        )
+
+        session = _build_session()
+        bp = self._blueprint(
+            location=None,
+            event_id=EventId(
+                nature=EventNature.ISOLATION,
+                domain=EventDomain.PERSONAL,
+                tone=EventTone.NEUTRAL,
+            ),
+        )
+        cast = {"player": session.state.characters["player"]}
+        assert session.scene_intro(bp, cast) == ""
+
+    def test_intro_joins_multiple_cast(self):
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "target": session.state.characters["tm_jordan"],
+            "other": session.state.characters["tm_sam"],
+        }
+        intro = session.scene_intro(self._blueprint(), cast)
+        assert "and" in intro
+        assert "Jordan Lee" in intro and "Sam Carter" in intro
+
+
+class TestFocalCharacter:
+    def test_prefers_target_role(self):
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "other": session.state.characters["tm_sam"],
+            "target": session.state.characters["tm_jordan"],
+        }
+        assert session.focal_character(cast).id == "tm_jordan"
+
+    def test_falls_back_to_first_nonplayer(self):
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "witness": session.state.characters["tm_sam"],
+        }
+        assert session.focal_character(cast).id == "tm_sam"
+
+    def test_solo_returns_none(self):
+        session = _build_session()
+        cast = {"player": session.state.characters["player"]}
+        assert session.focal_character(cast) is None

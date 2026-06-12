@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -25,7 +26,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="subject", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you acknowledge what you saw?",
+            options={
+                "filed_away": "Let the moment pass",
+                "overlooked": "Miss it entirely",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.OBSERVATION,
@@ -56,7 +63,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="suspect", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you approach this?",
+            options={
+                "probed": "Ask carefully",
+                "retreated": "Back away",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -95,7 +108,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="accuser", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you defend yourself?",
+            options={
+                "denied": "Deny it flatly",
+                "admitted": "Admit the truth",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -137,7 +156,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="confidant", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How much do you tell them?",
+            options={
+                "trusted": "Tell them most of it",
+                "regretted": "Say too much",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.ADMISSION,

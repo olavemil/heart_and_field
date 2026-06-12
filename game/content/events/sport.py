@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -25,7 +26,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="rival", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you answer the challenge?",
+            options={
+                "won": "Push harder still",
+                "lost": "Accept the lesson",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.COMPETITION,
@@ -69,7 +76,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="opponent", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you retaliate?",
+            options={
+                "stood_ground": "Keep your composure",
+                "snapped": "Go in harder",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,

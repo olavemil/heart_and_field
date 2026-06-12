@@ -75,11 +75,14 @@ from .events import (
     resolve_outcome,
     select_event,
 )
+from .event_taxonomy import EventTone
 from .motivators import Motivator
 from .narrative import (
     NarrativeTemplate,
     build_narration_context,
     narrate,
+    narrate_match_phase,
+    self_evaluation_line,
     templates_for_event,
 )
 from .outcomes import OutcomeRecord, WeekPhase
@@ -147,13 +150,76 @@ class PlayerCustomisation:
 
 
 BLOCK_TAGS: dict[BlockType, set[str]] = {
-    BlockType.DRAMA: {"conflict", "vulnerability"},
+    BlockType.DRAMA: {
+        "conflict",
+        "vulnerability",
+        "social",
+        "secret",
+        "romantic",
+        "institutional",
+        "external_pressure",
+        "mentor",
+        "rival",
+    },
     BlockType.TRAINING: {"training"},
     BlockType.PREGAME: {"pregame"},
-    BlockType.POSTGAME: {"postgame", "conflict", "vulnerability"},
-    BlockType.DOWNTIME: {"downtime"},
+    BlockType.POSTGAME: {"postgame", "conflict", "vulnerability", "celebration"},
+    BlockType.DOWNTIME: {"downtime", "social", "solo", "romantic", "celebration"},
     BlockType.GAME_PHASE: set(),  # game phases use simulation, not events
 }
+
+# Blueprints carrying these tags resolve inside the match block, not in
+# schedule slots. Skipped by ``blueprints_for_block`` until the
+# match-phase event hooks land (Phase 22F).
+IN_MATCH_TAGS: set[str] = {"ingame"}
+
+# Scene-intro atmosphere lines per event tone (Phase 22D). Neutral gets
+# none — the place and the company carry the line on their own.
+_TONE_INTRO_LINES: dict[EventTone, tuple[str, ...]] = {
+    EventTone.HOSTILE: (
+        "The air has edges.",
+        "Nobody is pretending this is friendly.",
+    ),
+    EventTone.TENSE: (
+        "Something here is being carefully not said.",
+        "The room is quieter than it has any reason to be.",
+    ),
+    EventTone.WARM: (
+        "It's easy here, for once.",
+        "The kind of company that doesn't cost anything.",
+    ),
+    EventTone.ROMANTIC: (
+        "Neither of you is quite looking at the other.",
+        "The distance between you keeps needing renegotiating.",
+    ),
+    EventTone.PLAYFUL: (
+        "Someone is already laughing.",
+        "Trouble, but the friendly kind.",
+    ),
+    EventTone.MELANCHOLY: (
+        "Everything here feels a little heavier than it looks.",
+        "The light feels like late afternoon, whatever the clock says.",
+    ),
+    EventTone.TRIUMPHANT: (
+        "The day still has the win in it.",
+        "Everyone is walking taller than usual.",
+    ),
+}
+
+# Role names checked, in order, when picking which cast member a scene
+# puts on screen (Phase 22D sprite wiring).
+_FOCAL_ROLE_PRIORITY: tuple[str, ...] = (
+    "target",
+    "partner",
+    "rival",
+    "mentor",
+    "friend",
+    "confidant",
+    "interest",
+    "accuser",
+    "coach",
+    "official",
+)
 
 
 @dataclass
@@ -193,6 +259,7 @@ class GameSession:
     # (e.g. "Match vs Northgate"). Set by the match flow (Phase 11.5B);
     # cleared after the match block ends.
     _active_match_label: str | None = None
+    _opponent_name: str = "the opposition"
 
     # Set by ``enter_slot`` and consumed by the next ``resolve_scene``
     # that resolves a real ``LocationCue``. Implements the auto-teleport
@@ -504,11 +571,19 @@ class GameSession:
     # ------------------------------------------------------------------
 
     def blueprints_for_block(self, block_type: BlockType) -> list[EventBlueprint]:
-        """Return blueprints whose tags overlap the block's expected set."""
+        """Return blueprints whose tags overlap the block's expected set.
+
+        In-match blueprints (``IN_MATCH_TAGS``) are excluded — they
+        belong to the match block's phase hooks, not schedule slots.
+        """
         allowed = BLOCK_TAGS.get(block_type, set())
         if not allowed:
             return []
-        return [bp for bp in self.blueprints if bp.tags & allowed]
+        return [
+            bp
+            for bp in self.blueprints
+            if bp.tags & allowed and not bp.tags & IN_MATCH_TAGS
+        ]
 
     def select_event_for_slot(self, slot_index: int) -> EventBlueprint | None:
         """Pick an event for the given schedule slot.
@@ -1022,6 +1097,11 @@ class GameSession:
             trigger_outcome=record,
             team_morale=self.team_morale,
             branch_summary=record.summary,
+            location=(
+                blueprint.location.node_name
+                if blueprint.location is not None
+                else None
+            ),
         )
         return narrate(
             event_templates,
@@ -1031,6 +1111,53 @@ class GameSession:
             llm_client=self.llm_client,
             event_tags=blueprint.tags,
         )
+
+    def scene_intro(
+        self,
+        blueprint: EventBlueprint,
+        cast: Mapping[str, Character],
+    ) -> str:
+        """Pre-choice scene setting: place, company, atmosphere.
+
+        Built from data the blueprint already carries (location cue,
+        cast, event tone) so no per-blueprint authoring is needed.
+        Returns ``""`` when there is nothing worth saying (no cue, solo
+        cast, neutral tone) — callers skip the line.
+        """
+        parts: list[str] = []
+        cue = blueprint.location
+        if cue is not None:
+            parts.append(cue.node_name.replace("_", " ").capitalize() + ".")
+        others = [
+            (c.nickname or c.name)
+            for role, c in sorted(cast.items())
+            if role != "player"
+        ]
+        if len(others) == 1:
+            parts.append(f"With {others[0]}.")
+        elif others:
+            parts.append("With " + ", ".join(others[:-1]) + f" and {others[-1]}.")
+        if blueprint.event_id is not None:
+            lines = _TONE_INTRO_LINES.get(blueprint.event_id.tone, ())
+            if lines:
+                parts.append(self.rng.choice(lines))
+        return " ".join(parts)
+
+    def focal_character(
+        self, cast: Mapping[str, Character]
+    ) -> Character | None:
+        """The non-player cast member a scene should put on screen.
+
+        Prefers the conventional counterpart roles; falls back to the
+        first non-player role alphabetically; ``None`` for solo scenes.
+        """
+        for role in _FOCAL_ROLE_PRIORITY:
+            if role in cast:
+                return cast[role]
+        for role in sorted(cast):
+            if role != "player":
+                return cast[role]
+        return None
 
     # ------------------------------------------------------------------
     # Match simulation
@@ -1067,6 +1194,7 @@ class GameSession:
         self.opp_goals = 0
         # Status bar swap: covers the four-hour afternoon block.
         self._active_match_label = f"Match vs {opponent_name}"
+        self._opponent_name = opponent_name
 
     def setup_match_from_season(self) -> str | None:
         """Set up this week's match from the season fixture list.
@@ -1121,6 +1249,33 @@ class GameSession:
             self.team_goals += 1
         self.match_results.append(result)
         return result
+
+    def narrate_match_phase(
+        self, result: PhaseResult, phase_index: int, total_phases: int = 8
+    ) -> str:
+        """Narrated line for a simulated phase (Phase 22F).
+
+        Resolves the scorer's display name and the opponent label, then
+        delegates to :func:`engine.narrative.narrate_match_phase`.
+        """
+        scorer_name: str | None = None
+        if result.goal_scored and result.goal_scorer_index is not None:
+            players = self.roster_players()
+            if result.goal_scorer_index < len(players):
+                scorer = players[result.goal_scorer_index]
+                scorer_name = scorer.nickname or scorer.name
+        return narrate_match_phase(
+            result,
+            self.rng,
+            scorer_name=scorer_name,
+            opponent_name=self._opponent_name,
+            phase_index=phase_index,
+            total_phases=total_phases,
+        )
+
+    def narrate_self_evaluation(self, perceived: float) -> str:
+        """Narrated post-match self-evaluation line (Phase 22F)."""
+        return self_evaluation_line(perceived, self.rng)
 
     def evaluate_match(self) -> dict[str, Any]:
         """Post-match evaluation: self-evaluation + morale update.

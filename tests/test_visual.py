@@ -152,7 +152,7 @@ class TestPlaceholderFace:
         img = generate_placeholder_face(spec)
         assert isinstance(img, Image.Image)
         assert img.mode == "RGBA"
-        assert img.size == (256, 256)
+        assert img.size == (512, 512)
 
     def test_deterministic(self):
         spec = FaceGenerationSpec(character_id="test", seed=42)

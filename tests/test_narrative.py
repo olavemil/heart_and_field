@@ -312,6 +312,27 @@ def test_authored_templates_load_and_cover_blueprints():
         assert pool, f"no templates for {bp.id}"
 
 
+def test_no_blueprint_is_generic_only():
+    """Phase 22E: every blueprint has at least one non-generic template.
+
+    Generic-only blueprints render ~⅓ of the time as the raw branch
+    summary, which reads as hardcoded text in play.
+    """
+    content_root = Path(__file__).resolve().parents[1] / "game" / "content"
+    templates = load_templates_from_path(content_root / "templates")
+    blueprints = load_blueprints_from_path(content_root / "events")
+
+    generic_only = [
+        bp.id
+        for bp in blueprints
+        if all(
+            t.id.startswith("tpl.generic")
+            for t in templates_for_event(templates, bp.id, bp.tags)
+        )
+    ]
+    assert generic_only == [], f"generic-only blueprints: {generic_only}"
+
+
 def test_build_context_chains_arc_summary_from_log():
     from engine.outcomes import OutcomeRecord, WeekPhase
 
@@ -363,3 +384,107 @@ def test_narration_reads_connected_across_events_via_prior_slot():
     out = fill_template(tpl, ctx)
     assert "He had lost the ball in the warmup." in out
     assert "Al went first" in out
+
+
+class TestMatchPhaseNarration:
+    """Phase 22F: narrated phase lines replace stat readouts."""
+
+    def _result(self, **kwargs):
+        import numpy as np
+
+        from engine.simulation import PhaseResult
+
+        defaults = dict(
+            phase_number=1,
+            performances=np.array([0.5]),
+            composites=np.array([0.5]),
+            team_perf=0.5,
+            opp_perf=0.5,
+            momentum=0.0,
+            goal_scored=False,
+            goal_scorer_index=None,
+        )
+        defaults.update(kwargs)
+        return PhaseResult(**defaults)
+
+    def test_goal_names_scorer(self):
+        import random
+
+        from engine.narrative import narrate_match_phase
+
+        line = narrate_match_phase(
+            self._result(goal_scored=True, goal_scorer_index=0),
+            random.Random(1),
+            scorer_name="Jordan Lee",
+        )
+        assert "Jordan Lee" in line
+        assert "GOAL" in line
+
+    def test_pressure_names_opponent(self):
+        import random
+
+        from engine.narrative import narrate_match_phase
+
+        line = narrate_match_phase(
+            self._result(team_perf=0.3, opp_perf=0.7),
+            random.Random(1),
+            opponent_name="Northgate",
+        )
+        assert "Northgate" in line
+
+    def test_even_phase_returns_line(self):
+        import random
+
+        from engine.narrative import narrate_match_phase
+
+        line = narrate_match_phase(self._result(), random.Random(1))
+        assert isinstance(line, str) and len(line) > 10
+
+    def test_late_momentum_buckets(self):
+        import random
+
+        from engine.narrative import (
+            _LATE_FADE_LINES,
+            _LATE_SURGE_LINES,
+            narrate_match_phase,
+        )
+
+        surge = narrate_match_phase(
+            self._result(momentum=0.5),
+            random.Random(1),
+            phase_index=7,
+            total_phases=8,
+            opponent_name="Northgate",
+        )
+        fade = narrate_match_phase(
+            self._result(momentum=-0.5),
+            random.Random(1),
+            phase_index=7,
+            total_phases=8,
+            opponent_name="Northgate",
+        )
+        assert any(surge == l.format(opponent="Northgate") for l in _LATE_SURGE_LINES)
+        assert any(fade == l.format(opponent="Northgate") for l in _LATE_FADE_LINES)
+
+    def test_deterministic_under_seed(self):
+        import random
+
+        from engine.narrative import narrate_match_phase
+
+        a = narrate_match_phase(self._result(), random.Random(7))
+        b = narrate_match_phase(self._result(), random.Random(7))
+        assert a == b
+
+
+class TestSelfEvaluationLine:
+    def test_bands_and_determinism(self):
+        import random
+
+        from engine.narrative import self_evaluation_line
+
+        high = self_evaluation_line(0.9, random.Random(1))
+        low = self_evaluation_line(0.1, random.Random(1))
+        assert high != low
+        assert self_evaluation_line(0.9, random.Random(3)) == self_evaluation_line(
+            0.9, random.Random(3)
+        )

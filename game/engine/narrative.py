@@ -408,6 +408,7 @@ def narrate(
             ),
             cast_names=cast_names,
             branch_summary=ctx.branch_summary,
+            location=ctx.location,
         )
 
     return paginate(filled, max_chars=max_chars)
@@ -502,3 +503,125 @@ def _safe_observable(char: Character, obs: ObservableName) -> float:
         return char.observable(obs)
     except Exception:
         return 0.5
+
+
+# --- Match phase narration (Phase 22F) ---------------------------------------
+#
+# Turns a PhaseResult into a narrated line instead of a stat readout.
+# Pure and rng-injected like everything else in the engine; Ren'Py gets
+# the finished string via ``GameSession.narrate_match_phase``.
+
+_GOAL_LINES = (
+    "GOAL! {scorer} picks the moment and buries it.",
+    "It falls to {scorer} — and {scorer} doesn't miss those. GOAL!",
+    "GOAL! {scorer} finishes what the whole move deserved.",
+    "{scorer} arrives exactly on time and turns it in. GOAL!",
+)
+
+_DOMINATING_LINES = (
+    "Your side has the game by the collar; {opponent} can't keep the ball "
+    "for thirty seconds at a stretch.",
+    "Wave after wave — {opponent} are defending the box like it owes them "
+    "money.",
+    "Everything is happening in {opponent}'s half. The pressure has a "
+    "rhythm to it now.",
+)
+
+_PRESSURE_LINES = (
+    "{opponent} turn the screw. The back line is doing all of the talking "
+    "and most of the running.",
+    "Long spells without the ball. {opponent} keep finding the same gap "
+    "and everyone on the pitch knows it.",
+    "It's all hands behind the ball — {opponent} are queuing up shots.",
+)
+
+_EVEN_LINES = (
+    "Trench warfare in midfield — neither side will give the first yard.",
+    "The game is even and angry about it; every loose ball gets three "
+    "challenges.",
+    "Tight as a held breath. One mistake either way decides this spell.",
+)
+
+_LATE_SURGE_LINES = (
+    "Legs are heavy, but the momentum is yours and the whole ground can "
+    "feel it.",
+    "Late in the day, and your side keep coming — {opponent} just want to "
+    "hear the whistle.",
+)
+
+_LATE_FADE_LINES = (
+    "The clock is becoming a problem. {opponent} can smell it.",
+    "Tired legs, tired minds — {opponent} are winning every second ball "
+    "now.",
+)
+
+# Performance gap (team − opponent) beyond which a phase reads as
+# one-sided rather than even.
+PHASE_GAP_THRESHOLD = 0.12
+# |momentum| beyond which a late phase reads as a surge/fade.
+LATE_MOMENTUM_THRESHOLD = 0.25
+
+
+def narrate_match_phase(
+    result: "PhaseResult",
+    rng: _random.Random,
+    *,
+    scorer_name: str | None = None,
+    opponent_name: str = "the opposition",
+    phase_index: int = 0,
+    total_phases: int = 8,
+) -> str:
+    """One narrated line for a simulated match phase.
+
+    Goal phases name the scorer; otherwise the line reads the balance of
+    play, with late-game variants when momentum is pronounced.
+    """
+    if result.goal_scored:
+        line = rng.choice(_GOAL_LINES)
+        return line.format(scorer=scorer_name or "Someone", opponent=opponent_name)
+
+    late = total_phases > 0 and phase_index >= int(total_phases * 0.75)
+    if late and result.momentum >= LATE_MOMENTUM_THRESHOLD:
+        pool = _LATE_SURGE_LINES
+    elif late and result.momentum <= -LATE_MOMENTUM_THRESHOLD:
+        pool = _LATE_FADE_LINES
+    elif result.team_perf - result.opp_perf > PHASE_GAP_THRESHOLD:
+        pool = _DOMINATING_LINES
+    elif result.opp_perf - result.team_perf > PHASE_GAP_THRESHOLD:
+        pool = _PRESSURE_LINES
+    else:
+        pool = _EVEN_LINES
+    return rng.choice(pool).format(opponent=opponent_name)
+
+
+_SELF_EVAL_BANDS: tuple[tuple[float, tuple[str, ...]], ...] = (
+    (0.70, (
+        "You walk off feeling like you ran the game.",
+        "Whatever else happened out there, you know you delivered.",
+    )),
+    (0.55, (
+        "You did your job today, and you know it.",
+        "A solid shift. Nothing to apologise for.",
+    )),
+    (0.40, (
+        "You can't quite decide what kind of game you had.",
+        "Bits of it were good. You keep returning to the other bits.",
+    )),
+    (0.0, (
+        "Whatever the table says, it feels like you let it slip.",
+        "You replay your touches on the walk in, and none of them improve.",
+    )),
+)
+
+
+def self_evaluation_line(perceived: float, rng: _random.Random) -> str:
+    """Narrated self-evaluation for the post-match summary.
+
+    ``perceived`` is the awareness-filtered self-rating from
+    ``self_evaluate`` — deliberately *not* the actual performance, so
+    the line can contradict the scoreline for low-awareness players.
+    """
+    for cutoff, lines in _SELF_EVAL_BANDS:
+        if perceived >= cutoff:
+            return rng.choice(lines)
+    return _SELF_EVAL_BANDS[-1][1][0]
