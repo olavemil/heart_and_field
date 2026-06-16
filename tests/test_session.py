@@ -356,3 +356,273 @@ class TestSlotSummary:
         assert "block_type" in first
         assert "index" in first
         assert "resolved" in first
+
+
+class TestBlockRouting:
+    """Every authored blueprint must be reachable from some block (22B)."""
+
+    def _authored_blueprints(self):
+        from pathlib import Path
+
+        from engine.content_loader import load_blueprints_from_path
+
+        content_root = Path(__file__).resolve().parent.parent / "game" / "content"
+        return load_blueprints_from_path(content_root / "events")
+
+    def test_every_blueprint_routes_to_a_block(self):
+        from engine.session import BLOCK_TAGS, IN_MATCH_TAGS
+
+        routable = set().union(*BLOCK_TAGS.values())
+        unreachable = [
+            bp.id
+            for bp in self._authored_blueprints()
+            if not bp.tags & IN_MATCH_TAGS and not bp.tags & routable
+        ]
+        assert unreachable == [], (
+            f"blueprints unreachable via BLOCK_TAGS: {unreachable}"
+        )
+
+    def test_in_match_blueprints_excluded_from_slots(self):
+        from engine.session import IN_MATCH_TAGS
+
+        session = _build_session()
+        session.blueprints = self._authored_blueprints()
+        for block_type in BlockType:
+            for bp in session.blueprints_for_block(block_type):
+                assert not bp.tags & IN_MATCH_TAGS, (
+                    f"{bp.id} is in-match but routed to {block_type}"
+                )
+
+
+class TestSceneIntro:
+    """Phase 22D: engine-built pre-choice scene setting."""
+
+    def _blueprint(self, **kwargs):
+        from engine.event_taxonomy import (
+            EventDomain,
+            EventId,
+            EventNature,
+            EventTone,
+        )
+        from engine.events import EventBlueprint, LocationCue, RoleSlot
+
+        defaults = dict(
+            id="test.intro",
+            tags={"conflict"},
+            participants=[RoleSlot(role="player", filter=lambda c: True)],
+            outcomes={},
+            location=LocationCue(spec_id="school", node_name="locker_bay"),
+            event_id=EventId(
+                nature=EventNature.CONFRONTATION,
+                domain=EventDomain.RELATIONSHIP,
+                tone=EventTone.HOSTILE,
+            ),
+        )
+        defaults.update(kwargs)
+        return EventBlueprint(**defaults)
+
+    def test_intro_names_location_and_cast(self):
+        # Target the deterministic assembly — scene_intro() itself may run
+        # the result through the LLM when one is available.
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "target": session.state.characters["tm_jordan"],
+        }
+        intro, others = session._assemble_scene_intro(self._blueprint(), cast)
+        assert "Locker bay." in intro
+        assert "Jordan Lee" in intro
+        assert others == ["Jordan Lee"]
+        # HOSTILE tone contributes an atmosphere line.
+        assert intro.count(".") >= 3
+
+    def test_intro_empty_without_cue_or_event_id(self):
+        """Solo, no location, no event_id → nothing to say."""
+        session = _build_session()
+        bp = self._blueprint(location=None, event_id=None)
+        cast = {"player": session.state.characters["player"]}
+        assert session.scene_intro(bp, cast) == ""
+
+    def test_intro_neutral_solo_still_gets_a_line(self):
+        """Neutral tone now contributes an atmosphere line so even quiet
+        solo scenes aren't blank (Phase 22D variety pass)."""
+        from engine.event_taxonomy import (
+            EventDomain,
+            EventId,
+            EventNature,
+            EventTone,
+        )
+
+        session = _build_session()
+        bp = self._blueprint(
+            location=None,
+            event_id=EventId(
+                nature=EventNature.ISOLATION,
+                domain=EventDomain.PERSONAL,
+                tone=EventTone.NEUTRAL,
+            ),
+        )
+        cast = {"player": session.state.characters["player"]}
+        assert session.scene_intro(bp, cast).strip() != ""
+
+    def test_intro_joins_multiple_cast(self):
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "target": session.state.characters["tm_jordan"],
+            "other": session.state.characters["tm_sam"],
+        }
+        intro, others = session._assemble_scene_intro(self._blueprint(), cast)
+        assert "and" in intro
+        assert "Jordan Lee" in intro and "Sam Carter" in intro
+        assert set(others) == {"Jordan Lee", "Sam Carter"}
+
+
+class TestFocalCharacter:
+    def test_prefers_target_role(self):
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "other": session.state.characters["tm_sam"],
+            "target": session.state.characters["tm_jordan"],
+        }
+        assert session.focal_character(cast).id == "tm_jordan"
+
+    def test_falls_back_to_first_nonplayer(self):
+        session = _build_session()
+        cast = {
+            "player": session.state.characters["player"],
+            "witness": session.state.characters["tm_sam"],
+        }
+        assert session.focal_character(cast).id == "tm_sam"
+
+    def test_solo_returns_none(self):
+        session = _build_session()
+        cast = {"player": session.state.characters["player"]}
+        assert session.focal_character(cast) is None
+
+
+class TestInPhaseMatchEvents:
+    """Phase 22F: playable in-phase beats triggered from the match loop."""
+
+    def _phase_result(self, **kw):
+        import numpy as np
+
+        from engine.simulation import PhaseResult
+
+        d = dict(
+            phase_number=1,
+            performances=np.array([0.5]),
+            composites=np.array([0.5]),
+            team_perf=0.6,
+            opp_perf=0.4,
+            momentum=0.5,
+            goal_scored=True,
+            goal_scorer_index=0,
+        )
+        d.update(kw)
+        return PhaseResult(**d)
+
+    def _session_with_scorer(self):
+        """A session whose roster_players()[0] is a teammate (not player)."""
+        session = _build_session()
+        # tm_jordan is a midfielder teammate; make sure index 0 is them.
+        players = session.roster_players()
+        # find a teammate index
+        idx = next(
+            i for i, c in enumerate(players) if c.id != "player"
+        )
+        return session, idx
+
+    def test_no_event_without_goal(self):
+        session = _build_session()
+        assert session.select_match_event(self._phase_result(goal_scored=False), 0) is None
+
+    def test_no_event_when_player_scored(self):
+        session = _build_session()
+        players = session.roster_players()
+        player_idx = next(i for i, c in enumerate(players) if c.id == "player")
+        r = self._phase_result(goal_scorer_index=player_idx)
+        assert session.select_match_event(r, 0) is None
+
+    def test_event_fires_on_teammate_goal(self):
+        from unittest.mock import patch
+
+        session, idx = self._session_with_scorer()
+        r = self._phase_result(goal_scorer_index=idx)
+        # Force the probability gate open.
+        with patch("engine.session.MATCH_EVENT_GOAL_CHANCE", 1.0):
+            bp = session.select_match_event(r, 0)
+        # Only fires if an ingame blueprint is loaded and castable.
+        if session._ingame_blueprints():
+            assert bp is not None
+            assert bp.tags & {"ingame"}
+
+    def test_gate_can_suppress_event(self):
+        from unittest.mock import patch
+
+        session, idx = self._session_with_scorer()
+        r = self._phase_result(goal_scorer_index=idx)
+        with patch("engine.session.MATCH_EVENT_GOAL_CHANCE", 0.0):
+            # chance 0 → random() > 0 almost surely True → suppressed
+            assert session.select_match_event(r, 0) is None
+
+    def test_cast_pins_scorer(self):
+        from engine.events import EventBlueprint, RoleSlot, SceneBlock
+
+        session, idx = self._session_with_scorer()
+        scorer = session.roster_players()[idx]
+        r = self._phase_result(goal_scorer_index=idx)
+        bp = EventBlueprint(
+            id="test.huddle",
+            tags={"ingame"},
+            participants=[
+                RoleSlot(role="player", filter=lambda c: c.id == "player"),
+                RoleSlot(role="scorer", filter=lambda c: c.id != "player"),
+            ],
+            blocks=[SceneBlock(id="main")],
+            outcomes={},
+        )
+        cast = session.cast_match_event(bp, r)
+        assert cast is not None
+        assert cast["scorer"].id == scorer.id
+        assert cast["player"].id == "player"
+
+    def test_resolve_match_event_does_not_touch_schedule(self):
+        from engine.events import (
+            BranchOutcome,
+            EventBlueprint,
+            RoleSlot,
+            SceneBlock,
+            StatEffect,
+        )
+        from engine.stats import StatName
+
+        session, idx = self._session_with_scorer()
+        r = self._phase_result(goal_scorer_index=idx)
+        session.start_week()
+        before = [s.resolved_event_id for s in session.schedule.slots]
+        clock_before = (session.state.clock.weekday, session.state.clock.hour)
+
+        bp = EventBlueprint(
+            id="test.huddle2",
+            tags={"ingame"},
+            participants=[
+                RoleSlot(role="player", filter=lambda c: c.id == "player"),
+                RoleSlot(role="scorer", filter=lambda c: c.id != "player"),
+            ],
+            blocks=[SceneBlock(id="main")],
+            outcomes={
+                "warm": BranchOutcome(
+                    summary="{They:player} got there first.",
+                    stat_effects=[StatEffect("player", StatName.MOTIVATION, 0.03)],
+                ),
+            },
+        )
+        cast = session.cast_match_event(bp, r)
+        rec = session.resolve_match_event(bp, "warm", cast)
+        assert rec is not None
+        # No slot marked, clock unmoved — match block owns the time.
+        assert [s.resolved_event_id for s in session.schedule.slots] == before
+        assert (session.state.clock.weekday, session.state.clock.hour) == clock_before
+        assert rec in session.state.outcome_log

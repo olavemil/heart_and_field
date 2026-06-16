@@ -1,26 +1,24 @@
-# Save / load integration — hooks Ren'Py's save system to engine
-# serialise / deserialise (technical §8).
+# Save / load integration (technical §8, reworked in Phase 22A).
 #
-# Ren'Py's built-in save system will capture the `session` variable
-# automatically since it's a store variable. But because our engine
-# uses numpy arrays and complex dataclasses, we override with explicit
-# JSON serialisation.
+# Native Ren'Py saves carry engine state as the `fh_save_blob` JSON
+# string (see runtime.rpy: fh_checkpoint / after_load). The labels
+# below are the legacy explicit path — a persistent-backed slot used
+# by the end-of-week "Save and quit" menu. Both serialise the same
+# payload via session.serialise().
 
 init python:
-    import json
 
     def _fh_save_json(filename="_fh_save"):
-        """Serialise engine state to a Ren'Py save slot."""
-        data = session.serialise()
+        """Serialise engine state to the persistent quick-save slot."""
+        data = fh.session.serialise()
         json_str = json.dumps(data, ensure_ascii=False)
         renpy.save_persistent()
-        # Store in persistent for cross-session access.
         if not hasattr(persistent, "fh_saves"):
             persistent.fh_saves = {}
         persistent.fh_saves[filename] = json_str
 
     def _fh_load_json(filename="_fh_save"):
-        """Deserialise engine state from a Ren'Py save slot."""
+        """Deserialise engine state from the persistent quick-save slot."""
         if not hasattr(persistent, "fh_saves"):
             return None
         json_str = persistent.fh_saves.get(filename)
@@ -40,21 +38,19 @@ label save_game:
 label load_game:
     python:
         renpy.not_infinite_loop(600)
-        import os
-        loaded = _fh_load_json()
-        if loaded is not None:
-            session = loaded
-            bg_root = os.path.join(config.gamedir, "assets", "backgrounds")
+        loaded_ok = False
+        _loaded = _fh_load_json()
+        if _loaded is not None:
+            fh.session = _loaded
+            _loaded = None  # keep the unpicklable session out of the store
             # warm_marquees is idempotent: marquee graphs already on disk
             # keep their existing variants; new authored marquees are
             # picked up on load.
-            session.init_backgrounds(
-                bg_root,
-                comfyui_client=session.comfyui_client,
-                warm_marquees=True,
-            )
-    if loaded is not None:
-        e "Game loaded. Season [session.state.week_phase.season], Week [session.state.week_phase.week]."
+            fh_init_backgrounds()
+            fh_checkpoint()
+            loaded_ok = True
+    if loaded_ok:
+        e "Game loaded. Season [fh.session.state.week_phase.season], Week [fh.session.state.week_phase.week]."
         jump week_loop
     else:
         e "No save found."

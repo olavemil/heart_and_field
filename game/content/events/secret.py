@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -25,7 +26,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="subject", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you acknowledge what you saw?",
+            options={
+                "filed_away": "Let the moment pass",
+                "overlooked": "Miss it entirely",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.OBSERVATION,
@@ -37,13 +44,13 @@ BLUEPRINTS = [
         reveals_exposure=0.1,
         outcomes={
             "filed_away": BranchOutcome(
-                summary="He noticed the look between them. He didn't say anything.",
+                summary="{They:player} noticed the look between them. {They:player} didn't say anything.",
                 stat_effects=[
                     StatEffect("player", StatName.INTROSPECTION, 0.02),
                 ],
             ),
             "overlooked": BranchOutcome(
-                summary="It was right there. He missed it.",
+                summary="It was right there. {They:player} missed it.",
                 stat_effects=[],
             ),
         },
@@ -56,7 +63,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="suspect", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you approach this?",
+            options={
+                "probed": "Ask carefully",
+                "retreated": "Back away",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -68,7 +81,7 @@ BLUEPRINTS = [
         reveals_exposure=0.15,
         outcomes={
             "probed": BranchOutcome(
-                summary="He asked a careful question. The answer told him more than the words.",
+                summary="{They:player} asked a careful question. The answer told {them:player} more than the words.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.02),
                 ],
@@ -80,7 +93,7 @@ BLUEPRINTS = [
                 ],
             ),
             "retreated": BranchOutcome(
-                summary="He started to ask, then changed the subject.",
+                summary="{They:player} started to ask, then changed the subject.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),
                 ],
@@ -95,7 +108,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="accuser", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you defend yourself?",
+            options={
+                "denied": "Deny it flatly",
+                "admitted": "Admit the truth",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -107,7 +126,7 @@ BLUEPRINTS = [
         reveals_exposure=0.25,
         outcomes={
             "denied": BranchOutcome(
-                summary="He looked them in the eye and said it wasn't true. They both knew it was.",
+                summary="{They:player} looked them in the eye and said it wasn't true. They both knew it was.",
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.04),
                     StatEffect("player", StatName.INSECURITY, 0.03),
@@ -115,7 +134,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "admitted": BranchOutcome(
-                summary="He didn't fight it. He let the truth sit there.",
+                summary="{They:player} didn't fight it. {They:player} let the truth sit there.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                     StatEffect("player", StatName.INSECURITY, -0.02),
@@ -137,7 +156,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="confidant", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How much do you tell them?",
+            options={
+                "trusted": "Tell them most of it",
+                "regretted": "Say too much",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.ADMISSION,
@@ -150,7 +175,7 @@ BLUEPRINTS = [
         carries_arc_context=True,
         outcomes={
             "trusted": BranchOutcome(
-                summary="He told them. Not all of it. Enough.",
+                summary="{They:player} told them. Not all of it. Enough.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, -0.03),
                     StatEffect("player", StatName.REFLECTION, 0.02),
@@ -163,7 +188,7 @@ BLUEPRINTS = [
                 ],
             ),
             "regretted": BranchOutcome(
-                summary="He said too much. The walk home was long.",
+                summary="{They:player} said too much. The walk home was long.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],
@@ -178,7 +203,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="partner", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you tell them?",
+            options={
+                "received_well": "Share the secret",
+                "too_much": "Confess it all",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.ADMISSION,
@@ -190,7 +221,7 @@ BLUEPRINTS = [
         reveals_exposure=0.2,
         outcomes={
             "received_well": BranchOutcome(
-                summary="He told them the part he'd been holding back. They didn't flinch.",
+                summary="{They:player} told them the part {they:player}'d been holding back. They didn't flinch.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                     StatEffect("player", StatName.INSECURITY, -0.03),
@@ -224,7 +255,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="revealer", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you respond?",
+            options={
+                "damage_control": "Get ahead of it",
+                "overwhelmed": "Stay silent",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.REVELATION,
@@ -236,14 +273,14 @@ BLUEPRINTS = [
         reveals_exposure=0.3,
         outcomes={
             "damage_control": BranchOutcome(
-                summary="He got ahead of it. Barely.",
+                summary="{They:player} got ahead of it. Barely.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
                 ],
                 flags={"public"},
             ),
             "overwhelmed": BranchOutcome(
-                summary="Everyone knew before he could explain. The room shifted around him.",
+                summary="Everyone knew before {they:player} could explain. The room shifted around {them:player}.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.05),
                     StatEffect("player", StatName.CONFIDENCE, -0.03),
@@ -260,7 +297,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="discovered_by", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What do you do?",
+            options={
+                "explained": "Explain yourself",
+                "stonewalled": "Act innocent",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REVELATION,
@@ -272,7 +315,7 @@ BLUEPRINTS = [
         reveals_exposure=0.2,
         outcomes={
             "explained": BranchOutcome(
-                summary="He saw their face change. He started talking before they could ask.",
+                summary="{They:player} saw their face change. {They:player} started talking before they could ask.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                 ],
@@ -284,7 +327,7 @@ BLUEPRINTS = [
                 ],
             ),
             "stonewalled": BranchOutcome(
-                summary="He pretended nothing happened. They let him.",
+                summary="{They:player} pretended nothing happened. They let {them:player}.",
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.03),
                 ],
@@ -299,7 +342,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="counterpart", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you use it?",
+            options={
+                "gained_ground": "Use what you know",
+                "overplayed": "Play your hand",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.NEGOTIATION,
@@ -310,7 +359,7 @@ BLUEPRINTS = [
         requires_aspects=[AspectType.AGENDA],
         outcomes={
             "gained_ground": BranchOutcome(
-                summary="He used what he knew. The other person's expression changed.",
+                summary="{They:player} used what {they:player} knew. The other person's expression changed.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
@@ -323,7 +372,7 @@ BLUEPRINTS = [
                 ],
             ),
             "overplayed": BranchOutcome(
-                summary="He showed his hand too early. The silence that followed was expensive.",
+                summary="{They:player} showed {their:player} hand too early. The silence that followed was expensive.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],
@@ -335,7 +384,13 @@ BLUEPRINTS = [
         id="secret.carrying_alone",
         tags={"solo", "secret", "vulnerability"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What do you do with it?",
+            options={
+                "endured": "Bear it alone",
+                "numb": "Let it fade",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.ISOLATION,
@@ -346,14 +401,14 @@ BLUEPRINTS = [
         requires_secret_role=SecretRole.OWNER,
         outcomes={
             "endured": BranchOutcome(
-                summary="He sat with what he couldn't tell anyone. The flat was very quiet.",
+                summary="{They:player} sat with what {they:player} couldn't tell anyone. The flat was very quiet.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
                     StatEffect("player", StatName.INSECURITY, 0.02),
                 ],
             ),
             "numb": BranchOutcome(
-                summary="He'd carried it so long it didn't feel like anything anymore.",
+                summary="{They:player}'d carried it so long it didn't feel like anything anymore.",
                 stat_effects=[
                     StatEffect("player", StatName.INTROSPECTION, 0.02),
                 ],

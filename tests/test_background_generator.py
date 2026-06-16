@@ -445,3 +445,104 @@ class TestPlaceholderProducer:
         )
         # Different bucket → different colour.
         assert a.read_bytes() != b.read_bytes()
+
+
+# --- Alternate-aware serving + prebaked producer (Phase 23) ----------------
+
+
+def _attach_alts(mf, gen, graph_id, node, n):
+    """Pre-attach n distinct alternates (each with a couple of motion
+    variants) to mimic a pre-baked graph."""
+    from engine.background_pool import BackgroundEntry
+
+    desc = _descriptor()
+    for a in range(n):
+        e = BackgroundEntry(
+            entry_id=f"{node}_alt{a}",
+            descriptor=desc,
+            spec_id="house",
+            node_name=node,
+            image_paths=[
+                f"x/{node}_{a}_primary.png",
+                f"x/{node}_{a}_motion1.png",
+            ],
+            seed=a,
+        )
+        mf.attach_alternate(graph_id, node, e)
+
+
+class TestAlternateServing:
+    def test_revisits_rotate_alternates(self, tmp_path: Path):
+        gen, mf, _ = _gen(tmp_path)
+        mf.create_graph("house", _descriptor(), graph_id="g1")
+        _attach_alts(mf, gen, "g1", "kitchen", 3)
+        served = [gen.get_background("g1", "kitchen").name for _ in range(4)]
+        assert served == [
+            "kitchen_0_primary.png",
+            "kitchen_1_primary.png",
+            "kitchen_2_primary.png",
+            "kitchen_0_primary.png",  # wraps
+        ]
+
+    def test_variants_match_served_alternate(self, tmp_path: Path):
+        """The crossfade set must belong to the shot just served."""
+        gen, mf, _ = _gen(tmp_path)
+        mf.create_graph("house", _descriptor(), graph_id="g1")
+        _attach_alts(mf, gen, "g1", "kitchen", 3)
+        # First serve → alt0; its variants must be alt0's, not alt1's.
+        primary = gen.get_background("g1", "kitchen")
+        variants = gen.get_variants("g1", "kitchen")
+        assert primary.name == "kitchen_0_primary.png"
+        assert [v.name for v in variants] == [
+            "kitchen_0_primary.png",
+            "kitchen_0_motion1.png",
+        ]
+        # Second serve → alt1; variants follow.
+        gen.get_background("g1", "kitchen")
+        assert [v.name for v in gen.get_variants("g1", "kitchen")] == [
+            "kitchen_1_primary.png",
+            "kitchen_1_motion1.png",
+        ]
+
+    def test_single_alternate_path_unchanged(self, tmp_path: Path):
+        """On-demand (no alternates) still generates + serves one shot."""
+        gen, mf, producer = _gen(tmp_path)
+        mf.create_graph("house", _descriptor(), graph_id="g1")
+        p1 = gen.get_background("g1", "front_door")
+        p2 = gen.get_background("g1", "front_door")
+        assert p1 == p2  # same single entry every visit
+        assert len(producer.calls) == 1  # generated once
+
+
+class TestPrebakedProducer:
+    def test_strict_raises_on_missing(self, tmp_path: Path):
+        from engine.background_generator import PrebakedImageProducer
+
+        prod = PrebakedImageProducer(strict=True)
+        gen, mf, _ = _gen(tmp_path, producer=prod)
+        mf.create_graph("house", _descriptor(), graph_id="g1")
+        # No pre-attached entry → serving must materialise → producer
+        # called → strict mode surfaces the packaging gap (wrapped by the
+        # materialise path as BackgroundGenerationError).
+        with pytest.raises(BackgroundGenerationError, match="pre-baked asset missing"):
+            gen.get_background("g1", "front_door")
+
+    def test_lenient_falls_back_to_placeholder(self, tmp_path: Path):
+        from engine.background_generator import PrebakedImageProducer
+
+        prod = PrebakedImageProducer(strict=False)
+        gen, mf, _ = _gen(tmp_path, producer=prod)
+        mf.create_graph("house", _descriptor(), graph_id="g1")
+        path = gen.get_background("g1", "front_door")
+        assert path.exists()  # placeholder written, no crash
+
+    def test_prebaked_serves_without_producing(self, tmp_path: Path):
+        """With assets pre-attached, the producer is never touched."""
+        from engine.background_generator import PrebakedImageProducer
+
+        prod = PrebakedImageProducer(strict=True)  # would raise if called
+        gen, mf, _ = _gen(tmp_path, producer=prod)
+        mf.create_graph("house", _descriptor(), graph_id="g1")
+        _attach_alts(mf, gen, "g1", "kitchen", 2)
+        # Pre-baked: serving returns attached paths, no produce() call.
+        assert gen.get_background("g1", "kitchen").name == "kitchen_0_primary.png"

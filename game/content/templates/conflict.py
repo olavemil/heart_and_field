@@ -10,7 +10,7 @@ TEMPLATES = [
         event_id="conflict.blame_assignment",
         body=(
             "{name:player} said {name:target}'s name the way you say it when "
-            "you've been waiting. The room did not fill the silence for him."
+            "you've been waiting. The room did not fill the silence for {them:player}."
         ),
         base_weight=1.0,
     ),
@@ -18,7 +18,7 @@ TEMPLATES = [
         id="tpl.conflict.blame.escalate.terse",
         event_id="conflict.blame_assignment",
         body=(
-            "It came out the way {name:player} had been practising in his head. "
+            "It came out the way {name:player} had been practising in {their:player} head. "
             "{name:target} took it standing."
         ),
         base_weight=0.9,
@@ -38,8 +38,8 @@ TEMPLATES = [
         id="tpl.conflict.blame.hold.rattled",
         event_id="conflict.blame_assignment",
         body=(
-            "{name:player} opened his mouth and changed his mind. The word sat "
-            "in the back of his throat for the rest of the evening."
+            "{name:player} opened {their:player} mouth and changed {their:player} mind. The word sat "
+            "in the back of {their:player} throat for the rest of the evening."
         ),
         base_weight=1.0,
         context_requirements={"rattled"},
@@ -49,8 +49,8 @@ TEMPLATES = [
         id="tpl.conflict.apology.sincere.arc",
         event_id="conflict.apology",
         body=(
-            "{arc} He didn't soften it. He said he was sorry, and then he stopped "
-            "talking."
+            "{arc} {They:player} didn't soften it — said sorry, plainly, and then "
+            "stopped talking."
         ),
         base_weight=1.3,
         temporal_reference=TemporalRef.ARC,

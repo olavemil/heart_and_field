@@ -7,6 +7,7 @@ Includes a simple arc (blame → apology) to exercise prereqs and
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -29,7 +30,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="target", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you respond to the blame?",
+            options={
+                "escalate": "Call him out",
+                "hold_back": "Let it go",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -50,7 +57,7 @@ BLUEPRINTS = [
         outcomes={
             "escalate": BranchOutcome(
                 summary=(
-                    "He pointed a finger. The room went still; the accusation "
+                    "{They:player} pointed a finger. The room went still; the accusation "
                     "landed wide of anyone who could deflect it."
                 ),
                 stat_effects=[
@@ -68,7 +75,7 @@ BLUEPRINTS = [
                 flags={"unresolved", "public"},
             ),
             "hold_back": BranchOutcome(
-                summary="He swallowed it. Said nothing. Something sat wrong.",
+                summary="{They:player} swallowed it. Said nothing. Something sat wrong.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),
                     StatEffect("player", StatName.REFLECTION, 0.02),
@@ -83,7 +90,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="target", filter=not_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you say sorry?",
+            options={
+                "sincere": "Mean it",
+                "deflect": "Defend yourself",
+            },
+        ))],
         base_weight=0.7,
         event_id=EventId(
             nature=EventNature.ADMISSION,
@@ -96,7 +109,7 @@ BLUEPRINTS = [
         outcomes={
             "sincere": BranchOutcome(
                 summary=(
-                    "He said it plainly. No qualifiers. The other man looked "
+                    "{They:player} said it plainly. No qualifiers. {name:target} looked "
                     "at the floor for a long time before answering."
                 ),
                 stat_effects=[
@@ -114,7 +127,7 @@ BLUEPRINTS = [
             ),
             "deflect": BranchOutcome(
                 summary=(
-                    "The apology came wrapped in excuses. It read as another "
+                    "{Their:player} apology came wrapped in excuses. It read as another "
                     "kind of blame."
                 ),
                 stat_effects=[

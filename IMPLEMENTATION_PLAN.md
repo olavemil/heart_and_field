@@ -86,6 +86,13 @@ Implement as dataclasses. No behaviour yet beyond what the tuple/observable form
 
 **Exit criteria:** Ren'Py project runs end-to-end on text only (no sprites, default background). Player can play through a week, save, quit, reload.
 
+> **Status correction (June 2026):** the "hook Ren'Py's save system" item never
+> actually landed — what shipped was a parallel JSON stash in
+> `persistent.fh_saves`, reachable only from the end-of-week menu, while
+> Ren'Py's native save screens crashed on unpicklable store contents
+> (label-body module imports; `session` holds blueprints with lambdas).
+> Fixed in Phase 22A.
+
 ## Phase 7 — Visual prototype (technical §9) ✅
 
 - `visual.py`: `CharacterVisual`, `Expression`, `Pose`, `TeamPalette`, `SpriteLayer`, `render()` dispatching to `_render_flat`.
@@ -260,7 +267,15 @@ the schedule. Atmosphere reads from clock instead of block type.
   status-bar surface, save round-trip. Existing 11B tests reshape to
   drop slot_index argument.
 
-### 11.5B — Schedule grid + event durations ✅
+### 11.5B — Schedule grid + event durations ⚠️ partial
+
+> **Status correction (June 2026):** previously marked ✅, but only the
+> duration half landed (`duration_minutes` on blueprint/branch, clock
+> advance, per-day weather). The grid restructure did **not**: there is no
+> `DaySchedule`, `WeekSchedule.slots` is still the flat list, `slot_affinity`
+> was never built (`BLOCK_TAGS` still routes — see Phase 22B), and
+> `game_loop.rpy` still iterates slots. Remaining work folds into a future
+> schedule-grid pass if still wanted; the flat list is currently canonical.
 
 Replaces the flat slot list with a day-grid; introduces durations.
 
@@ -589,6 +604,14 @@ Content:
 
 Tests: 15 new tests in `test_phase19.py` (783 total, 0 failures).
 
+> **Status correction (June 2026):** Phase 19 authored 35 new blueprints but
+> skipped two follow-through steps, both surfacing as "hardcoded-feeling"
+> play: (1) 9 blueprints carried tag sets unreachable through `BLOCK_TAGS`
+> routing — fixed in Phase 22B; (2) no template pools were authored for the
+> new categories, so 37 of 55 blueprints only match the 3 generic templates
+> and roughly a third of narrations render as the raw one-line branch
+> summary — Phase 22E.
+
 ## Phase 20 — League and progression ✅
 
 Configurable league system: sport selection, league tier/format, season
@@ -715,6 +738,226 @@ Ren'Py start flow lets the player choose sport, league tier, format, and club na
   placeholder otherwise.
 - 18 new tests (12 in `test_comfyui_producer.py`, 6 in `test_scene_taxonomy.py`).
   860 total tests passing.
+
+## Phase 22 — Presentation pass (engine → screen gap)
+
+Audit findings (June 2026): the engine pipeline works headlessly — a
+5-seed × 4-week simulation through the exact `game_loop.rpy` code path
+selected and cast an event for every non-game slot (0% "the day passes
+quietly" fallbacks) — but play still *feels* hardcoded because no prior
+phase connected scene presentation, sprites, match narration, or native
+saves to the screen. This phase closes that gap, easiest/most-broken
+first.
+
+### 22A — Save integrity ✅
+
+- Ren'Py's native save menu crashed (`Could not pickle <module 'time'>`,
+  `traceback.txt` May 7): label-body `python:` blocks bound modules into
+  the pickled store, and `session` itself is unpicklable (blueprints
+  carry lambda predicates/filters).
+- New `scripts/runtime.rpy`: `FHRuntime` holder bound at init keeps the
+  engine session (`fh.session`) and per-event scratch (`fh.bp`) out of
+  Ren'Py's save store; all module imports moved to `init python`.
+- Engine state rides native saves as a JSON string (`fh_save_blob`,
+  a saved store variable) checkpointed at week start and after each
+  resolved event / match. `after_load` rebuilds the session from the
+  blob, re-inits backgrounds, and resumes via `week_resume` at the
+  current slot. Saves made mid-event re-run that event from selection
+  on load (acceptable: "resume at the start of the in-progress scene").
+- Rollback disabled (`config.rollback_enabled = False`) — engine
+  mutations are not rollback-aware, so rolling back only desynced the
+  display from the simulation. Re-enabling needs engine-side snapshots
+  (deferred).
+- The legacy `persistent.fh_saves` path remains as the explicit
+  end-of-week "Save and quit" flow, now writing the same serialise()
+  payload.
+
+### 22B — Event routing completeness ✅
+
+- `BLOCK_TAGS` extended so every authored tag group routes to at least
+  one block: DRAMA adds `social` / `secret` / `romantic` /
+  `institutional` / `external_pressure` / `mentor` / `rival`; DOWNTIME
+  adds `social` / `solo` / `romantic` / `celebration`; POSTGAME adds
+  `celebration`. (This is the stopgap for 11.5B's unbuilt
+  `slot_affinity`.)
+- `ingame`-tagged blueprints (`celebration.goal_huddle`) are explicitly
+  skipped by `blueprints_for_block` until match-phase hooks exist (22F).
+- Regression test: every loaded blueprint without the `ingame` tag is
+  reachable from at least one block type.
+
+### 22C — Generalised choice menu ✅
+
+- `fh_choose_branch()` (runtime.rpy) uses `renpy.display_menu`, handling
+  any branch count. Replaces the hand-unrolled 1/2/3-option menus in
+  `drama_block.rpy` / `postgame_block.rpy` that silently auto-picked the
+  first branch at 4+ options.
+
+### 22D — Scene presentation ⚠️ partial
+
+Done:
+
+- `GameSession.scene_intro(blueprint, cast)` — engine-built pre-choice
+  scene setting (location cue + cast names + an `EventTone`-keyed
+  atmosphere line from `_TONE_INTRO_LINES`). No per-blueprint authoring
+  needed; neutral-tone solo scenes return `""` and the line is skipped.
+  Replaces the `e "[block_label]"` placeholder in both event blocks.
+- `GameSession.focal_character(cast)` — picks the non-player cast
+  member a scene puts on screen (`_FOCAL_ROLE_PRIORITY`, then first
+  non-player role). `drama_block` / `postgame_block` now call
+  `show_character` with it and hide after narration — first time the
+  sprite pipeline (Phases 7/10/21) renders during play.
+
+Remaining:
+
+- Real `ChoiceNode` option labels per blueprint — the menu still shows
+  title-cased branch ids ("Escalate" / "Defuse"). Intros now give
+  context, but labels should express intent. Authoring pass over all
+  55 blueprints (~130 labels).
+- Optional bespoke `SceneBlock.templates` intro text for marquee events
+  where the generic intro reads thin.
+
+### 22E — Template pools for Phase 19 categories ✅
+
+- Five new pools under `game/content/templates/`: `sport.py`,
+  `relationship.py`, `institutional.py`, `personal.py`, `secret.py` —
+  35 templates mixing event_id-attached entries for the
+  highest-frequency blueprints (tactical_disagreement, hard_tackle,
+  cut_off, boundary_talk) with tag-attached entries (`training`,
+  `status`, `social`, `romantic`, `institutional`, `external_pressure`,
+  `solo`, `secret`) for the tail. Tag-attached templates only use
+  `{name}` / `{summary}` / `{mood_descriptor}` / `{arc}` slots since
+  role names vary per blueprint; mood-gated variants split valence via
+  `context_requirements`.
+- Generic-only blueprint count: 37 → **0** (regression test
+  `test_no_blueprint_is_generic_only`).
+
+### 22F — Match narration ✅
+
+- `narrate_match_phase()` in `narrative.py`: goal lines naming the
+  scorer, balance-of-play lines (dominating / under pressure / even via
+  `PHASE_GAP_THRESHOLD`), late-game surge/fade variants keyed off
+  momentum. `GameSession.narrate_match_phase` resolves scorer +
+  opponent names. Replaces the debug stat readout in `game_block.rpy`.
+- `self_evaluation_line()` replaces the "perceived performance: 72%"
+  readout — banded, awareness-filtered, can contradict the scoreline
+  by design.
+
+#### In-phase playable beats ✅
+
+- `cast_event(..., pinned=...)` in `events.py` forces specific
+  characters into roles (the real goal-scorer into `scorer`); a pinned
+  character must still satisfy the slot filter.
+- `GameSession.select_match_event` / `cast_match_event` /
+  `resolve_match_event`: a teammate goal opens a playable beat
+  (gated by `MATCH_EVENT_GOAL_CHANCE = 0.6`), weight-sampled from the
+  `ingame` pool through the normal prereq/recency machinery. Resolution
+  applies effects + logs the record but marks no schedule slot and
+  advances no clock — the match block owns the whole afternoon.
+- `game_block.rpy` calls `select_match_event` after each phase line;
+  on a hit it runs a `match_event` sub-label (scorer on screen → choice
+  → narration). `celebration.goal_huddle` is the first such event.
+- Headless: ~60% of teammate goals fire a beat over 20 matches, 0
+  crashes. Tests in `test_session.py::TestInPhaseMatchEvents`.
+- Known pre-existing bug (flagged separately, not 22F): the match sim
+  draws the scorer from `roster_players()` which includes staff, so a
+  manager/physio can occasionally be named scorer (cast then fails
+  gracefully). Fix is to filter to the playing squad before
+  `simulate_phase`.
+- Deferred: the player-scored beat (player mobbed by teammates) and
+  near-miss / late-surge interactive moments — only `goal_huddle`
+  is authored so far.
+
+### 22G — Ren'Py lint gate ✅
+
+- `scripts/check.sh` runs pytest + `renpy.sh lint` (falls back to the
+  main checkout's SDK/venv when run from a worktree). Both stale error
+  logs (`errors.txt`, `traceback.txt`) were `.rpy` regressions pytest
+  cannot see — run this before committing changes under `game/scripts/`.
+
+### 22H — LLM genre grounding ✅
+
+- Diagnosis: with LM Studio live, opt-in events were enhanced by
+  `llama-3.2-1b-instruct`, which drifted genre — a locker-bay injury
+  scene came back set in a "dimly lit tavern". The text appears nowhere
+  in authored content; the only output validation (cast names retained)
+  passed, so the hallucination shipped to screen.
+- `SYSTEM_PROMPT` now pins the world ("present day — training grounds,
+  locker rooms…") and forbids setting changes / fantasy-period imagery.
+- `build_llm_prompt` / `enhance_narration` / `narrate` gained a
+  `location` parameter; `narrate_outcome` passes the blueprint's
+  location-cue node so the prompt carries "Setting: locker bay". A/B
+  against the live model confirms the drift disappears.
+- Known limitation: prose quality is bounded by the 1B default model
+  (`DEFAULT_MODEL` in `llm.py`); pointing the client at a larger loaded
+  model (e.g. qwen3.6-27b) is a config change, not a code change.
+
+### 22I — Launcher ✅
+
+- `play.command` at repo root: double-clickable in Finder (macOS) and
+  runnable as `./play.command`. Resolves the SDK at
+  `./renpy-8.5.2-sdk`, honours `RENPY_SDK`, and falls back to the main
+  checkout when run from a worktree.
+
+### 22D (cont.) — ChoiceNode labels ✅
+
+- Authored intent-voiced `ChoiceNode` options + prompts on every
+  multi-branch blueprint (~40 blueprints) via parallel haiku subagents,
+  file-disjoint. The branch menu now reads "Say it to his face" /
+  "Let it go" instead of title-cased branch ids.
+- New `tests/test_content_choices.py`: every ≥2-branch blueprint has a
+  ChoiceNode, option keys match outcome keys exactly, no empty/id-echo
+  labels.
+
+### 22J — Gender-aware narration ✅
+
+Playtest finding: the player always read as male regardless of chosen
+presentation. Two surfaces leaked it — authored templates and branch
+summaries both hardcoded "he/his/him" — and the LLM had no gender
+signal so it guessed from names.
+
+- **Pronoun resolvers** in `narrative.py`: `{they}` / `{them}` /
+  `{their}` / `{theirs}` / `{themself}` (+ capitalised forms), role-
+  scoped like `{they:player}` / `{their:mentor}`. Each reads the focal
+  character's `gender_presentation`; androgynous → singular "they".
+  Registered in `SLOT_RESOLVERS`.
+- **`{summary}` now resolves recursively** — `_resolve_branch_summary`
+  runs the summary back through `_substitute` (guarded against
+  self-recursion) so summaries can carry pronoun slots too. The
+  no-template fallback path uses it as well.
+- **Templates rewritten** — all 46 hardcoded pronouns across 8 template
+  files replaced with role-scoped slots, dodging the "they was" verb-
+  agreement trap.
+- **Branch summaries rewritten** — 142 hardcoded pronouns / gendered
+  nouns across 15 event files converted to slots (or neutralised:
+  "the older man" → "the senior pro" / `{name:mentor}`), via four
+  parallel haiku subagents. A follow-up pass fixed second-person voice
+  ("you") and verb-agreement breaks the agents introduced.
+- **LLM gender grounding** — `build_llm_prompt` takes `cast_pronouns`
+  and labels the cast line ("Alex (she/her)"); system prompt rule 5
+  enforces it. Output is run through `_strip_pronoun_labels` since
+  small models sometimes echo the "(she/her)" hint into prose.
+- **Validator** `scripts/check_summary_pronouns.py` (+ regression test):
+  flags bare gendered words, second person, verb-agreement breaks, and
+  unresolved slots across all three genders. Run it after editing
+  summaries.
+
+### 22D (cont.) — Scene-intro LLM enhancement ✅
+
+- `scene_intro` split into deterministic `_assemble_scene_intro`
+  (testable) + an LLM rephrase pass grounded with location + cast
+  pronouns, so repeated tones read fresh. Tone-line pools expanded
+  (4 per tone, NEUTRAL added). LLM output trimmed to the last complete
+  sentence (tight token cap was truncating mid-sentence).
+
+### 22H — LLM model default ✅
+
+- `DEFAULT_MODEL` → `liquid/lfm2-24b-a2b`, auditioned against the live
+  LM Studio pool: fast (~1s warm), non-reasoning, stays on-genre.
+  `_strip_reasoning` drops any `<think>…</think>` blocks reasoning
+  models leave in content (unterminated → empty → template fallback).
+
+Also fixed with 22A–C: stale `test_visual.py` placeholder-face size
+assertion (256 → 512, left behind by the Phase 21 face-size bump).
 
 ## Cross-cutting concerns (maintained throughout)
 

@@ -44,7 +44,7 @@ TEMPLATES = [
         id="tpl.pregame.ritual.hollow",
         event_id="pregame.ritual",
         body=(
-            "The ritual didn't take. {name:player} stood for a moment with his "
+            "The ritual didn't take. {name:player} stood for a moment with {their:player} "
             "hand on the wall and waited for something to arrive."
         ),
         base_weight=1.0,

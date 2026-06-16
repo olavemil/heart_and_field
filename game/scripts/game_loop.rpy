@@ -111,67 +111,65 @@ label start:
 
     # Generate the world from a master seed. The full roster, coaching
     # staff, secret web, and league season are produced deterministically.
+    # The session lives on `fh` (runtime.rpy) — never in the store, which
+    # Ren'Py pickles on save.
     python:
         renpy.not_infinite_loop(600)
-        import time as _time
-        _master_seed = int(_time.time()) & 0xFFFFFFFF
+        master_seed = int(time.time()) & 0xFFFFFFFF
 
-        customisation = PlayerCustomisation(
-            name=player_name,
-            role=player_role,
-            gender_presentation=player_gender,
-            disposition=player_disposition,
-        )
-        league_config = LeagueConfig(
-            club_name=club_name,
-            league_format=chosen_format,
-            tier=chosen_tier,
-        )
-        session = GameSession.new_game(
+        fh.session = GameSession.new_game(
             player_name,
-            seed=_master_seed,
-            customisation=customisation,
+            seed=master_seed,
+            customisation=PlayerCustomisation(
+                name=player_name,
+                role=player_role,
+                gender_presentation=player_gender,
+                disposition=player_disposition,
+            ),
             sport=chosen_sport,
-            league_config=league_config,
+            league_config=LeagueConfig(
+                club_name=club_name,
+                league_format=chosen_format,
+                tier=chosen_tier,
+            ),
         )
 
     # Wire the background pipeline (uses ComfyUI when available).
     python:
         renpy.not_infinite_loop(600)
-        import os
-        bg_root = os.path.join(config.gamedir, "assets", "backgrounds")
-        session.init_backgrounds(
-            bg_root,
-            comfyui_client=session.comfyui_client,
-            warm_marquees=True,
-        )
+        fh_init_backgrounds()
 
     # Show the persistent status bar overlay.
     show screen status_bar
 
     e "Welcome to Field & Heart."
-    e "Season [session.state.week_phase.season], Week [session.state.week_phase.week]."
+    e "Season [fh.session.state.week_phase.season], Week [fh.session.state.week_phase.week]."
 
     jump week_loop
 
 
 # --- Week loop ---------------------------------------------------------------
 
+default slot_idx = 0
+
 label week_loop:
-    $ schedule = session.start_week()
+    $ schedule = fh.session.start_week()
+    $ fh_checkpoint()
     e "A new week begins."
 
     # Show the upcoming fixture if a season is loaded.
-    if session.state.season is not None:
-        $ fixture = session.state.season.current_fixture()
+    if fh.session.state.season is not None:
+        $ season = fh.session.state.season
+        $ fixture = season.current_fixture()
         if fixture is not None:
-            $ opp = fixture.opponent_of(session.state.season.config.club_name)
-            if fixture.home == session.state.season.config.club_name:
-                e "This week: [session.state.season.config.club_name] vs [opp] (Home)"
+            $ opp = fixture.opponent_of(season.config.club_name)
+            if fixture.home == season.config.club_name:
+                e "This week: [season.config.club_name] vs [opp] (Home)"
             else:
-                e "This week: [opp] vs [session.state.season.config.club_name] (Away)"
-        $ pos = session.state.season.player_position()
-        $ total = session.state.season.config.total_clubs
+                e "This week: [opp] vs [season.config.club_name] (Away)"
+        $ pos = season.player_position()
+        $ total = season.config.total_clubs
+        $ season = None
         e "League position: [pos] of [total]"
 
     # Process each slot in order.
@@ -188,7 +186,7 @@ label week_loop:
         # Match phases share Sat afternoon — only the first one needs
         # to advance; the rest are inside the same block.
         if slot.block_type != BlockType.GAME_PHASE or slot.phase_index == 0:
-            $ session.enter_slot(slot_idx)
+            $ fh.session.enter_slot(slot_idx)
 
         # Route by block type.
         if slot.block_type == BlockType.DRAMA:
@@ -216,14 +214,27 @@ label week_loop:
         jump .next_slot
 
 
+# --- Resume after a native load ----------------------------------------------
+#
+# after_load (runtime.rpy) rebuilds fh.session from the save blob and
+# jumps here. Re-point the store's schedule reference at the rebuilt
+# session and re-enter the slot loop at the restored slot_idx.
+
+label week_resume:
+    $ schedule = fh.session.schedule
+    if schedule is None:
+        jump week_loop
+    jump week_loop.next_slot
+
+
 # --- End of week -------------------------------------------------------------
 
 label week_end:
-    e "End of week [session.state.week_phase.week]."
+    e "End of week [fh.session.state.week_phase.week]."
 
     menu:
         "Continue to next week":
-            $ session.advance_week()
+            $ fh.session.advance_week()
             jump week_loop
 
         "Save and quit":

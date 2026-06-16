@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -24,7 +25,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="mate", filter=teammate(), optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you take in the win?",
+            options={
+                "shared": "Celebrate together",
+                "private": "Process it alone",
+            },
+        ))],
         base_weight=0.8,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
@@ -41,7 +48,7 @@ BLUEPRINTS = [
         outcomes={
             "shared": BranchOutcome(
                 summary=(
-                    "The room was loud. He let himself be part of it for once."
+                    "The room was loud. {They:player} let {themself:player} be part of it for once."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
@@ -50,8 +57,8 @@ BLUEPRINTS = [
             ),
             "private": BranchOutcome(
                 summary=(
-                    "He packed his kit in the corner. The win hadn't caught up "
-                    "with him yet."
+                    "{They:player} packed {their:player} kit in the corner. The win hadn't caught up "
+                    "with {them:player} yet."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INTROSPECTION, 0.02),
@@ -65,7 +72,13 @@ BLUEPRINTS = [
         participants=[
             RoleSlot(role="player", filter=is_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you handle the silence?",
+            options={
+                "carried": "Sit with it",
+                "lashed": "Let it out",
+            },
+        ))],
         base_weight=0.9,
         event_id=EventId(
             nature=EventNature.CONSOLATION,
@@ -83,7 +96,7 @@ BLUEPRINTS = [
         outcomes={
             "carried": BranchOutcome(
                 summary=(
-                    "Nobody spoke. He sat with the weight of it and didn't try "
+                    "Nobody spoke. {They:player} sat with the weight of it and didn't try "
                     "to name it."
                 ),
                 stat_effects=[
@@ -93,7 +106,7 @@ BLUEPRINTS = [
             ),
             "lashed": BranchOutcome(
                 summary=(
-                    "He kicked the bench on the way out. Nothing about it helped."
+                    "{They:player} kicked the bench on the way out. Nothing about it helped."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.03),

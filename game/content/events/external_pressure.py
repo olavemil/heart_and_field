@@ -4,6 +4,7 @@ from engine.characters import CharacterRole
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RoleSlot,
     SceneBlock,
@@ -28,7 +29,13 @@ BLUEPRINTS = [
                 optional=True,
             ),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you handle the questions?",
+            options={
+                "composed": "Stick to the script",
+                "unravelled": "Say what you feel",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.OBSERVATION,
@@ -46,8 +53,8 @@ BLUEPRINTS = [
         outcomes={
             "composed": BranchOutcome(
                 summary=(
-                    "He answered the questions the way he'd been told to. It "
-                    "came out sounding almost true."
+                    "{They:player} answered the questions the way {they:player}'d been "
+                    "told to. It came out sounding almost true."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.02),
@@ -56,8 +63,8 @@ BLUEPRINTS = [
             ),
             "unravelled": BranchOutcome(
                 summary=(
-                    "Someone asked the wrong question. He gave them the answer "
-                    "they were looking for."
+                    "Someone asked the wrong question. {They:player} gave them the "
+                    "answer they were looking for."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
@@ -73,7 +80,13 @@ BLUEPRINTS = [
         participants=[
             RoleSlot(role="player", filter=is_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your approach?",
+            options={
+                "focused": "Take your time",
+                "rattled": "Let it worry you",
+            },
+        ))],
         base_weight=0.3,
         carries_arc_context=True,
         event_id=EventId(
@@ -85,7 +98,8 @@ BLUEPRINTS = [
         outcomes={
             "focused": BranchOutcome(
                 summary=(
-                    "The agent called. He listened and said he'd think about it."
+                    "The agent called. {They:player} listened and said {they:player}'d "
+                    "think about it."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.MOTIVATION, 0.02),
@@ -93,8 +107,8 @@ BLUEPRINTS = [
             ),
             "rattled": BranchOutcome(
                 summary=(
-                    "The numbers weren't the problem. He couldn't get the tone "
-                    "of the call out of his head."
+                    "The numbers weren't the problem. {They:player} couldn't get the "
+                    "tone of the call out of {their:player} head."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.05),

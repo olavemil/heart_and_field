@@ -8,6 +8,7 @@ from engine.characters import CharacterRole, TierACharacter, TierBCharacter
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -45,7 +46,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="partner", filter=_romantic_candidate),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you spend the evening?",
+            options={
+                "closer": "Let your guard down",
+                "distant": "Keep things light",
+            },
+        ))],
         base_weight=0.6,
         event_id=EventId(
             nature=EventNature.INVITATION,
@@ -60,8 +67,8 @@ BLUEPRINTS = [
         outcomes={
             "closer": BranchOutcome(
                 summary=(
-                    "They didn't do anything special. He left feeling better than "
-                    "he'd arrived."
+                    "They didn't do anything special. {They:player} left feeling better than "
+                    "{they:player}'d arrived."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, -0.03),

@@ -13,6 +13,7 @@ OpenAI-compatible server requires only changing the base URL.
 from __future__ import annotations
 
 import json
+import re
 import logging
 import urllib.error
 import urllib.request
@@ -24,7 +25,12 @@ log = logging.getLogger(__name__)
 # --- Configuration -----------------------------------------------------------
 
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
-DEFAULT_MODEL = "llama-3.2-1b-instruct"
+# Auditioned against the live LM Studio pool (June 2026): lfm2-24b-a2b
+# was the only loaded model that is fast (~1s warm), non-reasoning (no
+# <think> chatter in content), and stayed on-genre/on-location.
+# llama-3.2-1b (old default) drifted setting; the qwen3.6 models emit
+# thinking text; gpt-oss-20b returned empty content at our token caps.
+DEFAULT_MODEL = "liquid/lfm2-24b-a2b"
 DEFAULT_TIMEOUT = 10  # seconds
 MAX_CONSECUTIVE_ERRORS = 3  # auto-disable after this many failures
 
@@ -41,17 +47,23 @@ LLM_OPT_IN_TAGS: set[str] = {
 # --- System prompt -----------------------------------------------------------
 
 SYSTEM_PROMPT = """\
-You are a sports fiction narrator for a football drama game. Your job is to \
-rephrase the following scene text so it reads more vividly and naturally, \
-while obeying these constraints:
+You are a sports fiction narrator for a football drama game set in the \
+present day — training grounds, locker rooms, suburban homes, school \
+corridors. Your job is to rephrase the following scene text so it reads \
+more vividly and naturally, while obeying these constraints:
 
 1. Keep ALL character names exactly as given.
 2. Keep ALL factual statements (who did what, stat changes, outcomes).
 3. Do NOT invent new plot points or characters.
-4. Match the emotional tone of the original.
-5. Keep the length similar — no more than 50% longer than the original.
-6. Write in third person past tense.
-7. Return ONLY the rewritten text, no commentary or labels.\
+4. Do NOT change or invent the setting. Stay in the modern sports-drama \
+world: no taverns, inns, castles, or any fantasy/period imagery. If a \
+location is given, the scene happens there.
+5. Use each character's given pronouns. When a name is followed by \
+pronouns in parentheses, e.g. "Alex (she/her)", use exactly those.
+6. Match the emotional tone of the original.
+7. Keep the length similar — no more than 50% longer than the original.
+8. Write in third person past tense.
+9. Return ONLY the rewritten text, no commentary or labels.\
 """
 
 
@@ -74,11 +86,16 @@ def build_llm_prompt(
     previous_summary: str | None = None,
     cast_names: Sequence[str] = (),
     branch_summary: str | None = None,
+    location: str | None = None,
+    cast_pronouns: "Mapping[str, str] | None" = None,
 ) -> LLMPrompt:
     """Construct the LLM prompt from a filled template and context.
 
     The prompt grounds the LLM with factual context so it rephrases
-    rather than invents.
+    rather than invents. ``location`` pins the setting — small models
+    otherwise drift genre (a locker-room scene once came back set in a
+    tavern). ``cast_pronouns`` maps a cast name to its pronoun set
+    (``"she/her"``) so the model doesn't infer gender from the name.
     """
     parts: list[str] = []
 
@@ -87,7 +104,15 @@ def build_llm_prompt(
     if previous_summary:
         parts.append(f"Previously: {previous_summary}")
     if cast_names:
-        parts.append(f"Characters in this scene: {', '.join(cast_names)}")
+        labelled = [
+            f"{n} ({cast_pronouns[n]})"
+            if cast_pronouns and n in cast_pronouns
+            else n
+            for n in cast_names
+        ]
+        parts.append(f"Characters in this scene: {', '.join(labelled)}")
+    if location:
+        parts.append(f"Setting: {location.replace('_', ' ')}")
 
     parts.append(f"Scene text to rephrase:\n{filled_template}")
 
@@ -195,8 +220,29 @@ class LLMClient:
         if not choices:
             return None
         message = choices[0].get("message", {})
-        content = message.get("content", "").strip()
+        content = _strip_reasoning(message.get("content", "")).strip()
         return content if content else None
+
+
+_THINK_BLOCK = re.compile(r"<think>.*?(?:</think>|$)", re.DOTALL)
+
+# Models sometimes copy the "(she/her)" grounding hint straight into prose
+# ("Sam (he/him) stood by the locker"). Strip any such parenthetical.
+_PRONOUN_LABEL = re.compile(r"\s*\((?:he|she|they)/(?:him|her|them)\)")
+
+
+def _strip_pronoun_labels(content: str) -> str:
+    return _PRONOUN_LABEL.sub("", content)
+
+
+def _strip_reasoning(content: str) -> str:
+    """Drop ``<think>…</think>`` blocks reasoning models leave in content.
+
+    An unterminated block (token cap hit mid-thought) strips to the end —
+    better an empty result (caller falls back to the template) than
+    reasoning chatter on screen.
+    """
+    return _THINK_BLOCK.sub("", content)
 
 
 # --- High-level enhance function ---------------------------------------------
@@ -216,6 +262,8 @@ def enhance_narration(
     previous_summary: str | None = None,
     cast_names: Sequence[str] = (),
     branch_summary: str | None = None,
+    location: str | None = None,
+    cast_pronouns: "Mapping[str, str] | None" = None,
 ) -> str:
     """Enhance a filled template via LLM, or return it unchanged.
 
@@ -235,11 +283,14 @@ def enhance_narration(
         previous_summary=previous_summary,
         cast_names=cast_names,
         branch_summary=branch_summary,
+        location=location,
+        cast_pronouns=cast_pronouns,
     )
 
     result = client.generate(prompt)
     if result is None:
         return filled_template
+    result = _strip_pronoun_labels(result)
 
     # Sanity check: the LLM response should mention at least one cast name.
     # If it doesn't, it may have hallucinated — fall back.
@@ -248,6 +299,51 @@ def enhance_narration(
         return filled_template
 
     return result
+
+
+def enhance_scene_intro(
+    client: LLMClient,
+    intro_text: str,
+    *,
+    cast_names: Sequence[str] = (),
+    location: str | None = None,
+    cast_pronouns: "Mapping[str, str] | None" = None,
+) -> str:
+    """Rephrase an assembled scene intro via the LLM, or return it unchanged.
+
+    Unlike :func:`enhance_narration` there is no opt-in gate — intros are
+    universal scene-setting — but the same setting/pronoun grounding and
+    silent fallback apply. Kept short by a tight token cap so intros stay
+    atmospheric rather than ballooning into prose.
+    """
+    if not intro_text.strip():
+        return intro_text
+
+    prompt = build_llm_prompt(
+        intro_text,
+        cast_names=cast_names,
+        location=location,
+        cast_pronouns=cast_pronouns,
+    )
+    prompt.max_tokens = min(prompt.max_tokens, 90)
+
+    result = client.generate(prompt)
+    if result is None:
+        return intro_text
+    result = _strip_pronoun_labels(result)
+    # If named cast was given, a dropped-all-names result means drift.
+    if cast_names and not any(name in result for name in cast_names):
+        return intro_text
+    # The tight token cap can truncate mid-sentence — trim to the last
+    # completed sentence so the intro never ends on a dangling fragment.
+    trimmed = _trim_to_last_sentence(result)
+    return trimmed or result
+
+
+def _trim_to_last_sentence(text: str) -> str:
+    """Cut *text* back to its last sentence-ending punctuation."""
+    cut = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
+    return text[: cut + 1].strip() if cut != -1 else text.strip()
 
 
 # --- Serialisable config (for save.py) ---------------------------------------

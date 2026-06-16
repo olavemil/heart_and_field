@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -25,7 +26,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="rival", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you answer the challenge?",
+            options={
+                "won": "Push harder still",
+                "lost": "Accept the lesson",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.COMPETITION,
@@ -35,7 +42,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         outcomes={
             "won": BranchOutcome(
-                summary="He outran him three times in a row. Nobody said it, but they both knew.",
+                summary="{They:player} outran {them:rival} three times in a row. Nobody said it, but both knew.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.04),
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.02),
@@ -48,7 +55,7 @@ BLUEPRINTS = [
                 ],
             ),
             "lost": BranchOutcome(
-                summary="The other man was quicker. Every time.",
+                summary="{name:rival} was quicker. Every time.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],
@@ -69,7 +76,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="opponent", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Do you retaliate?",
+            options={
+                "stood_ground": "Keep your composure",
+                "snapped": "Go in harder",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -79,7 +92,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.PITCH, SceneType.TRAINING_GROUND],
         outcomes={
             "stood_ground": BranchOutcome(
-                summary="He took the hit and got back up. Didn't look at the man who put him down.",
+                summary="{They:player} took the hit and got back up. Didn't look at {name:opponent} who put {them:player} down.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.02),
@@ -87,7 +100,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "snapped": BranchOutcome(
-                summary="He went in high on the next challenge. The whistle came late.",
+                summary="{They:player} went in high on the next challenge. The whistle came late.",
                 stat_effects=[
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.05),
                     StatEffect("player", StatName.CAUTIOUSNESS, -0.03),
@@ -105,7 +118,13 @@ BLUEPRINTS = [
             RoleSlot(role="coach",
                      filter=lambda c: c.role.value in {"manager", "assistant_coach"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your response?",
+            options={
+                "conceded": "Trust the decision",
+                "pushed_back": "Explain your view",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -115,13 +134,13 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.LOCKER_ROOM],
         outcomes={
             "conceded": BranchOutcome(
-                summary="He did what the board said. It felt wrong the whole session.",
+                summary="{They:player} did what the board said. It felt wrong the whole session.",
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.03),
                 ],
             ),
             "pushed_back": BranchOutcome(
-                summary="He explained it once, clearly. The coach stared for a long time.",
+                summary="{They:player} explained it once, clearly. {name:coach} stared for a long time.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                     StatEffect("player", StatName.LEADERSHIP, 0.02),
@@ -140,7 +159,13 @@ BLUEPRINTS = [
         id="sport.solo_warmdown",
         tags={"training", "solo"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you recover?",
+            options={
+                "processed": "Sit with it",
+                "spiralled": "Run it out",
+            },
+        ))],
         base_weight=0.5,
         event_id=EventId(
             nature=EventNature.ISOLATION,
@@ -150,14 +175,14 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.GYM],
         outcomes={
             "processed": BranchOutcome(
-                summary="He stayed after everyone left. The quiet helped.",
+                summary="{They:player} stayed after everyone left. The quiet helped.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
                     StatEffect("player", StatName.INTROSPECTION, 0.02),
                 ],
             ),
             "spiralled": BranchOutcome(
-                summary="He kept running drills alone until his legs burned. It didn't fix anything.",
+                summary="{They:player} kept running drills alone until {their:player} legs burned. It didn't fix anything.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.03),
                     StatEffect("player", StatName.STAMINA, 0.01),
@@ -174,7 +199,13 @@ BLUEPRINTS = [
             RoleSlot(role="coach",
                      filter=lambda c: c.role.value in {"manager", "assistant_coach"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your approach?",
+            options={
+                "selected": "Push for the shirt",
+                "benched": "Accept the outcome",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.NEGOTIATION,
@@ -184,7 +215,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.OFFICE, SceneType.LOCKER_ROOM],
         outcomes={
             "selected": BranchOutcome(
-                summary="He'd be starting. The conversation was shorter than the worry.",
+                summary="{They:player}'d be starting. The conversation was shorter than the worry.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                     StatEffect("player", StatName.MOTIVATION, 0.02),
@@ -207,7 +238,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="analyst", filter=not_player, optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you respond?",
+            options={
+                "faced_it": "Face the numbers",
+                "dismissed": "Dismiss the data",
+            },
+        ))],
         base_weight=0.4,
         event_id=EventId(
             nature=EventNature.REVELATION,
@@ -217,13 +254,13 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.OFFICE, SceneType.LOCKER_ROOM],
         outcomes={
             "faced_it": BranchOutcome(
-                summary="The numbers were clear. He looked at them longer than he needed to.",
+                summary="The numbers were clear. {They:player} looked at them longer than necessary.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
                 ],
             ),
             "dismissed": BranchOutcome(
-                summary="He closed the screen. Data couldn't tell you what the pitch felt like.",
+                summary="{They:player} closed the screen. Data couldn't capture what the pitch felt like.",
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.03),
                 ],

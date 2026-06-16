@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     LocationCue,
     RelationshipEffect,
@@ -25,7 +26,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="companion", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How's the meal?",
+            options={
+                "easy": "Enjoy the company",
+                "silent": "Sit quietly",
+            },
+        ))],
         base_weight=0.9,
         event_id=EventId(
             nature=EventNature.INVITATION,
@@ -84,7 +91,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.BUS, SceneType.PLANE, SceneType.CAR],
         outcomes={
             "reflective": BranchOutcome(
-                summary="He spent the ride thinking. It settled something.",
+                summary="{They:player} spent the ride thinking. It settled something.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
                     StatEffect("player", StatName.INTROSPECTION, 0.02),

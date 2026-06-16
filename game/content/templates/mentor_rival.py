@@ -9,7 +9,7 @@ TEMPLATES = [
         id="tpl.mentor.quiet.lands",
         event_id="mentor.quiet_word",
         body=(
-            "{name:mentor} said it once and went back to his boots. The "
+            "{name:mentor} said it once and went back to {their:mentor} boots. The "
             "sentence stayed in {name:player}'s head on the drive home."
         ),
         base_weight=1.0,
@@ -25,8 +25,8 @@ TEMPLATES = [
         id="tpl.mentor.quiet.brushed",
         event_id="mentor.quiet_word",
         body=(
-            "{name:mentor} told him the thing. {name:player} heard it and "
-            "decided he already knew."
+            "{name:mentor} told {them:player} the thing. {name:player} heard it and "
+            "decided {they:player} already knew."
         ),
         base_weight=1.0,
         context_requirements={"confident"},
@@ -46,8 +46,8 @@ TEMPLATES = [
         id="tpl.rival.challenge.back",
         event_id="rival.challenge",
         body=(
-            "{name:player} let it go. He told himself it wasn't worth it. "
-            "Later he'd know it was."
+            "{name:player} let it go, told {themself:player} it wasn't worth it. "
+            "Later {they:player}'d know it was."
         ),
         base_weight=1.0,
         context_requirements={"rattled"},

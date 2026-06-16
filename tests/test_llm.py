@@ -54,6 +54,20 @@ class TestBuildLLMPrompt:
         assert long.max_tokens >= short.max_tokens
         assert long.max_tokens <= 500  # capped
 
+    def test_location_grounds_setting(self):
+        """Phase 22: setting pinned in the prompt so small models don't
+        drift genre (a locker-bay scene once came back set in a tavern)."""
+        p = build_llm_prompt("Alex went quiet.", location="locker_bay")
+        assert "Setting: locker bay" in p.user
+        # No location → no setting line.
+        bare = build_llm_prompt("Alex went quiet.")
+        assert "Setting:" not in bare.user
+
+    def test_system_prompt_constrains_genre(self):
+        p = build_llm_prompt("Alex went quiet.")
+        assert "present day" in p.system
+        assert "Do NOT change or invent the setting" in p.system
+
 
 # ── should_enhance ──────────────────────────────────────────────────
 
@@ -293,3 +307,56 @@ class TestLLMConfig:
         client = llm_config_from_dict({})
         assert client.base_url == DEFAULT_BASE_URL
         assert client.enabled is True
+
+
+class TestStripReasoning:
+    def test_strips_closed_think_block(self):
+        from engine.llm import _strip_reasoning
+
+        out = _strip_reasoning("<think>plan plan plan</think>Alex went quiet.")
+        assert out == "Alex went quiet."
+
+    def test_strips_unterminated_block_to_empty(self):
+        from engine.llm import _strip_reasoning
+
+        assert _strip_reasoning("<think>still thinking when the cap hit") == ""
+
+    def test_plain_content_untouched(self):
+        from engine.llm import _strip_reasoning
+
+        assert _strip_reasoning("Alex went quiet.") == "Alex went quiet."
+
+
+class TestStripPronounLabels:
+    def test_strips_inline_pronoun_hint(self):
+        from engine.llm import _strip_pronoun_labels
+
+        assert (
+            _strip_pronoun_labels("Sam (he/him) stood by the locker.")
+            == "Sam stood by the locker."
+        )
+
+    def test_strips_all_three_sets(self):
+        from engine.llm import _strip_pronoun_labels
+
+        out = _strip_pronoun_labels("A (she/her), B (they/them), C (he/him).")
+        assert "(" not in out
+
+    def test_leaves_other_parentheticals(self):
+        from engine.llm import _strip_pronoun_labels
+
+        assert _strip_pronoun_labels("He scored (finally).") == "He scored (finally)."
+
+
+class TestPromptPronounHints:
+    def test_cast_pronouns_appear_in_prompt(self):
+        p = build_llm_prompt(
+            "Alex went quiet.",
+            cast_names=["Alex"],
+            cast_pronouns={"Alex": "she/her"},
+        )
+        assert "Alex (she/her)" in p.user
+
+    def test_system_prompt_mentions_pronouns(self):
+        p = build_llm_prompt("x")
+        assert "pronoun" in p.system.lower()

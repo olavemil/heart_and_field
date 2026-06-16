@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -24,7 +25,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="scorer", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you celebrate?",
+            options={
+                "warm": "Join the celebration",
+                "held_back": "Stay on the edge",
+            },
+        ))],
         base_weight=0.7,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
@@ -41,7 +48,7 @@ BLUEPRINTS = [
         outcomes={
             "warm": BranchOutcome(
                 summary=(
-                    "He got to {name:scorer} first. The hug was brief and "
+                    "{They:player} got to {name:scorer} first. The hug was brief and "
                     "honest."
                 ),
                 stat_effects=[
@@ -58,8 +65,8 @@ BLUEPRINTS = [
             ),
             "held_back": BranchOutcome(
                 summary=(
-                    "He ran to the edge of the huddle and stopped there. Something "
-                    "kept him from the middle of it."
+                    "{They:player} ran to the edge of the huddle and stopped there. Something "
+                    "kept {them:player} from the middle of it."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),

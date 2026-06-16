@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -24,7 +25,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="presenter", filter=not_player, optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you receive this?",
+            options={
+                "gracious": "Thank them sincerely",
+                "hollow": "Dwell on the cost",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
@@ -34,7 +41,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.BOARDROOM, SceneType.PRESS_ROOM],
         outcomes={
             "gracious": BranchOutcome(
-                summary="He thanked the people he was supposed to thank. The room clapped.",
+                summary="{They:player} thanked the right people, the expected ones. The room clapped.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                     StatEffect("player", StatName.LEADERSHIP, 0.02),
@@ -42,7 +49,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "hollow": BranchOutcome(
-                summary="The trophy was heavier than he expected. Lighter than what it cost.",
+                summary="The trophy was heavier than expected. Lighter than what it cost.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
                 ],
@@ -58,7 +65,13 @@ BLUEPRINTS = [
             RoleSlot(role="official",
                      filter=lambda c: c.role.value in {"manager", "media", "other"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your move?",
+            options={
+                "defiant": "Speak your mind",
+                "complied": "Sign as instructed",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
@@ -68,7 +81,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.OFFICE, SceneType.BOARDROOM],
         outcomes={
             "defiant": BranchOutcome(
-                summary="He said what he thought about the decision. The room went cold.",
+                summary="{They:player} said what {they:player} thought about the decision. The room went cold.",
                 stat_effects=[
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.03),
                     StatEffect("player", StatName.LEADERSHIP, 0.02),
@@ -76,7 +89,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "complied": BranchOutcome(
-                summary="He signed where they pointed. His hand was steady.",
+                summary="{They:player} signed where indicated. {Their:player} hand was steady.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
                     StatEffect("player", StatName.INSECURITY, 0.02),
@@ -89,7 +102,13 @@ BLUEPRINTS = [
         id="inst.suspended",
         tags={"institutional", "solo"},
         participants=[RoleSlot(role="player", filter=is_player)],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How will you spend this?",
+            options={
+                "stewed": "Wait for your chance",
+                "used_it": "Make it productive",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.ISOLATION,
@@ -99,14 +118,14 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.APARTMENT, SceneType.HOUSE],
         outcomes={
             "stewed": BranchOutcome(
-                summary="The phone didn't ring. He checked it anyway.",
+                summary="The phone didn't ring. {They:player} checked it anyway.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                     StatEffect("player", StatName.REFLECTION, 0.02),
                 ],
             ),
             "used_it": BranchOutcome(
-                summary="The time off was enforced. He filled it with something useful.",
+                summary="The time off was enforced. {They:player} filled it with something useful.",
                 stat_effects=[
                     StatEffect("player", StatName.INTROSPECTION, 0.03),
                 ],
@@ -122,7 +141,13 @@ BLUEPRINTS = [
             RoleSlot(role="official",
                      filter=lambda c: c.role.value in {"manager", "other"}),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you negotiate?",
+            options={
+                "held_firm": "Hold your ground",
+                "caved": "Accept their terms",
+            },
+        ))],
         base_weight=0.2,
         event_id=EventId(
             nature=EventNature.NEGOTIATION,
@@ -132,14 +157,14 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.OFFICE, SceneType.BOARDROOM],
         outcomes={
             "held_firm": BranchOutcome(
-                summary="He repeated his position. The silence stretched.",
+                summary="{They:player} repeated {their:player} position. The silence stretched.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.02),
                 ],
             ),
             "caved": BranchOutcome(
-                summary="He agreed to their terms. The walk to the car park was long.",
+                summary="{They:player} agreed to the terms. The walk to the car park was long.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],
@@ -153,7 +178,13 @@ BLUEPRINTS = [
         participants=[
             RoleSlot(role="player", filter=is_player),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="What's your strategy?",
+            options={
+                "prepared": "Get ahead of it",
+                "blindsided": "Let it break",
+            },
+        ))],
         base_weight=0.3,
         event_id=EventId(
             nature=EventNature.REVELATION,
@@ -164,13 +195,13 @@ BLUEPRINTS = [
         reveals_exposure=0.15,
         outcomes={
             "prepared": BranchOutcome(
-                summary="He saw the headline before anyone asked. He had his answer ready.",
+                summary="{They:player} saw the headline before anyone asked. {They:player} had {their:player} answer ready.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
                 ],
             ),
             "blindsided": BranchOutcome(
-                summary="Someone showed him the article. He read it twice.",
+                summary="Someone showed {them:player} the article. {They:player} read it twice.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],

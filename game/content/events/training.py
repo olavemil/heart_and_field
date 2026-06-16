@@ -3,6 +3,7 @@
 from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
+    ChoiceNode,
     EventBlueprint,
     RelationshipEffect,
     RoleSlot,
@@ -24,7 +25,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="partner", filter=teammate()),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do the drills feel today?",
+            options={
+                "good": "Find the rhythm",
+                "awkward": "Force the pace",
+            },
+        ))],
         base_weight=1.0,
         event_id=EventId(
             nature=EventNature.COLLABORATION,
@@ -77,7 +84,13 @@ BLUEPRINTS = [
             RoleSlot(role="player", filter=is_player),
             RoleSlot(role="audience", filter=not_player, optional=True),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="Show them what you've got?",
+            options={
+                "landed": "Go for it",
+                "missed": "Play it safe",
+            },
+        ))],
         base_weight=0.6,
         event_id=EventId(
             nature=EventNature.OBSERVATION,
@@ -93,14 +106,14 @@ BLUEPRINTS = [
         ],
         outcomes={
             "landed": BranchOutcome(
-                summary="He pulled off the trick. The bench noticed.",
+                summary="{They:player} pulled off the trick. The bench noticed.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                 ],
                 flags={"public"},
             ),
             "missed": BranchOutcome(
-                summary="The trick went wide. Someone laughed.",
+                summary="The trick went wide. {They:player} stumbled. Someone laughed.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, -0.03),
                     StatEffect("player", StatName.INSECURITY, 0.03),
@@ -119,7 +132,13 @@ BLUEPRINTS = [
                 filter=lambda c: c.role.value in {"manager", "assistant_coach"},
             ),
         ],
-        blocks=[SceneBlock(id="main")],
+        blocks=[SceneBlock(id="main", choice=ChoiceNode(
+            prompt="How do you take the feedback?",
+            options={
+                "receptive": "Learn from it",
+                "defensive": "Brush it off",
+            },
+        ))],
         base_weight=0.8,
         event_id=EventId(
             nature=EventNature.COLLABORATION,
@@ -129,7 +148,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         outcomes={
             "receptive": BranchOutcome(
-                summary="The note landed. He tried the adjustment immediately.",
+                summary="The note landed. {They:player} tried the adjustment immediately.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.02),
                     StatEffect("player", StatName.FINESSE, 0.02),
@@ -145,8 +164,8 @@ BLUEPRINTS = [
             ),
             "defensive": BranchOutcome(
                 summary=(
-                    "He nodded, but the adjustment didn't happen. Something in "
-                    "him pushed back."
+                    "{They:player} nodded, but the adjustment didn't happen. Something in "
+                    "{them:player} pushed back."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.03),

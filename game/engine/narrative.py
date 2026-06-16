@@ -15,6 +15,7 @@ from __future__ import annotations
 import random as _random
 import re
 from dataclasses import dataclass, field
+from dataclasses import replace as replace_dataclass
 from enum import Enum
 from typing import Callable, Mapping, Sequence
 
@@ -136,7 +137,61 @@ def _resolve_standout_action(ctx: NarrationContext) -> str:
 
 
 def _resolve_branch_summary(ctx: NarrationContext) -> str:
-    return ctx.branch_summary or ""
+    summary = ctx.branch_summary or ""
+    if "{" not in summary:
+        return summary
+    # Resolve slots authored into the summary (e.g. {they:player}) so
+    # pronouns track gender here too. Blank branch_summary in the scoped
+    # ctx so a stray {summary} can't recurse.
+    return _substitute(summary, replace_dataclass(ctx, branch_summary=""))
+
+
+# --- Pronoun resolvers ------------------------------------------------------
+#
+# Templates use {they}/{them}/{their}/{theirs}/{themself} (plus capitalised
+# forms for sentence starts), role-scoped like {they:player}. Each reads the
+# focal character's `gender_presentation` so narration matches the player's
+# chosen presentation instead of defaulting to "he". Androgynous resolves to
+# singular "they"; author such templates with plural-agreeing verbs.
+
+_PRONOUN_TABLE: dict[str, dict[str, str]] = {
+    "masculine": {
+        "they": "he", "them": "him", "their": "his",
+        "theirs": "his", "themself": "himself",
+    },
+    "feminine": {
+        "they": "she", "them": "her", "their": "her",
+        "theirs": "hers", "themself": "herself",
+    },
+    "androgynous": {
+        "they": "they", "them": "them", "their": "their",
+        "theirs": "theirs", "themself": "themself",
+    },
+}
+
+
+# Pronoun-set labels for grounding the LLM (name → "she/her").
+_PRONOUN_HINT: dict[str, str] = {
+    "masculine": "he/him",
+    "feminine": "she/her",
+    "androgynous": "they/them",
+}
+
+
+def _pronoun(ctx: NarrationContext, key: str) -> str:
+    """Look up a pronoun for the focal character's gender presentation."""
+    gp = "masculine"
+    if ctx.target is not None:
+        gp = str(getattr(ctx.target, "gender_presentation", "") or "masculine")
+    return _PRONOUN_TABLE.get(gp, _PRONOUN_TABLE["masculine"]).get(key, key)
+
+
+def _make_pronoun_resolver(key: str, *, capitalise: bool) -> SlotResolver:
+    def resolver(ctx: NarrationContext) -> str:
+        word = _pronoun(ctx, key)
+        return word[:1].upper() + word[1:] if capitalise else word
+
+    return resolver
 
 
 SLOT_RESOLVERS: dict[str, SlotResolver] = {
@@ -148,6 +203,13 @@ SLOT_RESOLVERS: dict[str, SlotResolver] = {
     "standout_action": _resolve_standout_action,
     "summary": _resolve_branch_summary,
 }
+
+# Register pronoun slots (lower-case + capitalised for sentence starts).
+for _pkey in ("they", "them", "their", "theirs", "themself"):
+    SLOT_RESOLVERS[_pkey] = _make_pronoun_resolver(_pkey, capitalise=False)
+    SLOT_RESOLVERS[_pkey.capitalize()] = _make_pronoun_resolver(
+        _pkey, capitalise=True
+    )
 
 
 def register_resolver(name: str, resolver: SlotResolver) -> None:
@@ -180,6 +242,31 @@ class NarrativeTemplate:
 # --- Filling ----------------------------------------------------------------
 
 
+def _substitute(text: str, ctx: NarrationContext) -> str:
+    """Resolve every `{slot}` / `{slot:role}` in *text* using `SLOT_RESOLVERS`.
+
+    Role-scoped slots (`{name:coach}`, `{they:player}`) re-resolve against
+    that cast member so pronouns track the right character's gender.
+    Unknown slots render as `[slot]` so authoring errors are visible.
+    """
+
+    def replace(match: re.Match) -> str:
+        slot = match.group(1)
+        role = match.group(2)
+        resolver = SLOT_RESOLVERS.get(slot)
+        if role is not None:
+            cast_char = ctx.cast.get(role)
+            if cast_char is None or resolver is None:
+                return f"[{slot}:{role}]"
+            scoped = replace_dataclass(ctx, target=cast_char)
+            return resolver(scoped)
+        if resolver is None:
+            return f"[{slot}]"
+        return resolver(ctx)
+
+    return _SLOT_PATTERN.sub(replace, text)
+
+
 def fill_template(template: NarrativeTemplate, ctx: NarrationContext) -> str:
     """Substitute every `{slot}` in `template.body` using resolvers and cast.
 
@@ -187,39 +274,7 @@ def fill_template(template: NarrativeTemplate, ctx: NarrationContext) -> str:
     `ctx.cast` first; otherwise the resolver receives the full ctx as-is.
     Unknown slots render as `[slot]` so authoring errors are visible.
     """
-
-    def replace(match: re.Match) -> str:
-        slot = match.group(1)
-        role = match.group(2)
-        if role is not None:
-            # Role-scoped lookup — re-resolve with target swapped.
-            cast_char = ctx.cast.get(role)
-            if cast_char is None:
-                return f"[{slot}:{role}]"
-            scoped = NarrationContext(
-                target=cast_char,
-                cast=ctx.cast,
-                previous_outcome=ctx.previous_outcome,
-                trigger_outcome=ctx.trigger_outcome,
-                arc_summary=ctx.arc_summary,
-                composure=ctx.composure,
-                insecurity=ctx.insecurity,
-                confidence=ctx.confidence,
-                mood=ctx.mood,
-                location=ctx.location,
-                standout_action=ctx.standout_action,
-                branch_summary=ctx.branch_summary,
-            )
-            resolver = SLOT_RESOLVERS.get(slot)
-            if resolver is None:
-                return f"[{slot}:{role}]"
-            return resolver(scoped)
-        resolver = SLOT_RESOLVERS.get(slot)
-        if resolver is None:
-            return f"[{slot}]"
-        return resolver(ctx)
-
-    return _SLOT_PATTERN.sub(replace, template.body)
+    return _substitute(template.body, ctx)
 
 
 # --- Selection --------------------------------------------------------------
@@ -386,7 +441,9 @@ def narrate(
     """
     template = select_template(templates, ctx, rng)
     if template is None:
-        filled = ctx.branch_summary or ""
+        # No template — resolve slots authored into the summary itself so
+        # the last-resort narration still gets gendered pronouns.
+        filled = _resolve_branch_summary(ctx)
     else:
         filled = fill_template(template, ctx)
 
@@ -398,6 +455,14 @@ def narrate(
             for c in ctx.cast.values()
             if hasattr(c, "name")
         ]
+        cast_pronouns = {
+            (c.nickname or c.name): _PRONOUN_HINT.get(
+                str(getattr(c, "gender_presentation", "") or "masculine"),
+                "they/them",
+            )
+            for c in ctx.cast.values()
+            if hasattr(c, "name")
+        }
         filled = enhance_narration(
             llm_client,
             filled,
@@ -408,6 +473,8 @@ def narrate(
             ),
             cast_names=cast_names,
             branch_summary=ctx.branch_summary,
+            location=ctx.location,
+            cast_pronouns=cast_pronouns,
         )
 
     return paginate(filled, max_chars=max_chars)
@@ -502,3 +569,125 @@ def _safe_observable(char: Character, obs: ObservableName) -> float:
         return char.observable(obs)
     except Exception:
         return 0.5
+
+
+# --- Match phase narration (Phase 22F) ---------------------------------------
+#
+# Turns a PhaseResult into a narrated line instead of a stat readout.
+# Pure and rng-injected like everything else in the engine; Ren'Py gets
+# the finished string via ``GameSession.narrate_match_phase``.
+
+_GOAL_LINES = (
+    "GOAL! {scorer} picks the moment and buries it.",
+    "It falls to {scorer} — and {scorer} doesn't miss those. GOAL!",
+    "GOAL! {scorer} finishes what the whole move deserved.",
+    "{scorer} arrives exactly on time and turns it in. GOAL!",
+)
+
+_DOMINATING_LINES = (
+    "Your side has the game by the collar; {opponent} can't keep the ball "
+    "for thirty seconds at a stretch.",
+    "Wave after wave — {opponent} are defending the box like it owes them "
+    "money.",
+    "Everything is happening in {opponent}'s half. The pressure has a "
+    "rhythm to it now.",
+)
+
+_PRESSURE_LINES = (
+    "{opponent} turn the screw. The back line is doing all of the talking "
+    "and most of the running.",
+    "Long spells without the ball. {opponent} keep finding the same gap "
+    "and everyone on the pitch knows it.",
+    "It's all hands behind the ball — {opponent} are queuing up shots.",
+)
+
+_EVEN_LINES = (
+    "Trench warfare in midfield — neither side will give the first yard.",
+    "The game is even and angry about it; every loose ball gets three "
+    "challenges.",
+    "Tight as a held breath. One mistake either way decides this spell.",
+)
+
+_LATE_SURGE_LINES = (
+    "Legs are heavy, but the momentum is yours and the whole ground can "
+    "feel it.",
+    "Late in the day, and your side keep coming — {opponent} just want to "
+    "hear the whistle.",
+)
+
+_LATE_FADE_LINES = (
+    "The clock is becoming a problem. {opponent} can smell it.",
+    "Tired legs, tired minds — {opponent} are winning every second ball "
+    "now.",
+)
+
+# Performance gap (team − opponent) beyond which a phase reads as
+# one-sided rather than even.
+PHASE_GAP_THRESHOLD = 0.12
+# |momentum| beyond which a late phase reads as a surge/fade.
+LATE_MOMENTUM_THRESHOLD = 0.25
+
+
+def narrate_match_phase(
+    result: "PhaseResult",
+    rng: _random.Random,
+    *,
+    scorer_name: str | None = None,
+    opponent_name: str = "the opposition",
+    phase_index: int = 0,
+    total_phases: int = 8,
+) -> str:
+    """One narrated line for a simulated match phase.
+
+    Goal phases name the scorer; otherwise the line reads the balance of
+    play, with late-game variants when momentum is pronounced.
+    """
+    if result.goal_scored:
+        line = rng.choice(_GOAL_LINES)
+        return line.format(scorer=scorer_name or "Someone", opponent=opponent_name)
+
+    late = total_phases > 0 and phase_index >= int(total_phases * 0.75)
+    if late and result.momentum >= LATE_MOMENTUM_THRESHOLD:
+        pool = _LATE_SURGE_LINES
+    elif late and result.momentum <= -LATE_MOMENTUM_THRESHOLD:
+        pool = _LATE_FADE_LINES
+    elif result.team_perf - result.opp_perf > PHASE_GAP_THRESHOLD:
+        pool = _DOMINATING_LINES
+    elif result.opp_perf - result.team_perf > PHASE_GAP_THRESHOLD:
+        pool = _PRESSURE_LINES
+    else:
+        pool = _EVEN_LINES
+    return rng.choice(pool).format(opponent=opponent_name)
+
+
+_SELF_EVAL_BANDS: tuple[tuple[float, tuple[str, ...]], ...] = (
+    (0.70, (
+        "You walk off feeling like you ran the game.",
+        "Whatever else happened out there, you know you delivered.",
+    )),
+    (0.55, (
+        "You did your job today, and you know it.",
+        "A solid shift. Nothing to apologise for.",
+    )),
+    (0.40, (
+        "You can't quite decide what kind of game you had.",
+        "Bits of it were good. You keep returning to the other bits.",
+    )),
+    (0.0, (
+        "Whatever the table says, it feels like you let it slip.",
+        "You replay your touches on the walk in, and none of them improve.",
+    )),
+)
+
+
+def self_evaluation_line(perceived: float, rng: _random.Random) -> str:
+    """Narrated self-evaluation for the post-match summary.
+
+    ``perceived`` is the awareness-filtered self-rating from
+    ``self_evaluate`` — deliberately *not* the actual performance, so
+    the line can contradict the scoreline for low-awareness players.
+    """
+    for cutoff, lines in _SELF_EVAL_BANDS:
+        if perceived >= cutoff:
+            return rng.choice(lines)
+    return _SELF_EVAL_BANDS[-1][1][0]
