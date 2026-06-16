@@ -67,8 +67,8 @@ BLUEPRINTS = [
         outcomes={
             "closer": BranchOutcome(
                 summary=(
-                    "They didn't do anything special. He left feeling better than "
-                    "he'd arrived."
+                    "They didn't do anything special. {They:player} left feeling better than "
+                    "{they:player}'d arrived."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, -0.03),

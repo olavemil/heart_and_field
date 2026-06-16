@@ -61,6 +61,27 @@ class TestInit:
         assert s.background_manifest is not None
         assert s.background_generator is not None
 
+    def test_prebaked_mode_uses_readonly_producer_and_noop_scheduler(
+        self, tmp_path: Path
+    ):
+        from engine.background_generator import (
+            NoOpPrefetchScheduler,
+            PrebakedImageProducer,
+        )
+
+        s = GameSession.new_game("Alex Morgan", seed=42)
+        s.init_backgrounds(tmp_path / "bg", prebaked=True)
+        gen = s.background_generator
+        assert isinstance(gen.producer, PrebakedImageProducer)
+        assert isinstance(gen.prefetch_scheduler, NoOpPrefetchScheduler)
+
+    def test_prebaked_mode_skips_marquee_warmup(self, tmp_path: Path):
+        # warm_marquees would create graphs; prebaked must no-op it so the
+        # shipped pack's manifest is the single source of truth.
+        s = GameSession.new_game("Alex Morgan", seed=42)
+        s.init_backgrounds(tmp_path / "bg", prebaked=True, warm_marquees=True)
+        assert s.background_manifest.graphs == []
+
     def test_resolve_returns_none_without_init(self, tmp_path: Path):
         s = GameSession.new_game("Alex Morgan", seed=1)
         bp = _house_blueprint(graph_id="player_home")
@@ -283,3 +304,43 @@ class TestPoolFlow:
         assert len(pool) >= 1
         # Their graph_id has been cleared.
         assert all(e.graph_id is None for e in pool)
+
+
+class TestPrebakedServing:
+    def test_scene_path_and_variants_agree_on_alternate(self, tmp_path: Path):
+        """The crux of Phase 23B: scene_path and scene_variants are
+        separate Ren'Py calls and must reference the same alternate."""
+        from engine.background_pool import BackgroundEntry
+
+        s = GameSession.new_game("Alex Morgan", seed=42)
+        s.init_backgrounds(tmp_path / "bg", prebaked=True)
+        mf = s.background_manifest
+        desc = s._descriptor_for(
+            LocationCue(spec_id="suburban_house", node_name="kitchen", graph_id="ph")
+        )
+        mf.create_graph("suburban_house", desc, graph_id="ph")
+        for a in range(2):
+            mf.attach_alternate(
+                "ph",
+                "kitchen",
+                BackgroundEntry(
+                    entry_id=f"kitchen_alt{a}",
+                    descriptor=desc,
+                    spec_id="suburban_house",
+                    node_name="kitchen",
+                    image_paths=[f"k_{a}_p.png", f"k_{a}_m.png"],
+                    seed=a,
+                ),
+            )
+
+        # Visit 1 → alt0: primary and variants both alt0.
+        p1 = s.scene_path("ph", "kitchen")
+        v1 = s.scene_variants("ph", "kitchen")
+        assert p1.name == "k_0_p.png"
+        assert [v.name for v in v1] == ["k_0_p.png", "k_0_m.png"]
+
+        # Visit 2 → alt1: both follow.
+        p2 = s.scene_path("ph", "kitchen")
+        v2 = s.scene_variants("ph", "kitchen")
+        assert p2.name == "k_1_p.png"
+        assert [v.name for v in v2] == ["k_1_p.png", "k_1_m.png"]

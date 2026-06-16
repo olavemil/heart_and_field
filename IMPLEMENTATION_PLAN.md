@@ -831,7 +831,7 @@ Remaining:
 - Generic-only blueprint count: 37 → **0** (regression test
   `test_no_blueprint_is_generic_only`).
 
-### 22F — Match narration ✅ (first pass)
+### 22F — Match narration ✅
 
 - `narrate_match_phase()` in `narrative.py`: goal lines naming the
   scorer, balance-of-play lines (dominating / under pressure / even via
@@ -841,9 +841,31 @@ Remaining:
 - `self_evaluation_line()` replaces the "perceived performance: 72%"
   readout — banded, awareness-filtered, can contradict the scoreline
   by design.
-- Deferred: in-phase *event* hooks (goal / near-miss interactions,
-  `celebration.goal_huddle` insertion) — phases narrate but don't yet
-  spawn playable events.
+
+#### In-phase playable beats ✅
+
+- `cast_event(..., pinned=...)` in `events.py` forces specific
+  characters into roles (the real goal-scorer into `scorer`); a pinned
+  character must still satisfy the slot filter.
+- `GameSession.select_match_event` / `cast_match_event` /
+  `resolve_match_event`: a teammate goal opens a playable beat
+  (gated by `MATCH_EVENT_GOAL_CHANCE = 0.6`), weight-sampled from the
+  `ingame` pool through the normal prereq/recency machinery. Resolution
+  applies effects + logs the record but marks no schedule slot and
+  advances no clock — the match block owns the whole afternoon.
+- `game_block.rpy` calls `select_match_event` after each phase line;
+  on a hit it runs a `match_event` sub-label (scorer on screen → choice
+  → narration). `celebration.goal_huddle` is the first such event.
+- Headless: ~60% of teammate goals fire a beat over 20 matches, 0
+  crashes. Tests in `test_session.py::TestInPhaseMatchEvents`.
+- Known pre-existing bug (flagged separately, not 22F): the match sim
+  draws the scorer from `roster_players()` which includes staff, so a
+  manager/physio can occasionally be named scorer (cast then fails
+  gracefully). Fix is to filter to the playing squad before
+  `simulate_phase`.
+- Deferred: the player-scored beat (player mobbed by teammates) and
+  near-miss / late-surge interactive moments — only `goal_huddle`
+  is authored so far.
 
 ### 22G — Ren'Py lint gate ✅
 
@@ -875,6 +897,64 @@ Remaining:
   runnable as `./play.command`. Resolves the SDK at
   `./renpy-8.5.2-sdk`, honours `RENPY_SDK`, and falls back to the main
   checkout when run from a worktree.
+
+### 22D (cont.) — ChoiceNode labels ✅
+
+- Authored intent-voiced `ChoiceNode` options + prompts on every
+  multi-branch blueprint (~40 blueprints) via parallel haiku subagents,
+  file-disjoint. The branch menu now reads "Say it to his face" /
+  "Let it go" instead of title-cased branch ids.
+- New `tests/test_content_choices.py`: every ≥2-branch blueprint has a
+  ChoiceNode, option keys match outcome keys exactly, no empty/id-echo
+  labels.
+
+### 22J — Gender-aware narration ✅
+
+Playtest finding: the player always read as male regardless of chosen
+presentation. Two surfaces leaked it — authored templates and branch
+summaries both hardcoded "he/his/him" — and the LLM had no gender
+signal so it guessed from names.
+
+- **Pronoun resolvers** in `narrative.py`: `{they}` / `{them}` /
+  `{their}` / `{theirs}` / `{themself}` (+ capitalised forms), role-
+  scoped like `{they:player}` / `{their:mentor}`. Each reads the focal
+  character's `gender_presentation`; androgynous → singular "they".
+  Registered in `SLOT_RESOLVERS`.
+- **`{summary}` now resolves recursively** — `_resolve_branch_summary`
+  runs the summary back through `_substitute` (guarded against
+  self-recursion) so summaries can carry pronoun slots too. The
+  no-template fallback path uses it as well.
+- **Templates rewritten** — all 46 hardcoded pronouns across 8 template
+  files replaced with role-scoped slots, dodging the "they was" verb-
+  agreement trap.
+- **Branch summaries rewritten** — 142 hardcoded pronouns / gendered
+  nouns across 15 event files converted to slots (or neutralised:
+  "the older man" → "the senior pro" / `{name:mentor}`), via four
+  parallel haiku subagents. A follow-up pass fixed second-person voice
+  ("you") and verb-agreement breaks the agents introduced.
+- **LLM gender grounding** — `build_llm_prompt` takes `cast_pronouns`
+  and labels the cast line ("Alex (she/her)"); system prompt rule 5
+  enforces it. Output is run through `_strip_pronoun_labels` since
+  small models sometimes echo the "(she/her)" hint into prose.
+- **Validator** `scripts/check_summary_pronouns.py` (+ regression test):
+  flags bare gendered words, second person, verb-agreement breaks, and
+  unresolved slots across all three genders. Run it after editing
+  summaries.
+
+### 22D (cont.) — Scene-intro LLM enhancement ✅
+
+- `scene_intro` split into deterministic `_assemble_scene_intro`
+  (testable) + an LLM rephrase pass grounded with location + cast
+  pronouns, so repeated tones read fresh. Tone-line pools expanded
+  (4 per tone, NEUTRAL added). LLM output trimmed to the last complete
+  sentence (tight token cap was truncating mid-sentence).
+
+### 22H — LLM model default ✅
+
+- `DEFAULT_MODEL` → `liquid/lfm2-24b-a2b`, auditioned against the live
+  LM Studio pool: fast (~1s warm), non-reasoning, stays on-genre.
+  `_strip_reasoning` drops any `<think>…</think>` blocks reasoning
+  models leave in content (unterminated → empty → template fallback).
 
 Also fixed with 22A–C: stale `test_visual.py` placeholder-face size
 assertion (256 → 512, left behind by the Phase 21 face-size bump).

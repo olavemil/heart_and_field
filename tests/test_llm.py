@@ -325,3 +325,38 @@ class TestStripReasoning:
         from engine.llm import _strip_reasoning
 
         assert _strip_reasoning("Alex went quiet.") == "Alex went quiet."
+
+
+class TestStripPronounLabels:
+    def test_strips_inline_pronoun_hint(self):
+        from engine.llm import _strip_pronoun_labels
+
+        assert (
+            _strip_pronoun_labels("Sam (he/him) stood by the locker.")
+            == "Sam stood by the locker."
+        )
+
+    def test_strips_all_three_sets(self):
+        from engine.llm import _strip_pronoun_labels
+
+        out = _strip_pronoun_labels("A (she/her), B (they/them), C (he/him).")
+        assert "(" not in out
+
+    def test_leaves_other_parentheticals(self):
+        from engine.llm import _strip_pronoun_labels
+
+        assert _strip_pronoun_labels("He scored (finally).") == "He scored (finally)."
+
+
+class TestPromptPronounHints:
+    def test_cast_pronouns_appear_in_prompt(self):
+        p = build_llm_prompt(
+            "Alex went quiet.",
+            cast_names=["Alex"],
+            cast_pronouns={"Alex": "she/her"},
+        )
+        assert "Alex (she/her)" in p.user
+
+    def test_system_prompt_mentions_pronouns(self):
+        p = build_llm_prompt("x")
+        assert "pronoun" in p.system.lower()

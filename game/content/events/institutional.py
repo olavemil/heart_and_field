@@ -41,7 +41,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.BOARDROOM, SceneType.PRESS_ROOM],
         outcomes={
             "gracious": BranchOutcome(
-                summary="He thanked the people he was supposed to thank. The room clapped.",
+                summary="{They:player} thanked the right people, the expected ones. The room clapped.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                     StatEffect("player", StatName.LEADERSHIP, 0.02),
@@ -49,7 +49,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "hollow": BranchOutcome(
-                summary="The trophy was heavier than he expected. Lighter than what it cost.",
+                summary="The trophy was heavier than expected. Lighter than what it cost.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
                 ],
@@ -81,7 +81,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.OFFICE, SceneType.BOARDROOM],
         outcomes={
             "defiant": BranchOutcome(
-                summary="He said what he thought about the decision. The room went cold.",
+                summary="{They:player} said what {they:player} thought about the decision. The room went cold.",
                 stat_effects=[
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.03),
                     StatEffect("player", StatName.LEADERSHIP, 0.02),
@@ -89,7 +89,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "complied": BranchOutcome(
-                summary="He signed where they pointed. His hand was steady.",
+                summary="{They:player} signed where indicated. {Their:player} hand was steady.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
                     StatEffect("player", StatName.INSECURITY, 0.02),
@@ -118,14 +118,14 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.APARTMENT, SceneType.HOUSE],
         outcomes={
             "stewed": BranchOutcome(
-                summary="The phone didn't ring. He checked it anyway.",
+                summary="The phone didn't ring. {They:player} checked it anyway.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                     StatEffect("player", StatName.REFLECTION, 0.02),
                 ],
             ),
             "used_it": BranchOutcome(
-                summary="The time off was enforced. He filled it with something useful.",
+                summary="The time off was enforced. {They:player} filled it with something useful.",
                 stat_effects=[
                     StatEffect("player", StatName.INTROSPECTION, 0.03),
                 ],
@@ -157,14 +157,14 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.OFFICE, SceneType.BOARDROOM],
         outcomes={
             "held_firm": BranchOutcome(
-                summary="He repeated his position. The silence stretched.",
+                summary="{They:player} repeated {their:player} position. The silence stretched.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.02),
                 ],
             ),
             "caved": BranchOutcome(
-                summary="He agreed to their terms. The walk to the car park was long.",
+                summary="{They:player} agreed to the terms. The walk to the car park was long.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],
@@ -195,13 +195,13 @@ BLUEPRINTS = [
         reveals_exposure=0.15,
         outcomes={
             "prepared": BranchOutcome(
-                summary="He saw the headline before anyone asked. He had his answer ready.",
+                summary="{They:player} saw the headline before anyone asked. {They:player} had {their:player} answer ready.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
                 ],
             ),
             "blindsided": BranchOutcome(
-                summary="Someone showed him the article. He read it twice.",
+                summary="Someone showed {them:player} the article. {They:player} read it twice.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],

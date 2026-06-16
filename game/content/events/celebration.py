@@ -48,7 +48,7 @@ BLUEPRINTS = [
         outcomes={
             "warm": BranchOutcome(
                 summary=(
-                    "He got to {name:scorer} first. The hug was brief and "
+                    "{They:player} got to {name:scorer} first. The hug was brief and "
                     "honest."
                 ),
                 stat_effects=[
@@ -65,8 +65,8 @@ BLUEPRINTS = [
             ),
             "held_back": BranchOutcome(
                 summary=(
-                    "He ran to the edge of the huddle and stopped there. Something "
-                    "kept him from the middle of it."
+                    "{They:player} ran to the edge of the huddle and stopped there. Something "
+                    "kept {them:player} from the middle of it."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),

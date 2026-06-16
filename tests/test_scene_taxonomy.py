@@ -118,17 +118,20 @@ class TestBridge:
         back = location_kind_for_scene_type(st)
         assert back == LocationKind.SUBURBAN_HOUSE
 
-    def test_transit_types_have_no_visual_kind(self):
-        # Transit isn't yet wired into the visual pipeline; the reverse
-        # bridge returns None so callers can decide to skip generation.
-        assert location_kind_for_scene_type(SceneType.PLANE) is None
-        assert location_kind_for_scene_type(SceneType.BUS) is None
+    def test_transit_types_resolve_to_transit_kind(self):
+        # Bus / car / plane share one TRANSIT visual kind (Phase 23E).
+        assert location_kind_for_scene_type(SceneType.PLANE) == LocationKind.TRANSIT
+        assert location_kind_for_scene_type(SceneType.BUS) == LocationKind.TRANSIT
+        assert location_kind_for_scene_type(SceneType.CAR) == LocationKind.TRANSIT
+        # Station / airport remain unwired (no spec yet).
         assert location_kind_for_scene_type(SceneType.STATION) is None
+        assert location_kind_for_scene_type(SceneType.AIRPORT) is None
 
-    def test_press_room_falls_through_to_school_visually(self):
-        # No bespoke visual yet — institutional / media types fall
-        # through to the school visual placeholder.
-        assert location_kind_for_scene_type(SceneType.PRESS_ROOM) == LocationKind.SCHOOL
+    def test_media_types_resolve_to_media_kind(self):
+        # Press room / studio / photo shoot share the MEDIA kind (23E).
+        assert location_kind_for_scene_type(SceneType.PRESS_ROOM) == LocationKind.MEDIA
+        assert location_kind_for_scene_type(SceneType.STUDIO) == LocationKind.MEDIA
+        # Institutional types still fall through to the school placeholder.
         assert location_kind_for_scene_type(SceneType.COURTROOM) == LocationKind.SCHOOL
 
 

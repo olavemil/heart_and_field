@@ -91,7 +91,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.BUS, SceneType.PLANE, SceneType.CAR],
         outcomes={
             "reflective": BranchOutcome(
-                summary="He spent the ride thinking. It settled something.",
+                summary="{They:player} spent the ride thinking. It settled something.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
                     StatEffect("player", StatName.INTROSPECTION, 0.02),

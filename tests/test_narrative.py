@@ -488,3 +488,74 @@ class TestSelfEvaluationLine:
         assert self_evaluation_line(0.9, random.Random(3)) == self_evaluation_line(
             0.9, random.Random(3)
         )
+
+
+class TestPronounResolvers:
+    """Phase 22: pronouns track each character's gender_presentation."""
+
+    def _ctx(self, gp):
+        from engine.characters import CharacterRole, TierBCharacter
+        from engine.narrative import NarrationContext
+
+        c = TierBCharacter(id="x", name="Robin", role=CharacterRole.MIDFIELDER, stats={})
+        c.gender_presentation = gp
+        return NarrationContext(target=c, cast={"player": c})
+
+    def test_masculine_feminine_androgynous(self):
+        from engine.narrative import NarrativeTemplate, fill_template
+
+        t = NarrativeTemplate(
+            id="t",
+            body="{name} took it. {They} said {their} piece and left {themself} nothing.",
+        )
+        assert fill_template(t, self._ctx("masculine")) == (
+            "Robin took it. He said his piece and left himself nothing."
+        )
+        assert fill_template(t, self._ctx("feminine")) == (
+            "Robin took it. She said her piece and left herself nothing."
+        )
+        assert fill_template(t, self._ctx("androgynous")) == (
+            "Robin took it. They said their piece and left themself nothing."
+        )
+
+    def test_role_scoped_pronoun_uses_that_character(self):
+        from engine.characters import CharacterRole, TierBCharacter
+        from engine.narrative import (
+            NarrationContext,
+            NarrativeTemplate,
+            fill_template,
+        )
+
+        player = TierBCharacter(id="p", name="Sam", role=CharacterRole.STRIKER, stats={})
+        player.gender_presentation = "feminine"
+        mentor = TierBCharacter(id="m", name="Lee", role=CharacterRole.MANAGER, stats={})
+        mentor.gender_presentation = "masculine"
+        ctx = NarrationContext(target=player, cast={"player": player, "mentor": mentor})
+
+        t = NarrativeTemplate(
+            id="t",
+            body="{name:mentor} kept {their:mentor} word; {name:player} kept {theirs:player}.",
+        )
+        assert fill_template(t, ctx) == "Lee kept his word; Sam kept hers."
+
+    def test_summary_slot_resolves_pronouns(self):
+        """Branch summaries authored with pronoun slots resolve too."""
+        from engine.narrative import NarrationContext, NarrativeTemplate, fill_template
+
+        ctx = self._ctx("feminine")
+        ctx = NarrationContext(
+            target=ctx.target,
+            cast=ctx.cast,
+            branch_summary="{They:player} pointed a finger.",
+        )
+        t = NarrativeTemplate(id="t", body="{summary}")
+        assert fill_template(t, ctx) == "She pointed a finger."
+
+    def test_summary_without_slots_unchanged(self):
+        from engine.narrative import NarrationContext, NarrativeTemplate, fill_template
+
+        ctx = NarrationContext(
+            target=None, cast={}, branch_summary="The room went still."
+        )
+        t = NarrativeTemplate(id="t", body="{summary}")
+        assert fill_template(t, ctx) == "The room went still."

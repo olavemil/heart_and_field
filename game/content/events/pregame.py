@@ -80,7 +80,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.LOCKER_ROOM],
         outcomes={
             "centred": BranchOutcome(
-                summary="The ritual worked. He felt ready.",
+                summary="The ritual worked. {They:player} felt ready.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                     StatEffect("player", StatName.INSECURITY, -0.02),
@@ -88,7 +88,7 @@ BLUEPRINTS = [
             ),
             "hollow": BranchOutcome(
                 summary=(
-                    "He went through the motions. It didn't feel the way it "
+                    "{They:player} went through the motions. It didn't feel the way it "
                     "was supposed to."
                 ),
                 stat_effects=[

@@ -60,3 +60,24 @@ def test_choice_labels_are_authored_text():
             elif label.strip().lower() == branch.replace("_", " ").lower():
                 weak.append((bp.id, branch))
     assert weak == [], f"empty or id-echo labels: {weak}"
+
+
+def test_summaries_have_no_hardcoded_gender_or_second_person():
+    """Phase 22: branch summaries must use role-scoped pronoun slots, not
+    hardcoded he/she or second-person 'you', and must resolve cleanly for
+    every gender. Loads scripts/check_summary_pronouns.py by path."""
+    import importlib.util
+
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "check_summary_pronouns.py"
+    )
+    spec = importlib.util.spec_from_file_location("_summary_checker", script)
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
+
+    failures = []
+    for mod in checker.ALL_MODULES:
+        failures.extend(checker.check_module(mod))
+    assert failures == [], failures

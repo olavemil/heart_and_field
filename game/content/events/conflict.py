@@ -57,7 +57,7 @@ BLUEPRINTS = [
         outcomes={
             "escalate": BranchOutcome(
                 summary=(
-                    "He pointed a finger. The room went still; the accusation "
+                    "{They:player} pointed a finger. The room went still; the accusation "
                     "landed wide of anyone who could deflect it."
                 ),
                 stat_effects=[
@@ -75,7 +75,7 @@ BLUEPRINTS = [
                 flags={"unresolved", "public"},
             ),
             "hold_back": BranchOutcome(
-                summary="He swallowed it. Said nothing. Something sat wrong.",
+                summary="{They:player} swallowed it. Said nothing. Something sat wrong.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),
                     StatEffect("player", StatName.REFLECTION, 0.02),
@@ -109,7 +109,7 @@ BLUEPRINTS = [
         outcomes={
             "sincere": BranchOutcome(
                 summary=(
-                    "He said it plainly. No qualifiers. The other man looked "
+                    "{They:player} said it plainly. No qualifiers. {name:target} looked "
                     "at the floor for a long time before answering."
                 ),
                 stat_effects=[
@@ -127,7 +127,7 @@ BLUEPRINTS = [
             ),
             "deflect": BranchOutcome(
                 summary=(
-                    "The apology came wrapped in excuses. It read as another "
+                    "{Their:player} apology came wrapped in excuses. It read as another "
                     "kind of blame."
                 ),
                 stat_effects=[

@@ -422,18 +422,30 @@ class TestSceneIntro:
         return EventBlueprint(**defaults)
 
     def test_intro_names_location_and_cast(self):
+        # Target the deterministic assembly — scene_intro() itself may run
+        # the result through the LLM when one is available.
         session = _build_session()
         cast = {
             "player": session.state.characters["player"],
             "target": session.state.characters["tm_jordan"],
         }
-        intro = session.scene_intro(self._blueprint(), cast)
+        intro, others = session._assemble_scene_intro(self._blueprint(), cast)
         assert "Locker bay." in intro
         assert "Jordan Lee" in intro
+        assert others == ["Jordan Lee"]
         # HOSTILE tone contributes an atmosphere line.
         assert intro.count(".") >= 3
 
-    def test_intro_solo_no_cue_is_empty_without_tone(self):
+    def test_intro_empty_without_cue_or_event_id(self):
+        """Solo, no location, no event_id → nothing to say."""
+        session = _build_session()
+        bp = self._blueprint(location=None, event_id=None)
+        cast = {"player": session.state.characters["player"]}
+        assert session.scene_intro(bp, cast) == ""
+
+    def test_intro_neutral_solo_still_gets_a_line(self):
+        """Neutral tone now contributes an atmosphere line so even quiet
+        solo scenes aren't blank (Phase 22D variety pass)."""
         from engine.event_taxonomy import (
             EventDomain,
             EventId,
@@ -451,7 +463,7 @@ class TestSceneIntro:
             ),
         )
         cast = {"player": session.state.characters["player"]}
-        assert session.scene_intro(bp, cast) == ""
+        assert session.scene_intro(bp, cast).strip() != ""
 
     def test_intro_joins_multiple_cast(self):
         session = _build_session()
@@ -460,9 +472,10 @@ class TestSceneIntro:
             "target": session.state.characters["tm_jordan"],
             "other": session.state.characters["tm_sam"],
         }
-        intro = session.scene_intro(self._blueprint(), cast)
+        intro, others = session._assemble_scene_intro(self._blueprint(), cast)
         assert "and" in intro
         assert "Jordan Lee" in intro and "Sam Carter" in intro
+        assert set(others) == {"Jordan Lee", "Sam Carter"}
 
 
 class TestFocalCharacter:
@@ -487,3 +500,129 @@ class TestFocalCharacter:
         session = _build_session()
         cast = {"player": session.state.characters["player"]}
         assert session.focal_character(cast) is None
+
+
+class TestInPhaseMatchEvents:
+    """Phase 22F: playable in-phase beats triggered from the match loop."""
+
+    def _phase_result(self, **kw):
+        import numpy as np
+
+        from engine.simulation import PhaseResult
+
+        d = dict(
+            phase_number=1,
+            performances=np.array([0.5]),
+            composites=np.array([0.5]),
+            team_perf=0.6,
+            opp_perf=0.4,
+            momentum=0.5,
+            goal_scored=True,
+            goal_scorer_index=0,
+        )
+        d.update(kw)
+        return PhaseResult(**d)
+
+    def _session_with_scorer(self):
+        """A session whose roster_players()[0] is a teammate (not player)."""
+        session = _build_session()
+        # tm_jordan is a midfielder teammate; make sure index 0 is them.
+        players = session.roster_players()
+        # find a teammate index
+        idx = next(
+            i for i, c in enumerate(players) if c.id != "player"
+        )
+        return session, idx
+
+    def test_no_event_without_goal(self):
+        session = _build_session()
+        assert session.select_match_event(self._phase_result(goal_scored=False), 0) is None
+
+    def test_no_event_when_player_scored(self):
+        session = _build_session()
+        players = session.roster_players()
+        player_idx = next(i for i, c in enumerate(players) if c.id == "player")
+        r = self._phase_result(goal_scorer_index=player_idx)
+        assert session.select_match_event(r, 0) is None
+
+    def test_event_fires_on_teammate_goal(self):
+        from unittest.mock import patch
+
+        session, idx = self._session_with_scorer()
+        r = self._phase_result(goal_scorer_index=idx)
+        # Force the probability gate open.
+        with patch("engine.session.MATCH_EVENT_GOAL_CHANCE", 1.0):
+            bp = session.select_match_event(r, 0)
+        # Only fires if an ingame blueprint is loaded and castable.
+        if session._ingame_blueprints():
+            assert bp is not None
+            assert bp.tags & {"ingame"}
+
+    def test_gate_can_suppress_event(self):
+        from unittest.mock import patch
+
+        session, idx = self._session_with_scorer()
+        r = self._phase_result(goal_scorer_index=idx)
+        with patch("engine.session.MATCH_EVENT_GOAL_CHANCE", 0.0):
+            # chance 0 → random() > 0 almost surely True → suppressed
+            assert session.select_match_event(r, 0) is None
+
+    def test_cast_pins_scorer(self):
+        from engine.events import EventBlueprint, RoleSlot, SceneBlock
+
+        session, idx = self._session_with_scorer()
+        scorer = session.roster_players()[idx]
+        r = self._phase_result(goal_scorer_index=idx)
+        bp = EventBlueprint(
+            id="test.huddle",
+            tags={"ingame"},
+            participants=[
+                RoleSlot(role="player", filter=lambda c: c.id == "player"),
+                RoleSlot(role="scorer", filter=lambda c: c.id != "player"),
+            ],
+            blocks=[SceneBlock(id="main")],
+            outcomes={},
+        )
+        cast = session.cast_match_event(bp, r)
+        assert cast is not None
+        assert cast["scorer"].id == scorer.id
+        assert cast["player"].id == "player"
+
+    def test_resolve_match_event_does_not_touch_schedule(self):
+        from engine.events import (
+            BranchOutcome,
+            EventBlueprint,
+            RoleSlot,
+            SceneBlock,
+            StatEffect,
+        )
+        from engine.stats import StatName
+
+        session, idx = self._session_with_scorer()
+        r = self._phase_result(goal_scorer_index=idx)
+        session.start_week()
+        before = [s.resolved_event_id for s in session.schedule.slots]
+        clock_before = (session.state.clock.weekday, session.state.clock.hour)
+
+        bp = EventBlueprint(
+            id="test.huddle2",
+            tags={"ingame"},
+            participants=[
+                RoleSlot(role="player", filter=lambda c: c.id == "player"),
+                RoleSlot(role="scorer", filter=lambda c: c.id != "player"),
+            ],
+            blocks=[SceneBlock(id="main")],
+            outcomes={
+                "warm": BranchOutcome(
+                    summary="{They:player} got there first.",
+                    stat_effects=[StatEffect("player", StatName.MOTIVATION, 0.03)],
+                ),
+            },
+        )
+        cast = session.cast_match_event(bp, r)
+        rec = session.resolve_match_event(bp, "warm", cast)
+        assert rec is not None
+        # No slot marked, clock unmoved — match block owns the time.
+        assert [s.resolved_event_id for s in session.schedule.slots] == before
+        assert (session.state.clock.weekday, session.state.clock.hour) == clock_before
+        assert rec in session.state.outcome_log

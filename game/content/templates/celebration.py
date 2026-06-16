@@ -24,8 +24,8 @@ TEMPLATES = [
         id="tpl.celebration.huddle.edge",
         event_id="celebration.goal_huddle",
         body=(
-            "{name:player} reached the edge of the huddle and stopped. He "
-            "clapped twice. He jogged back to his position."
+            "{name:player} reached the edge of the huddle and stopped. {They:player} "
+            "clapped twice, then jogged back to {their:player} position."
         ),
         base_weight=1.0,
         context_requirements={"rattled"},

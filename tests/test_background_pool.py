@@ -407,3 +407,134 @@ class TestAuthoredSpecs:
         # Adjacency on the authored house spec is connected.
         house = next(s for s in specs if s.spec_id == "suburban_house")
         assert "living_room" in house.neighbors("front_door")
+
+    def test_hot_tier_specs_authored(self):
+        from engine.content_loader import load_scene_specs_from_path
+
+        content_root = Path(__file__).resolve().parents[1] / "game" / "content"
+        specs = {
+            s.spec_id: s
+            for s in load_scene_specs_from_path(content_root / "scenes")
+        }
+        for sid in ("apartment", "team_hq", "training_ground", "pitch", "cafe"):
+            assert sid in specs, f"missing hot-tier spec {sid}"
+        # Hottest scenes carry extra alternates.
+        assert specs["team_hq"].alternate_count("locker_room") == 3
+        assert specs["suburban_house"].alternate_count("kitchen") == 3
+        assert specs["apartment"].alternate_count("bedroom") == 3
+        # Cooler HQ rooms get the floor of 2.
+        assert specs["team_hq"].alternate_count("showers") == 2
+
+    def test_every_authored_node_has_a_prompt_hint(self):
+        """The pre-bake driver builds prompts from these hints; a missing
+        one would silently fall back to the bare node name."""
+        from engine.background_generator import _NODE_PROMPT_HINTS
+        from engine.content_loader import load_scene_specs_from_path
+
+        content_root = Path(__file__).resolve().parents[1] / "game" / "content"
+        specs = load_scene_specs_from_path(content_root / "scenes")
+        missing = [
+            f"{s.spec_id}/{n}"
+            for s in specs
+            for n in s.nodes
+            if n not in _NODE_PROMPT_HINTS
+        ]
+        assert missing == [], f"nodes without prompt hints: {missing}"
+
+
+# --- Alternates (Phase 23) -------------------------------------------------
+
+
+class TestAlternates:
+    def test_spec_alternate_count_default_and_declared(self):
+        spec = SceneGraphSpec(
+            spec_id="h",
+            kind=LocationKind.SUBURBAN_HOUSE,
+            nodes=("kitchen", "bathroom"),
+            alternates=(("kitchen", 3),),
+        )
+        assert spec.alternate_count("kitchen") == 3
+        assert spec.alternate_count("bathroom") == 1  # default
+
+    def test_spec_rejects_unknown_alternate_node(self):
+        with pytest.raises(ValueError):
+            SceneGraphSpec(
+                spec_id="h",
+                kind=LocationKind.SUBURBAN_HOUSE,
+                nodes=("kitchen",),
+                alternates=(("garage", 2),),
+            )
+
+    def test_spec_rejects_zero_alternate_count(self):
+        with pytest.raises(ValueError):
+            SceneGraphSpec(
+                spec_id="h",
+                kind=LocationKind.SUBURBAN_HOUSE,
+                nodes=("kitchen",),
+                alternates=(("kitchen", 0),),
+            )
+
+    def _alt_entry(self, mf, desc, spec_id, node, n):
+        e = BackgroundEntry(
+            entry_id=f"{node}_alt{n}",
+            descriptor=desc,
+            spec_id=spec_id,
+            node_name=node,
+            image_paths=[f"x/{spec_id}/{node}_{n}.png"],
+            seed=n,
+        )
+        return e
+
+    def test_attach_and_get_alternates_in_order(self, tmp_path: Path):
+        mf = BackgroundManifest(assets_root=tmp_path)
+        desc = _descriptor()
+        mf.create_graph("house", desc, graph_id="g1")
+        for n in range(3):
+            mf.attach_alternate("g1", "kitchen", self._alt_entry(mf, desc, "house", "kitchen", n))
+        alts = mf.get_alternates("g1", "kitchen")
+        assert [a.entry_id for a in alts] == ["kitchen_alt0", "kitchen_alt1", "kitchen_alt2"]
+        # First alternate is also the primary binding.
+        assert mf.get_attached("g1", "kitchen").entry_id == "kitchen_alt0"
+
+    def test_attach_alternate_idempotent_on_same_id(self, tmp_path: Path):
+        mf = BackgroundManifest(assets_root=tmp_path)
+        desc = _descriptor()
+        mf.create_graph("house", desc, graph_id="g1")
+        e = self._alt_entry(mf, desc, "house", "kitchen", 0)
+        mf.attach_alternate("g1", "kitchen", e)
+        mf.attach_alternate("g1", "kitchen", e)
+        assert len(mf.get_alternates("g1", "kitchen")) == 1
+
+    def test_choose_alternate_rotates_by_visit(self, tmp_path: Path):
+        mf = BackgroundManifest(assets_root=tmp_path)
+        desc = _descriptor()
+        mf.create_graph("house", desc, graph_id="g1")
+        for n in range(3):
+            mf.attach_alternate("g1", "kitchen", self._alt_entry(mf, desc, "house", "kitchen", n))
+        picks = [mf.choose_alternate("g1", "kitchen", v).entry_id for v in range(7)]
+        assert picks == [
+            "kitchen_alt0", "kitchen_alt1", "kitchen_alt2",
+            "kitchen_alt0", "kitchen_alt1", "kitchen_alt2", "kitchen_alt0",
+        ]
+
+    def test_get_alternates_falls_back_to_single_entry(self, tmp_path: Path):
+        """On-demand graphs never populate node_alternates."""
+        mf = BackgroundManifest(assets_root=tmp_path)
+        desc = _descriptor()
+        mf.create_graph("house", desc, graph_id="g1")
+        mf.attach_entry("g1", "kitchen", _entry(mf, desc, "house", "kitchen"))
+        alts = mf.get_alternates("g1", "kitchen")
+        assert len(alts) == 1
+        assert mf.choose_alternate("g1", "kitchen", 5) is alts[0]
+
+    def test_node_alternates_survive_save_round_trip(self, tmp_path: Path):
+        mf = BackgroundManifest(assets_root=tmp_path)
+        desc = _descriptor()
+        mf.create_graph("house", desc, graph_id="g1")
+        for n in range(2):
+            mf.attach_alternate("g1", "kitchen", self._alt_entry(mf, desc, "house", "kitchen", n))
+        mf.save()
+        reloaded = BackgroundManifest.load(tmp_path)
+        assert [a.entry_id for a in reloaded.get_alternates("g1", "kitchen")] == [
+            "kitchen_alt0", "kitchen_alt1",
+        ]

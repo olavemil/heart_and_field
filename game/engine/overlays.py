@@ -114,8 +114,13 @@ LOCATION_OVERLAYS: dict[LocationKind, tuple[NoiseOverlay, ...]] = {
     LocationKind.SCHOOL:         (NoiseOverlay.FILM_GRAIN,),
     LocationKind.GYM:            (NoiseOverlay.FILM_GRAIN,),
     LocationKind.LOCKER_ROOM:    (NoiseOverlay.FILM_GRAIN, NoiseOverlay.LIGHT_DUST),
+    LocationKind.TEAM_HQ:        (NoiseOverlay.FILM_GRAIN, NoiseOverlay.LIGHT_DUST),
+    LocationKind.TRAINING_GROUND: (NoiseOverlay.FILM_GRAIN,),
     LocationKind.NEIGHBORHOOD:   (NoiseOverlay.FILM_GRAIN,),
     LocationKind.CAFE:           (NoiseOverlay.FILM_GRAIN, NoiseOverlay.LIGHT_DUST),
+    LocationKind.BAR:            (NoiseOverlay.FILM_GRAIN, NoiseOverlay.LIGHT_DUST),
+    LocationKind.MEDIA:          (NoiseOverlay.FILM_GRAIN,),
+    LocationKind.TRANSIT:        (NoiseOverlay.FILM_GRAIN,),
     LocationKind.PARK:           (NoiseOverlay.FILM_GRAIN,),
     LocationKind.STADIUM:        (NoiseOverlay.FILM_GRAIN, NoiseOverlay.CROWD_BLUR),
 }

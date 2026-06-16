@@ -50,8 +50,13 @@ class LocationKind(str, Enum):
     SCHOOL = "school"
     GYM = "gym"
     LOCKER_ROOM = "locker_room"
+    TEAM_HQ = "team_hq"
+    TRAINING_GROUND = "training_ground"
     NEIGHBORHOOD = "neighborhood"
     CAFE = "cafe"
+    BAR = "bar"
+    MEDIA = "media"
+    TRANSIT = "transit"
     PARK = "park"
     STADIUM = "stadium"
 
@@ -185,6 +190,12 @@ class SceneGraphSpec:
     nodes: tuple[str, ...]
     adjacency: tuple[tuple[str, str], ...] = ()
     entry_nodes: tuple[str, ...] = ()
+    # Per-node count of distinct *alternate* compositions (Phase 23). A
+    # tuple of ``(node, count)`` pairs (kept tuple-shaped so the spec
+    # stays frozen/hashable); nodes absent here have a single alternate.
+    # Distinct alternates are different shots chosen per visit — separate
+    # from the motion variants inside one entry's ``image_paths``.
+    alternates: tuple[tuple[str, int], ...] = ()
 
     def __post_init__(self):
         node_set = set(self.nodes)
@@ -201,6 +212,22 @@ class SceneGraphSpec:
                 raise ValueError(
                     f"entry node {n!r} not in spec {self.spec_id!r}"
                 )
+        for node, count in self.alternates:
+            if node not in node_set:
+                raise ValueError(
+                    f"alternates entry {node!r} not in spec {self.spec_id!r}"
+                )
+            if count < 1:
+                raise ValueError(
+                    f"alternate count for {node!r} must be >= 1, got {count}"
+                )
+
+    def alternate_count(self, node: str) -> int:
+        """How many distinct alternate shots a node has (default 1)."""
+        for n, count in self.alternates:
+            if n == node:
+                return count
+        return 1
 
     def neighbors(self, node: str) -> tuple[str, ...]:
         """Return nodes adjacent to `node`, treating adjacency as undirected."""
@@ -305,6 +332,12 @@ class SceneGraphInstance:
     node_entries: dict[str, str] = field(default_factory=dict)
     visit_counts: dict[str, int] = field(default_factory=dict)
     closed: bool = False
+    # Per-node list of alternate entry_ids (Phase 23). Index 0 mirrors
+    # ``node_entries[node]`` (the primary); 1.. are extra distinct shots.
+    # Empty for on-demand graphs, which behave as single-alternate; the
+    # pre-bake path populates it. Kept parallel to ``node_entries`` so the
+    # on-demand lazy/adoption machinery stays untouched.
+    node_alternates: dict[str, list[str]] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -314,6 +347,7 @@ class SceneGraphInstance:
             "node_entries": dict(self.node_entries),
             "visit_counts": dict(self.visit_counts),
             "closed": self.closed,
+            "node_alternates": {k: list(v) for k, v in self.node_alternates.items()},
         }
 
     @classmethod
@@ -325,6 +359,10 @@ class SceneGraphInstance:
             node_entries=dict(d.get("node_entries", {})),
             visit_counts=dict(d.get("visit_counts", {})),
             closed=bool(d.get("closed", False)),
+            node_alternates={
+                str(k): [str(e) for e in v]
+                for k, v in d.get("node_alternates", {}).items()
+            },
         )
 
 
@@ -493,6 +531,68 @@ class BackgroundManifest:
         if graph is not None:
             graph.visit_counts[node_name] = graph.visit_counts.get(node_name, 0) + 1
         return entry
+
+    # --- Alternates (Phase 23, pre-bake path) --------------------------
+
+    def attach_alternate(
+        self, graph_id: str, node_name: str, entry: BackgroundEntry
+    ) -> BackgroundEntry:
+        """Append a distinct alternate shot for a node.
+
+        Unlike :meth:`attach_entry` (one-per-node, on-demand), this builds
+        the per-node alternate list. The first alternate also becomes the
+        node's primary ``node_entries`` binding so all existing
+        single-entry consumers (anchors, ``get_attached``) keep working.
+        """
+        graph = self.get_graph(graph_id)
+        if graph is None:
+            raise KeyError(f"unknown graph_id: {graph_id!r}")
+        if graph.closed:
+            raise RuntimeError(f"graph {graph_id!r} is closed")
+        if self.get_entry(entry.entry_id) is None:
+            self.entries.append(entry)
+        entry.graph_id = graph_id
+        entry.node_name = node_name
+        alts = graph.node_alternates.setdefault(node_name, [])
+        if entry.entry_id not in alts:
+            alts.append(entry.entry_id)
+        if node_name not in graph.node_entries:
+            graph.node_entries[node_name] = entry.entry_id
+        return entry
+
+    def get_alternates(
+        self, graph_id: str, node_name: str
+    ) -> list[BackgroundEntry]:
+        """All alternate entries for a node, primary first.
+
+        Falls back to the single ``node_entries`` binding for on-demand
+        graphs that never populated ``node_alternates``.
+        """
+        graph = self.get_graph(graph_id)
+        if graph is None:
+            return []
+        ids = graph.node_alternates.get(node_name)
+        if not ids:
+            single = self.get_attached(graph_id, node_name)
+            return [single] if single is not None else []
+        return [
+            self.get_entry(eid)
+            for eid in ids
+            if self.get_entry(eid) is not None
+        ]
+
+    def choose_alternate(
+        self, graph_id: str, node_name: str, visit_index: int
+    ) -> BackgroundEntry | None:
+        """Pick one alternate deterministically by visit index.
+
+        Rotates through the alternates so revisits vary rather than
+        repeat; reproducible from the (saved) visit count.
+        """
+        alts = self.get_alternates(graph_id, node_name)
+        if not alts:
+            return None
+        return alts[visit_index % len(alts)]
 
     def graph_anchor_entries(self, graph_id: str) -> list[BackgroundEntry]:
         """Entries already attached to this graph — used as img2img anchors."""

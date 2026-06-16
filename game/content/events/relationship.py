@@ -44,7 +44,7 @@ BLUEPRINTS = [
         boosted_by_aspects=[AspectType.RELATIONSHIP],
         outcomes={
             "said_it": BranchOutcome(
-                summary="He said what he'd been thinking. The silence after was longer than the sentence.",
+                summary="{They:player} said what {they:player}'d been thinking. The silence after was longer than the sentence.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, -0.02),
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
@@ -57,7 +57,7 @@ BLUEPRINTS = [
                 ],
             ),
             "held_back": BranchOutcome(
-                summary="He almost said it. The moment passed and he let it.",
+                summary="{They:player} almost said it. The moment passed and {they:player} let it.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.03),
                 ],
@@ -100,7 +100,7 @@ BLUEPRINTS = [
                 ],
             ),
             "awkward": BranchOutcome(
-                summary="He sat at the edge of the table and left before anyone noticed.",
+                summary="{They:player} sat at the edge of the table and left before anyone noticed.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),
                 ],
@@ -131,7 +131,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.CAFE, SceneType.HOUSE, SceneType.RESTAURANT],
         outcomes={
             "shared": BranchOutcome(
-                summary="He told them about it. Their reaction made it feel real.",
+                summary="{They:player} told {them:companion} about it. {Their:companion} reaction made it feel real.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                 ],
@@ -143,7 +143,7 @@ BLUEPRINTS = [
                 ],
             ),
             "understated": BranchOutcome(
-                summary="He mentioned it in passing. They noticed anyway.",
+                summary="{They:player} mentioned it in passing. {They:companion} noticed anyway.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.02),
                 ],
@@ -235,7 +235,7 @@ BLUEPRINTS = [
                 ],
             ),
             "swallowed": BranchOutcome(
-                summary="He let it pass. The conversation moved on but nothing was settled.",
+                summary="{They:player} let it pass. The conversation moved on but nothing was settled.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),
                 ],
@@ -310,7 +310,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.CAFE, SceneType.HOUSE, SceneType.PARK],
         outcomes={
             "landed": BranchOutcome(
-                summary="The reassurance came without being asked. He let it in.",
+                summary="The reassurance came without being asked. {They:player} let it in.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                     StatEffect("player", StatName.INSECURITY, -0.02),
@@ -323,7 +323,7 @@ BLUEPRINTS = [
                 ],
             ),
             "resisted": BranchOutcome(
-                summary="He said he was fine. They both knew he wasn't.",
+                summary="{They:player} claimed to be fine. {name:supporter} and {name:player} both knew otherwise.",
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.02),
                 ],
@@ -351,14 +351,14 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.APARTMENT, SceneType.HOUSE],
         outcomes={
             "accepted": BranchOutcome(
-                summary="They went without him. He noticed the silence in the flat.",
+                summary="The others went without {them:player}. {They:player} noticed the silence in the flat.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.02),
                     StatEffect("player", StatName.INSECURITY, 0.02),
                 ],
             ),
             "bitter": BranchOutcome(
-                summary="He told himself he didn't want to go anyway.",
+                summary="{They:player} told {themself:player} {they:player} didn't want to go anyway.",
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.03),
                 ],
@@ -439,13 +439,13 @@ BLUEPRINTS = [
         reveals_exposure=0.05,
         outcomes={
             "noticed": BranchOutcome(
-                summary="He saw something in how they moved around each other. It stayed with him.",
+                summary="{They:player} saw something in how {they:subject} moved around each other. It stayed with {them:player}.",
                 stat_effects=[
                     StatEffect("player", StatName.INTROSPECTION, 0.02),
                 ],
             ),
             "missed": BranchOutcome(
-                summary="He was there but his mind was somewhere else.",
+                summary="{They:player} showed up in body only; {their:player} mind was somewhere else.",
                 stat_effects=[],
             ),
         },
@@ -474,7 +474,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TRAINING_GROUND],
         outcomes={
             "fought": BranchOutcome(
-                summary="He tried to answer the rejection. It made it worse.",
+                summary="{They:player} tried to answer the rejection. It made it worse.",
                 stat_effects=[
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.03),
                     StatEffect("player", StatName.INSECURITY, 0.03),
@@ -488,7 +488,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "absorbed": BranchOutcome(
-                summary="He took it. Walked away. Didn't look back.",
+                summary="{They:player} took it. Walked away. Didn't look back.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),
                 ],
@@ -526,7 +526,7 @@ BLUEPRINTS = [
                 ],
             ),
             "clung": BranchOutcome(
-                summary="He suggested next week. The pause before the answer said everything.",
+                summary="{They:player} suggested next week. The pause before the answer said everything.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.03),
                 ],
@@ -558,7 +558,7 @@ BLUEPRINTS = [
         reveals_exposure=0.15,
         outcomes={
             "confronted": BranchOutcome(
-                summary="He stepped round the corner. They saw his face and stopped talking.",
+                summary="{They:player} stepped round the corner. {They:speaker} saw {their:player} face and stopped talking.",
                 stat_effects=[
                     StatEffect("player", StatName.AGGRESSIVENESS, 0.03),
                 ],
@@ -571,7 +571,7 @@ BLUEPRINTS = [
                 flags={"public"},
             ),
             "stored": BranchOutcome(
-                summary="He heard every word. He filed it away.",
+                summary="{They:player} heard every word. {They:player} filed it away.",
                 stat_effects=[
                     StatEffect("player", StatName.CAUTIOUSNESS, 0.03),
                 ],
@@ -603,7 +603,7 @@ BLUEPRINTS = [
         reveals_exposure=0.1,
         outcomes={
             "owned_it": BranchOutcome(
-                summary="He didn't mean to say it. But he didn't take it back.",
+                summary="{They:player} didn't mean to say it. But {they:player} didn't take it back.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.02),
                     StatEffect("player", StatName.INSECURITY, -0.02),
@@ -616,7 +616,7 @@ BLUEPRINTS = [
                 ],
             ),
             "backtracked": BranchOutcome(
-                summary="He laughed it off. The other person didn't.",
+                summary="{They:player} laughed it off. {They:listener} didn't.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.03),
                 ],

@@ -19,7 +19,7 @@ TEMPLATES = [
     NarrativeTemplate(
         id="tpl.solo.interior",
         body=(
-            "{name} kept his own counsel about it, the way he kept it about "
+            "{name} kept {their} own counsel about it, the way {they} kept it about "
             "most things that mattered. {summary}"
         ),
         event_tags={"solo"},
@@ -49,7 +49,7 @@ TEMPLATES = [
         id="tpl.solo.smallhours",
         body=(
             "It surfaced in the small hours, the way these things do, and "
-            "{name} let it sit with him a while. {summary}"
+            "{name} let it sit with {them} a while. {summary}"
         ),
         event_tags={"solo"},
         base_weight=0.8,

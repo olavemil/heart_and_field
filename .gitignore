@@ -2509,3 +2509,5 @@ renpy-8.5.2-sdk/tutorial/game/tl/ukrainian/tutorial_screens.rpy
 renpy-8.5.2-sdk/tutorial/game/tl/ukrainian/tutorial_video.rpy
 renpy-8.5.2-sdk/update/current.json
 renpy-8.5.2-sdk/update/key.pem
+prebake_spike/
+prebake_spike2/

@@ -70,8 +70,8 @@ BLUEPRINTS = [
         outcomes={
             "lands": BranchOutcome(
                 summary=(
-                    "The older man said something short and then went back to "
-                    "his boots. It stayed with him."
+                    "{name:mentor} said something short and then went back to "
+                    "{their:mentor} boots. It stayed with {them:player}."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.03),
@@ -88,7 +88,7 @@ BLUEPRINTS = [
             ),
             "brushed_off": BranchOutcome(
                 summary=(
-                    "He heard the words. He decided he already knew them."
+                    "{They:player} heard the words. {They:player} decided {they:player} already knew them."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.03),
@@ -121,8 +121,8 @@ BLUEPRINTS = [
         outcomes={
             "meets_it": BranchOutcome(
                 summary=(
-                    "He looked {name:rival} in the eye and didn't move first. "
-                    "Neither did the other man."
+                    "{They:player} looked {name:rival} in the eye and didn't move first. "
+                    "Neither did {they:rival}."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
@@ -139,7 +139,7 @@ BLUEPRINTS = [
             ),
             "backs_down": BranchOutcome(
                 summary=(
-                    "He let it slide. He told himself it didn't matter. It did."
+                    "{They:player} let it slide. {They:player} told {themself:player} it didn't matter. It did."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.04),

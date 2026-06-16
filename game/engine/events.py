@@ -288,9 +288,17 @@ def cast_event(
     blueprint: EventBlueprint,
     state: GameState,
     rng: _random.Random,
+    *,
+    pinned: Mapping[str, Character] | None = None,
 ) -> dict[str, Character] | None:
-    """Return a concrete cast mapping role -> character, or None if infeasible."""
-    cast, ok = _try_cast(blueprint, state, rng=rng)
+    """Return a concrete cast mapping role -> character, or None if infeasible.
+
+    ``pinned`` forces specific characters into specific roles (e.g. the
+    actual goal-scorer into the ``scorer`` role for an in-match event). A
+    pinned character must still satisfy that slot's filter, or the cast
+    fails.
+    """
+    cast, ok = _try_cast(blueprint, state, rng=rng, pinned=pinned)
     return cast if ok else None
 
 
@@ -298,14 +306,26 @@ def _try_cast(
     blueprint: EventBlueprint,
     state: GameState,
     rng: _random.Random | None,
+    pinned: Mapping[str, Character] | None = None,
 ) -> tuple[dict[str, Character], bool]:
     """Greedy cast. Fails fast on the first required slot that has no eligible
     character. Optional slots may be left unfilled."""
+    pinned = pinned or {}
     used: set[str] = set()
     cast: dict[str, Character] = {}
     all_chars = list(state.characters.values())
 
     for slot in blueprint.participants:
+        if slot.role in pinned:
+            who = pinned[slot.role]
+            # A pinned character must still satisfy the slot filter.
+            if slot.filter is not None and not slot.filter(who):
+                if slot.optional:
+                    continue
+                return cast, False
+            cast[slot.role] = who
+            used.add(who.id)
+            continue
         pool = [c for c in all_chars if c.id not in used]
         if slot.filter is not None:
             pool = [c for c in pool if slot.filter(c)]

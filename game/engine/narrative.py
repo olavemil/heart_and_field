@@ -15,6 +15,7 @@ from __future__ import annotations
 import random as _random
 import re
 from dataclasses import dataclass, field
+from dataclasses import replace as replace_dataclass
 from enum import Enum
 from typing import Callable, Mapping, Sequence
 
@@ -136,7 +137,61 @@ def _resolve_standout_action(ctx: NarrationContext) -> str:
 
 
 def _resolve_branch_summary(ctx: NarrationContext) -> str:
-    return ctx.branch_summary or ""
+    summary = ctx.branch_summary or ""
+    if "{" not in summary:
+        return summary
+    # Resolve slots authored into the summary (e.g. {they:player}) so
+    # pronouns track gender here too. Blank branch_summary in the scoped
+    # ctx so a stray {summary} can't recurse.
+    return _substitute(summary, replace_dataclass(ctx, branch_summary=""))
+
+
+# --- Pronoun resolvers ------------------------------------------------------
+#
+# Templates use {they}/{them}/{their}/{theirs}/{themself} (plus capitalised
+# forms for sentence starts), role-scoped like {they:player}. Each reads the
+# focal character's `gender_presentation` so narration matches the player's
+# chosen presentation instead of defaulting to "he". Androgynous resolves to
+# singular "they"; author such templates with plural-agreeing verbs.
+
+_PRONOUN_TABLE: dict[str, dict[str, str]] = {
+    "masculine": {
+        "they": "he", "them": "him", "their": "his",
+        "theirs": "his", "themself": "himself",
+    },
+    "feminine": {
+        "they": "she", "them": "her", "their": "her",
+        "theirs": "hers", "themself": "herself",
+    },
+    "androgynous": {
+        "they": "they", "them": "them", "their": "their",
+        "theirs": "theirs", "themself": "themself",
+    },
+}
+
+
+# Pronoun-set labels for grounding the LLM (name → "she/her").
+_PRONOUN_HINT: dict[str, str] = {
+    "masculine": "he/him",
+    "feminine": "she/her",
+    "androgynous": "they/them",
+}
+
+
+def _pronoun(ctx: NarrationContext, key: str) -> str:
+    """Look up a pronoun for the focal character's gender presentation."""
+    gp = "masculine"
+    if ctx.target is not None:
+        gp = str(getattr(ctx.target, "gender_presentation", "") or "masculine")
+    return _PRONOUN_TABLE.get(gp, _PRONOUN_TABLE["masculine"]).get(key, key)
+
+
+def _make_pronoun_resolver(key: str, *, capitalise: bool) -> SlotResolver:
+    def resolver(ctx: NarrationContext) -> str:
+        word = _pronoun(ctx, key)
+        return word[:1].upper() + word[1:] if capitalise else word
+
+    return resolver
 
 
 SLOT_RESOLVERS: dict[str, SlotResolver] = {
@@ -148,6 +203,13 @@ SLOT_RESOLVERS: dict[str, SlotResolver] = {
     "standout_action": _resolve_standout_action,
     "summary": _resolve_branch_summary,
 }
+
+# Register pronoun slots (lower-case + capitalised for sentence starts).
+for _pkey in ("they", "them", "their", "theirs", "themself"):
+    SLOT_RESOLVERS[_pkey] = _make_pronoun_resolver(_pkey, capitalise=False)
+    SLOT_RESOLVERS[_pkey.capitalize()] = _make_pronoun_resolver(
+        _pkey, capitalise=True
+    )
 
 
 def register_resolver(name: str, resolver: SlotResolver) -> None:
@@ -180,6 +242,31 @@ class NarrativeTemplate:
 # --- Filling ----------------------------------------------------------------
 
 
+def _substitute(text: str, ctx: NarrationContext) -> str:
+    """Resolve every `{slot}` / `{slot:role}` in *text* using `SLOT_RESOLVERS`.
+
+    Role-scoped slots (`{name:coach}`, `{they:player}`) re-resolve against
+    that cast member so pronouns track the right character's gender.
+    Unknown slots render as `[slot]` so authoring errors are visible.
+    """
+
+    def replace(match: re.Match) -> str:
+        slot = match.group(1)
+        role = match.group(2)
+        resolver = SLOT_RESOLVERS.get(slot)
+        if role is not None:
+            cast_char = ctx.cast.get(role)
+            if cast_char is None or resolver is None:
+                return f"[{slot}:{role}]"
+            scoped = replace_dataclass(ctx, target=cast_char)
+            return resolver(scoped)
+        if resolver is None:
+            return f"[{slot}]"
+        return resolver(ctx)
+
+    return _SLOT_PATTERN.sub(replace, text)
+
+
 def fill_template(template: NarrativeTemplate, ctx: NarrationContext) -> str:
     """Substitute every `{slot}` in `template.body` using resolvers and cast.
 
@@ -187,39 +274,7 @@ def fill_template(template: NarrativeTemplate, ctx: NarrationContext) -> str:
     `ctx.cast` first; otherwise the resolver receives the full ctx as-is.
     Unknown slots render as `[slot]` so authoring errors are visible.
     """
-
-    def replace(match: re.Match) -> str:
-        slot = match.group(1)
-        role = match.group(2)
-        if role is not None:
-            # Role-scoped lookup — re-resolve with target swapped.
-            cast_char = ctx.cast.get(role)
-            if cast_char is None:
-                return f"[{slot}:{role}]"
-            scoped = NarrationContext(
-                target=cast_char,
-                cast=ctx.cast,
-                previous_outcome=ctx.previous_outcome,
-                trigger_outcome=ctx.trigger_outcome,
-                arc_summary=ctx.arc_summary,
-                composure=ctx.composure,
-                insecurity=ctx.insecurity,
-                confidence=ctx.confidence,
-                mood=ctx.mood,
-                location=ctx.location,
-                standout_action=ctx.standout_action,
-                branch_summary=ctx.branch_summary,
-            )
-            resolver = SLOT_RESOLVERS.get(slot)
-            if resolver is None:
-                return f"[{slot}:{role}]"
-            return resolver(scoped)
-        resolver = SLOT_RESOLVERS.get(slot)
-        if resolver is None:
-            return f"[{slot}]"
-        return resolver(ctx)
-
-    return _SLOT_PATTERN.sub(replace, template.body)
+    return _substitute(template.body, ctx)
 
 
 # --- Selection --------------------------------------------------------------
@@ -386,7 +441,9 @@ def narrate(
     """
     template = select_template(templates, ctx, rng)
     if template is None:
-        filled = ctx.branch_summary or ""
+        # No template — resolve slots authored into the summary itself so
+        # the last-resort narration still gets gendered pronouns.
+        filled = _resolve_branch_summary(ctx)
     else:
         filled = fill_template(template, ctx)
 
@@ -398,6 +455,14 @@ def narrate(
             for c in ctx.cast.values()
             if hasattr(c, "name")
         ]
+        cast_pronouns = {
+            (c.nickname or c.name): _PRONOUN_HINT.get(
+                str(getattr(c, "gender_presentation", "") or "masculine"),
+                "they/them",
+            )
+            for c in ctx.cast.values()
+            if hasattr(c, "name")
+        }
         filled = enhance_narration(
             llm_client,
             filled,
@@ -409,6 +474,7 @@ def narrate(
             cast_names=cast_names,
             branch_summary=ctx.branch_summary,
             location=ctx.location,
+            cast_pronouns=cast_pronouns,
         )
 
     return paginate(filled, max_chars=max_chars)

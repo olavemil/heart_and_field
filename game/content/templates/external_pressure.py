@@ -8,8 +8,8 @@ TEMPLATES = [
         id="tpl.external.media.composed",
         event_id="external.media_scrum",
         body=(
-            "{name:player} gave them the answer that had been written for him. "
-            "He almost believed it on the way out."
+            "{name:player} gave them the answer that had been written for {them:player}. "
+            "{They:player} almost believed it on the way out."
         ),
         base_weight=1.0,
         context_requirements={"composed"},
@@ -19,7 +19,7 @@ TEMPLATES = [
         event_id="external.media_scrum",
         body=(
             "The question landed where it was aimed. {name:player} answered the "
-            "one they'd been hoping he would."
+            "one they'd been hoping {they:player} would."
         ),
         base_weight=1.1,
         context_requirements={"rattled"},
@@ -28,8 +28,8 @@ TEMPLATES = [
         id="tpl.external.contract.focused",
         event_id="external.contract_talk",
         body=(
-            "The call was short. {name:player} said he'd think about it. He "
-            "meant to."
+            "The call was short. {name:player} said {they:player}'d think about it. "
+            "{They:player} meant to."
         ),
         base_weight=1.0,
     ),

@@ -129,6 +129,24 @@ class TestProduceFresh:
         assert call_kwargs.kwargs["height"] == 576
         assert call_kwargs.kwargs["denoise"] == 1.0
 
+    def test_negative_prompt_forwarded(self, tmp_path: Path):
+        from engine.background_generator import _BG_NEGATIVE_PROMPT
+
+        client = _mock_client()
+        producer = ComfyUIImageProducer(client=client)
+        producer.produce(
+            descriptor=_descriptor(),
+            spec=_spec(),
+            node_name="street_view",
+            seed=1,
+            anchor_path=None,
+            out_path=tmp_path / "bg.png",
+        )
+        assert (
+            client.txt2img.call_args.kwargs["negative_prompt"]
+            == _BG_NEGATIVE_PROMPT
+        )
+
 
 # --- Anchored generation (img2img) -----------------------------------------
 

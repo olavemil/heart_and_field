@@ -106,14 +106,14 @@ BLUEPRINTS = [
         ],
         outcomes={
             "landed": BranchOutcome(
-                summary="He pulled off the trick. The bench noticed.",
+                summary="{They:player} pulled off the trick. The bench noticed.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, 0.03),
                 ],
                 flags={"public"},
             ),
             "missed": BranchOutcome(
-                summary="The trick went wide. Someone laughed.",
+                summary="The trick went wide. {They:player} stumbled. Someone laughed.",
                 stat_effects=[
                     StatEffect("player", StatName.CONFIDENCE, -0.03),
                     StatEffect("player", StatName.INSECURITY, 0.03),
@@ -148,7 +148,7 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         outcomes={
             "receptive": BranchOutcome(
-                summary="The note landed. He tried the adjustment immediately.",
+                summary="The note landed. {They:player} tried the adjustment immediately.",
                 stat_effects=[
                     StatEffect("player", StatName.REFLECTION, 0.02),
                     StatEffect("player", StatName.FINESSE, 0.02),
@@ -164,8 +164,8 @@ BLUEPRINTS = [
             ),
             "defensive": BranchOutcome(
                 summary=(
-                    "He nodded, but the adjustment didn't happen. Something in "
-                    "him pushed back."
+                    "{They:player} nodded, but the adjustment didn't happen. Something in "
+                    "{them:player} pushed back."
                 ),
                 stat_effects=[
                     StatEffect("player", StatName.DEFENSIVENESS, 0.03),

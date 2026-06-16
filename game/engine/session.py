@@ -21,7 +21,9 @@ from .background_generator import (
     BackgroundGenerator,
     ComfyUIImageProducer,
     DeferredPrefetchScheduler,
+    NoOpPrefetchScheduler,
     PlaceholderImageProducer,
+    PrebakedImageProducer,
 )
 from .background_pool import (
     BackgroundManifest,
@@ -169,40 +171,64 @@ BLOCK_TAGS: dict[BlockType, set[str]] = {
 }
 
 # Blueprints carrying these tags resolve inside the match block, not in
-# schedule slots. Skipped by ``blueprints_for_block`` until the
-# match-phase event hooks land (Phase 22F).
+# schedule slots — they fire from the phase loop via ``select_match_event``
+# (Phase 22F), never from ``blueprints_for_block``.
 IN_MATCH_TAGS: set[str] = {"ingame"}
 
-# Scene-intro atmosphere lines per event tone (Phase 22D). Neutral gets
-# none — the place and the company carry the line on their own.
+# Probability that a teammate goal opens a playable in-phase beat, so not
+# every goal interrupts the run of play.
+MATCH_EVENT_GOAL_CHANCE: float = 0.6
+
+# Scene-intro atmosphere lines per event tone (Phase 22D). The pools feed
+# the deterministic intro; with the LLM on, this assembled line is the
+# grounding the model rephrases (so even repeats read fresh).
 _TONE_INTRO_LINES: dict[EventTone, tuple[str, ...]] = {
     EventTone.HOSTILE: (
         "The air has edges.",
         "Nobody is pretending this is friendly.",
+        "The room has already taken sides.",
+        "Something is going to be said that can't be unsaid.",
     ),
     EventTone.TENSE: (
         "Something here is being carefully not said.",
         "The room is quieter than it has any reason to be.",
+        "Everyone is waiting for someone else to go first.",
+        "The small talk has run out and left a gap.",
     ),
     EventTone.WARM: (
         "It's easy here, for once.",
         "The kind of company that doesn't cost anything.",
+        "Nobody needs anything from anybody.",
+        "There's no edge to it tonight.",
     ),
     EventTone.ROMANTIC: (
         "Neither of you is quite looking at the other.",
         "The distance between you keeps needing renegotiating.",
+        "The conversation keeps finding reasons not to end.",
+        "Something unspoken is doing most of the talking.",
     ),
     EventTone.PLAYFUL: (
         "Someone is already laughing.",
         "Trouble, but the friendly kind.",
+        "It's loose and loud and going nowhere useful.",
+        "Nobody's taking anything seriously yet.",
     ),
     EventTone.MELANCHOLY: (
         "Everything here feels a little heavier than it looks.",
         "The light feels like late afternoon, whatever the clock says.",
+        "Nobody's in a hurry to be anywhere.",
+        "It's the quiet that comes after, not before.",
     ),
     EventTone.TRIUMPHANT: (
         "The day still has the win in it.",
         "Everyone is walking taller than usual.",
+        "The good mood hasn't worn off yet.",
+        "Something went right, and it shows.",
+    ),
+    EventTone.NEUTRAL: (
+        "Just another part of the day.",
+        "Nothing about it announces itself.",
+        "An ordinary hour, so far.",
     ),
 }
 
@@ -500,7 +526,7 @@ class GameSession:
         session.momentum = float(data.get("momentum", 0.0))
         if "llm_config" in data:
             session.llm_client = llm_config_from_dict(data["llm_config"])
-        session.use_llm = bool(data.get("use_llm", False))
+        session.use_llm = bool(data.get("use_llm", True))
         if "comfyui_config" in data:
             session.comfyui_client = comfyui_config_from_dict(data["comfyui_config"])
         # Wire ComfyUI and stock face pool into the visual manager.
@@ -713,6 +739,7 @@ class GameSession:
         comfyui_client=None,
         prefetch_scheduler=None,
         warm_marquees: bool = False,
+        prebaked: bool = False,
     ) -> None:
         """Wire the background manifest + generator at game-setup time.
 
@@ -721,8 +748,14 @@ class GameSession:
         repo. Idempotent — re-running rebuilds against the on-disk
         manifest, useful after a save load.
 
-        ``producer`` takes priority if given explicitly. Otherwise, if
-        ``comfyui_client`` is provided and available, a
+        ``prebaked`` (Phase 23) is the shipped-build path: load the
+        packaged manifest read-only, use a ``PrebakedImageProducer`` (no
+        ComfyUI, no GPU) and a ``NoOpPrefetchScheduler`` (nothing to
+        generate), and skip marquee warm-up (assets already on disk). An
+        explicit ``producer`` still wins; ``comfyui_client`` is ignored.
+
+        Otherwise (dev/author path): ``producer`` takes priority if
+        given. Then, if ``comfyui_client`` is provided and available, a
         ``ComfyUIImageProducer`` is used. Falls back to
         ``PlaceholderImageProducer`` when neither is set or ComfyUI is
         unreachable.
@@ -747,6 +780,11 @@ class GameSession:
         manifest = BackgroundManifest.load(assets_root)
         self.background_manifest = manifest
 
+        if prebaked:
+            if producer is None:
+                producer = PrebakedImageProducer()
+            if prefetch_scheduler is None:
+                prefetch_scheduler = NoOpPrefetchScheduler()
         if producer is None and comfyui_client is not None:
             if comfyui_client.is_available():
                 producer = ComfyUIImageProducer(client=comfyui_client)
@@ -766,7 +804,9 @@ class GameSession:
         generate_grade_pngs(self.grades_root)
         self.overlays_root = assets_root.parent / "overlays"
         generate_overlay_pngs(self.overlays_root)
-        if warm_marquees:
+        # In prebaked mode the pack already holds every marquee asset, so
+        # warm-up (which schedules generation) is a no-op.
+        if warm_marquees and not prebaked:
             self.warm_marquees()
 
     def set_default_descriptor(
@@ -1120,10 +1160,34 @@ class GameSession:
         """Pre-choice scene setting: place, company, atmosphere.
 
         Built from data the blueprint already carries (location cue,
-        cast, event tone) so no per-blueprint authoring is needed.
-        Returns ``""`` when there is nothing worth saying (no cue, solo
-        cast, neutral tone) — callers skip the line.
+        cast, event tone) so no per-blueprint authoring is needed. With
+        the LLM enabled, the assembled line is rephrased (grounded with
+        location + cast pronouns) so repeated tones still read fresh;
+        the assembled line is always the fallback. Returns ``""`` when
+        there is nothing worth saying — callers skip the line.
         """
+        intro, others = self._assemble_scene_intro(blueprint, cast)
+
+        if intro and self.use_llm and self.llm_client is not None:
+            from .llm import enhance_scene_intro
+
+            cue = blueprint.location
+            intro = enhance_scene_intro(
+                self.llm_client,
+                intro,
+                cast_names=others,
+                location=cue.node_name if cue is not None else None,
+                cast_pronouns=self._cast_pronouns(cast),
+            )
+        return intro
+
+    def _assemble_scene_intro(
+        self,
+        blueprint: EventBlueprint,
+        cast: Mapping[str, Character],
+    ) -> tuple[str, list[str]]:
+        """Deterministic intro assembly (no LLM). Returns the intro string
+        and the non-player cast display names (for LLM grounding)."""
         parts: list[str] = []
         cue = blueprint.location
         if cue is not None:
@@ -1141,7 +1205,25 @@ class GameSession:
             lines = _TONE_INTRO_LINES.get(blueprint.event_id.tone, ())
             if lines:
                 parts.append(self.rng.choice(lines))
-        return " ".join(parts)
+        return " ".join(parts), others
+
+    @staticmethod
+    def _cast_pronouns(cast: Mapping[str, Character]) -> dict[str, str]:
+        """Map each cast member's display name to its pronoun set, for
+        grounding the LLM so it doesn't infer gender from names."""
+        sets = {
+            "masculine": "he/him",
+            "feminine": "she/her",
+            "androgynous": "they/them",
+        }
+        out: dict[str, str] = {}
+        for c in cast.values():
+            name = getattr(c, "nickname", None) or getattr(c, "name", None)
+            if not name:
+                continue
+            gp = str(getattr(c, "gender_presentation", "") or "masculine")
+            out[name] = sets.get(gp, "they/them")
+        return out
 
     def focal_character(
         self, cast: Mapping[str, Character]
@@ -1276,6 +1358,76 @@ class GameSession:
     def narrate_self_evaluation(self, perceived: float) -> str:
         """Narrated post-match self-evaluation line (Phase 22F)."""
         return self_evaluation_line(perceived, self.rng)
+
+    # ------------------------------------------------------------------
+    # In-phase match events (Phase 22F)
+    # ------------------------------------------------------------------
+
+    def _ingame_blueprints(self) -> list[EventBlueprint]:
+        """Blueprints that resolve inside the match block (``ingame`` tag)."""
+        return [bp for bp in self.blueprints if bp.tags & IN_MATCH_TAGS]
+
+    def select_match_event(
+        self, result: PhaseResult, phase_index: int, total_phases: int = 8
+    ) -> EventBlueprint | None:
+        """Pick a playable in-phase event for a just-simulated phase, or None.
+
+        Currently triggers on a teammate goal (the player being mobbed is
+        a different beat, deferred). Gated by ``MATCH_EVENT_GOAL_CHANCE``
+        so not every goal interrupts play; weight-sampled from the
+        ``ingame`` pool through the normal prereq/recency machinery so
+        repeats are naturally dampened.
+        """
+        if not result.goal_scored:
+            return None
+        scorer = self._scorer_character(result)
+        # Only trigger when a *teammate* scored — the player being the
+        # scorer is a separate beat we don't author yet.
+        if scorer is None or scorer.id == "player":
+            return None
+        if self.rng.random() > MATCH_EVENT_GOAL_CHANCE:
+            return None
+        candidates = self._ingame_blueprints()
+        if not candidates:
+            return None
+        return select_event(candidates, self._game_context(), self.state, self.rng)
+
+    def cast_match_event(
+        self, blueprint: EventBlueprint, result: PhaseResult
+    ) -> dict[str, Character] | None:
+        """Cast an in-match event, pinning the real scorer to ``scorer``."""
+        pinned: dict[str, Character] = {}
+        scorer = self._scorer_character(result)
+        if scorer is not None and any(
+            s.role == "scorer" for s in blueprint.participants
+        ):
+            pinned["scorer"] = scorer
+        return cast_event(blueprint, self.state, self.rng, pinned=pinned)
+
+    def resolve_match_event(
+        self,
+        blueprint: EventBlueprint,
+        branch: str,
+        cast: dict[str, Character],
+    ) -> OutcomeRecord:
+        """Resolve an in-match event: apply effects, log the record.
+
+        Unlike :meth:`resolve_event` there is no schedule slot to mark and
+        no clock advance — the match block consumes its whole afternoon as
+        a single unit, so in-phase beats happen "for free" within it.
+        """
+        prior = find_prior_arc_outcome(
+            blueprint.id, self.arc_graph, self.state.outcome_log
+        )
+        return resolve_outcome(blueprint, branch, cast, self.state, prior)
+
+    def _scorer_character(self, result: PhaseResult) -> Character | None:
+        if not result.goal_scored or result.goal_scorer_index is None:
+            return None
+        players = self.roster_players()
+        if 0 <= result.goal_scorer_index < len(players):
+            return players[result.goal_scorer_index]
+        return None
 
     def evaluate_match(self) -> dict[str, Any]:
         """Post-match evaluation: self-evaluation + morale update.

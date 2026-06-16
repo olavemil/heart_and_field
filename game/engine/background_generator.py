@@ -136,6 +136,58 @@ def _hsv_to_rgb(h: float, s: float, v: float) -> tuple[int, int, int]:
     return int(r * 255), int(g * 255), int(b * 255)
 
 
+@dataclass
+class PrebakedImageProducer:
+    """Read-only producer for shipped pre-baked asset packs (Phase 23).
+
+    Never generates. In a correctly-packaged build every requested image
+    already exists on disk (attached in the shipped manifest), so the
+    serving path returns paths directly and ``produce`` is never called.
+    If it *is* called, that's a packaging gap:
+
+    - ``strict=True`` (dev/CI) raises so the missing asset is surfaced.
+    - ``strict=False`` (shipped) writes a placeholder so a gap degrades
+      gracefully rather than crashing play.
+    """
+
+    strict: bool = False
+    width: int = 1280
+    height: int = 720
+    _fallback: "PlaceholderImageProducer" = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._fallback = PlaceholderImageProducer(
+            width=self.width, height=self.height
+        )
+
+    def produce(
+        self,
+        *,
+        descriptor: LocationDescriptor,
+        spec: SceneGraphSpec,
+        node_name: str,
+        seed: int,
+        anchor_path: Path | None,
+        out_path: Path,
+        variant_index: int = 0,
+    ) -> None:
+        if self.strict:
+            raise FileNotFoundError(
+                "pre-baked asset missing: "
+                f"{spec.spec_id}/{node_name} variant={variant_index} "
+                f"(expected at {out_path})"
+            )
+        self._fallback.produce(
+            descriptor=descriptor,
+            spec=spec,
+            node_name=node_name,
+            seed=seed,
+            anchor_path=anchor_path,
+            out_path=out_path,
+            variant_index=variant_index,
+        )
+
+
 # ---------------------------------------------------------------------------
 # ComfyUI image producer
 # ---------------------------------------------------------------------------
@@ -160,15 +212,39 @@ _NODE_PROMPT_HINTS: dict[str, str] = {
     "dining_area": "dining area, tables with chairs, ambient lighting",
     "lobby": "hotel or building lobby, reception area",
     "balcony": "balcony exterior, railing, view of surroundings",
+    # Hot-tier authored nodes (Phase 23)
+    "locker_room": "team locker room interior, benches and lockers, kit hanging",
+    "garden": "back garden exterior, lawn and fencing, planting",
+    "entrance": "apartment entrance hall just inside the door, coat hooks",
+    "recreation": "team recreation room, sofas, pool table, relaxed",
+    "showers": "communal shower room, tiled walls, steam",
+    "manager_office": "football manager's office, desk, tactics board, trophies",
+    "conference_room": "club conference room, long table, presentation screen",
+    "training_ground": "outdoor football training pitch, cones and goals, daylight",
+    "pitch": "football pitch from pitchside, stadium stands behind, daylight",
+    "coffee_shop": "cosy coffee shop interior, counter, small tables, warm light",
+    "bakery": "bakery cafe interior, display case of bread and pastries, counter",
+    "bar": "warm pub interior, bar counter and stools, low evening light",
+    "press_room": "press conference room, backdrop board, microphones, seating",
+    "team_bus": "team coach bus interior, seats along the aisle, motorway window light",
 }
 
+# Validated painterly recipe (spike, June 2026): a loose impressionistic
+# style + the negative prompt below are what lifted output from the flat
+# "DOS pixel-art" look and fixed incoherent geometry (Escher bathroom).
+# "detailed/sharp" cues pushed the wrong way and were removed. Keep the
+# SD3 default sampler (euler/sgm_uniform) — off-combo samplers NaN to black.
 _BG_PROMPT_PREFIX = (
-    "background scene for a visual novel, wide-angle interior or exterior, "
-    "no people, no text, detailed environment, painterly style, "
+    "loose painterly digital painting, impressionistic, soft visible "
+    "brushwork, atmospheric, muted natural palette, soft focus, evocative "
+    "mood, visual-novel background art, wide angle, no people, no text, "
 )
 _BG_NEGATIVE_PROMPT = (
-    "people, person, figure, silhouette, text, watermark, logo, "
-    "blurry, low quality, distorted, nsfw"
+    "pixel art, dithering, 8-bit, retro game, low resolution, sharp hard "
+    "edges, crisp linework, 3d render, cgi, plastic, photorealistic, text, "
+    "watermark, logo, people, person, faces, distorted geometry, warped "
+    "perspective, duplicated fixtures, extra sinks, extra doors, "
+    "floating objects, clutter, nsfw"
 )
 
 # Variant generation uses low denoise to keep spatial layout identical
@@ -197,7 +273,7 @@ class ComfyUIImageProducer:
     client: "ComfyUIClient"
     width: int = 1280
     height: int = 720
-    primary_steps: int = 28
+    primary_steps: int = 32
     primary_cfg: float = 4.5
     # Denoise for anchored primaries — high enough to change composition,
     # low enough to lock palette and lighting family.
@@ -259,6 +335,7 @@ class ComfyUIImageProducer:
         """txt2img — first node in a graph, no anchor."""
         return self.client.txt2img(
             prompt,
+            negative_prompt=_BG_NEGATIVE_PROMPT,
             seed=seed,
             width=self.width,
             height=self.height,
@@ -278,6 +355,7 @@ class ComfyUIImageProducer:
         return self.client.img2img(
             prompt,
             input_image=uploaded_name,
+            negative_prompt=_BG_NEGATIVE_PROMPT,
             seed=seed,
             width=self.width,
             height=self.height,
@@ -298,6 +376,7 @@ class ComfyUIImageProducer:
         return self.client.img2img(
             variant_prompt,
             input_image=uploaded_name,
+            negative_prompt=_BG_NEGATIVE_PROMPT,
             seed=seed,
             width=self.width,
             height=self.height,
@@ -404,6 +483,12 @@ class BackgroundGenerator:
     prefetch_scheduler: PrefetchScheduler = field(
         default_factory=InlinePrefetchScheduler
     )
+    # Transient: which alternate ``get_background`` last served per
+    # (graph, node), so ``get_variants`` returns the matching crossfade
+    # set. Not persisted — repopulated on the next serve after a load.
+    _active_alternate: dict[tuple[str, str], str] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     # ------------------------------------------------------------------
     # Public API
@@ -428,24 +513,40 @@ class BackgroundGenerator:
                 f"node {node_name!r} not in spec {spec.spec_id!r}"
             )
 
-        existing = self.manifest.get_attached(graph_id, node_name)
-        if existing is None:
-            existing = self._materialise(graph_id, node_name, spec)
+        # Pick the alternate for this visit from the *pre-increment* count
+        # so revisits rotate. choose_alternate falls back to the single
+        # binding for on-demand graphs; None means nothing attached yet.
+        visit_index = graph.visit_counts.get(node_name, 0)
+        chosen = self.manifest.choose_alternate(graph_id, node_name, visit_index)
+        if chosen is None:
+            chosen = self.manifest.get_attached(graph_id, node_name)
+            if chosen is None:
+                chosen = self._materialise(graph_id, node_name, spec)
+        # Remember the served alternate so get_variants stays consistent.
+        self._active_alternate[(graph_id, node_name)] = chosen.entry_id
         self.manifest.mark_visited(graph_id, node_name)
         self._schedule_neighbors(graph_id, node_name, spec)
         self._schedule_variant_promotion(graph_id, node_name)
-        return self.manifest.resolve(existing.primary_path)
+        return self.manifest.resolve(chosen.primary_path)
 
     def get_variants(self, graph_id: str, node_name: str) -> list[Path]:
-        """Return absolute paths to all variants attached to a node.
+        """Return absolute paths to the variants of the *currently served*
+        alternate — primary at index 0, subtle-motion variants after.
 
-        Index 0 is the primary; later indices are subtle-motion variants
-        used for crossfade. Returns an empty list if the node isn't
-        attached. Does not generate, mark visited, or schedule —
-        callers needing on-demand generation should hit
-        ``get_background`` first.
+        Reads the alternate ``get_background`` last served for this node
+        so the crossfade frames belong to the shown shot. Falls back to
+        the node's primary binding if no serve has happened yet. Returns
+        an empty list if the node isn't attached. Does not generate, mark
+        visited, or schedule — call ``get_background`` first.
         """
-        entry = self.manifest.get_attached(graph_id, node_name)
+        eid = self._active_alternate.get((graph_id, node_name))
+        entry = (
+            self.manifest.get_entry(eid)
+            if eid is not None
+            else None
+        )
+        if entry is None:
+            entry = self.manifest.get_attached(graph_id, node_name)
         if entry is None:
             return []
         return [self.manifest.resolve(p) for p in entry.image_paths]

@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 # --- Configuration -----------------------------------------------------------
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
-DEFAULT_TIMEOUT = 120  # seconds — image gen can be slow
+DEFAULT_TIMEOUT = 300  # seconds — 720p SD3.5 at ~32 steps runs ~130-150s
 POLL_INTERVAL = 1.0  # seconds between status checks
 MAX_CONSECUTIVE_ERRORS = 3
 
@@ -593,6 +593,7 @@ class ComfyUIClient:
         self,
         prompt: str,
         *,
+        negative_prompt: str = "",
         seed: int = 0,
         width: int = 512,
         height: int = 512,
@@ -601,13 +602,18 @@ class ComfyUIClient:
         denoise: float = 1.0,
         filename_prefix: str = "fh_gen",
     ) -> bytes | None:
-        """Generate an image from a text prompt. Returns PNG bytes or None."""
+        """Generate an image from a text prompt. Returns PNG bytes or None.
+
+        ``negative_prompt`` is honoured by the SD3 pipeline; the
+        distilled flux2 pipeline (cfg≈1) ignores it.
+        """
         if not self.enabled:
             return None
 
         if self.pipeline == "sd3":
             workflow = _sd3_txt2img_workflow(
                 prompt,
+                negative_prompt=negative_prompt,
                 seed=seed,
                 width=width,
                 height=height,
@@ -640,6 +646,7 @@ class ComfyUIClient:
         prompt: str,
         *,
         input_image: str,
+        negative_prompt: str = "",
         seed: int = 0,
         width: int = 512,
         height: int = 512,
@@ -651,6 +658,7 @@ class ComfyUIClient:
         """Generate a variation of an input image. Returns PNG bytes or None.
 
         ``input_image`` must already be uploaded to ComfyUI's input directory.
+        ``negative_prompt`` is honoured by the SD3 pipeline only.
         """
         if not self.enabled:
             return None
@@ -659,6 +667,7 @@ class ComfyUIClient:
             workflow = _sd3_img2img_workflow(
                 prompt,
                 input_image=input_image,
+                negative_prompt=negative_prompt,
                 seed=seed,
                 width=width,
                 height=height,

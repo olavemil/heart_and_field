@@ -27,6 +27,13 @@ label game_block:
         $ phase_line = fh.session.narrate_match_phase(result, phase_idx, total_phases)
         e "[phase_line]"
 
+        # In-phase playable beat (Phase 22F) — a teammate goal may open a
+        # quick choice (e.g. join the huddle). Engine decides whether one
+        # fires; this only displays it.
+        $ fh.bp = fh.session.select_match_event(result, phase_idx, total_phases)
+        if fh.bp is not None:
+            call match_event(result) from _call_match_event
+
         $ phase_idx += 1
         jump .phase_loop
 
@@ -47,3 +54,30 @@ label game_block:
         e "[self_eval_line]"
 
         return
+
+
+# In-phase match beat (Phase 22F). fh.bp holds the selected ingame
+# blueprint; result is the phase that triggered it (carries the scorer).
+label match_event(result):
+    $ cast = fh.session.cast_match_event(fh.bp, result)
+    if cast is None:
+        $ fh.bp = None
+        return
+
+    # Put the scorer on screen for the moment.
+    $ focal = fh.session.focal_character(cast)
+    if focal is not None:
+        call show_character(focal, mood=fh.session.team_morale) from _call_show_focal_match
+
+    $ branch = fh_choose_branch(fh.session.get_choices(fh.bp))
+    $ record = fh.session.resolve_match_event(fh.bp, branch, cast)
+
+    $ pages = fh.session.narrate_outcome(fh.bp, cast, record)
+    python:
+        for page in pages:
+            renpy.say(e, page)
+
+    if focal is not None:
+        hide character_sprite
+    $ fh.bp = None
+    return
