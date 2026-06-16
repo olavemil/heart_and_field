@@ -43,6 +43,24 @@ class CharacterRole(str, Enum):
     OTHER = "other"
 
 
+# Roles that never take the field. The match simulation must exclude these
+# from the playing squad — a manager or physio cannot be a goal scorer.
+# Superset of the roles ``content/events/_helpers.teammate()`` excludes
+# (which also keeps PHYSIO/ASSISTANT_COACH out of the match, where
+# ``teammate()`` does not), so any scorer drawn from the playing squad is
+# always a valid ``teammate()`` for in-match event casting.
+NON_PLAYING_ROLES: frozenset["CharacterRole"] = frozenset(
+    {
+        CharacterRole.MANAGER,
+        CharacterRole.ASSISTANT_COACH,
+        CharacterRole.PHYSIO,
+        CharacterRole.MEDIA,
+        CharacterRole.FAMILY,
+        CharacterRole.OTHER,
+    }
+)
+
+
 class Disposition(str, Enum):
     CALM = "calm"
     FIERY = "fiery"

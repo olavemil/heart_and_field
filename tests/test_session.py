@@ -10,7 +10,12 @@ import random
 
 import numpy as np
 
-from engine.characters import CharacterRole, TierACharacter, TierBCharacter
+from engine.characters import (
+    CharacterRole,
+    NON_PLAYING_ROLES,
+    TierACharacter,
+    TierBCharacter,
+)
 from engine.clocks import Clock
 from engine.schedule import BlockType
 from engine.session import GameSession
@@ -194,6 +199,45 @@ class TestMatchSimulation:
         assert "mood_delta" in eval_result
         assert "morale_delta" in eval_result
         assert "team_goals" in eval_result
+
+    def test_playing_squad_excludes_staff(self):
+        # The generated roster carries a manager + physio. They must
+        # never appear in the squad the match simulates.
+        session = GameSession.new_game("Alex Morgan", seed=7)
+        roster_roles = {c.role for c in session.roster_players()}
+        assert CharacterRole.MANAGER in roster_roles  # precondition
+
+        squad = session.playing_squad()
+        assert squad, "playing squad should be non-empty"
+        assert all(c.role not in NON_PLAYING_ROLES for c in squad)
+        assert len(squad) < len(session.roster_players())  # staff removed
+
+    def test_scorer_is_never_non_playing_role(self):
+        # Regression (Phase 22F): goal_scorer_index indexes the playing
+        # squad, so a manager/physio/coach can never score — both at the
+        # narration layer and through ``_scorer_character`` (which feeds
+        # the in-match ``goal_huddle`` cast).
+        session = GameSession.new_game("Alex Morgan", seed=7)
+        session.setup_match(opponent_rating=0.5)
+        squad = session.playing_squad()
+
+        scorers = 0
+        for _week in range(20):  # many matches' worth of phases
+            for phase in range(8):
+                result = session.simulate_game_phase(phase, 8)
+                if not (result.goal_scored and result.goal_scorer_index is not None):
+                    continue
+                scorers += 1
+                assert result.goal_scorer_index < len(squad)
+                # Both consumers of the index must resolve a playing role.
+                indexed = squad[result.goal_scorer_index]
+                resolved = session._scorer_character(result)
+                assert resolved is indexed
+                assert indexed.role not in NON_PLAYING_ROLES, (
+                    f"non-playing role {indexed.role} resolved as scorer"
+                )
+            session.match_results.clear()
+        assert scorers > 0, "expected at least one goal across 160 phases"
 
 
 class TestClockIntegration:
