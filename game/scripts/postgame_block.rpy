@@ -20,10 +20,8 @@ label postgame_block(slot_index):
     if scene_info is not None:
         $ show_scene_live(fh.session, scene_info[0], scene_info[1])
 
-    # Focal cast member + engine-built scene intro (Phase 22D).
-    $ focal = fh.session.focal_character(cast)
-    if focal is not None:
-        call show_character(focal, mood=fh.session.team_morale) from _call_show_focal_postgame
+    # Composite the event's figures over the background (Phase 23).
+    $ show_figures(fh.session, fh.bp, cast)
 
     $ intro = fh.session.scene_intro(fh.bp, cast)
     if intro:
@@ -47,8 +45,7 @@ label postgame_block(slot_index):
             close = cue is not None and cue.graph_id is None
             fh.session.release_scene(scene_info[0], close=close)
 
-    if focal is not None:
-        hide character_sprite
+    $ hide_figures()
 
     $ fh.session.drain_background_prefetch(max_items=2)
     $ fh.bp = None

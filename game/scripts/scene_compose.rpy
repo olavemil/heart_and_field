@@ -10,11 +10,15 @@
 # file only orchestrates display.
 
 init python:
+    import os
     from engine.scene_compose import variant_crossfade_state
 
     # Track which overlay tags are currently shown so we can hide stale
     # layers when scene/weather conditions change.
     _scene_live_overlay_tags = set()
+
+    # Figure layer tags currently shown (Phase 23 figure composite).
+    _fh_figure_tags = set()
 
     # How long each variant→next-variant crossfade takes. Continuous —
     # no hold on any single variant — so the result reads as a slight
@@ -29,13 +33,31 @@ init python:
             getattr(config, "screen_height", 720),
         )
 
+    def _fh_image(path):
+        """Build a RenPy Image from an engine path.
+
+        The engine returns absolute filesystem paths (manifest.resolve),
+        but RenPy's loader resolves image names *relative to game/* and
+        searches its file index — an absolute path is never found. Convert
+        paths under the game dir to a game-relative, forward-slash name so
+        the loader can find them; pass anything else through unchanged.
+        """
+        p = str(path)
+        gamedir = config.gamedir
+        try:
+            if os.path.isabs(p) and os.path.commonpath([p, gamedir]) == gamedir:
+                p = os.path.relpath(p, gamedir).replace(os.sep, "/")
+        except ValueError:
+            pass  # different drive / not comparable — leave as-is
+        return Image(p)
+
     def _stretched(path, alpha):
         """Show a small grade or overlay PNG stretched to fill the
         canvas at the given alpha. Used by every grade / overlay layer."""
         if path is None:
             return None
         return Transform(
-            Image(str(path)),
+            _fh_image(path),
             xysize=_scene_canvas(),
             alpha=float(alpha),
         )
@@ -54,11 +76,11 @@ init python:
         if not variant_paths:
             return None
         if len(variant_paths) == 1:
-            return Image(str(variant_paths[0]))
+            return _fh_image(variant_paths[0])
 
         fade = fade_seconds if fade_seconds is not None else SCENE_VARIANT_FADE_SECONDS
         canvas = _scene_canvas()
-        images = [Image(str(p)) for p in variant_paths]
+        images = [_fh_image(p) for p in variant_paths]
 
         def _render(st, at):
             idx_a, idx_b, progress = variant_crossfade_state(
@@ -92,7 +114,7 @@ init python:
             variants = session.scene_variants(graph_id, node_name)
             bg_displayable = (
                 _build_variant_displayable(variants)
-                or Image(str(primary))
+                or _fh_image(primary)
             )
             renpy.show("scene_bg", what=bg_displayable)
 
@@ -117,14 +139,48 @@ init python:
             renpy.hide(stale)
         _scene_live_overlay_tags = new_tags
 
+    def show_figures(session, blueprint, cast):
+        """Composite the event's figures over the current background.
+
+        The engine resolves which figures and where (figure_layout_for);
+        this only places the matted images. Player draws on top (zorder),
+        NPCs behind. Idempotent — stale figure tags are hidden. Proximity
+        (FigureDistance) defaults to NORMAL until events cue it.
+        """
+        global _fh_figure_tags
+        w, h = _scene_canvas()
+        placements = session.figure_layout_for(blueprint, cast, w, h)
+        new_tags = set()
+        for i, (path, box, role) in enumerate(placements):
+            tag = "fh_fig_%d" % i
+            new_tags.add(tag)
+            d = Transform(
+                _fh_image(path),
+                xysize=(int(box.width), int(box.height)),
+                pos=(int(box.x), int(box.y)),
+                anchor=(0, 0),
+            )
+            renpy.show(tag, what=d, zorder=(70 if role == "player" else 50 + i))
+        for stale in _fh_figure_tags - new_tags:
+            renpy.hide(stale)
+        _fh_figure_tags = new_tags
+
+    def hide_figures():
+        """Hide all composited figures (between scenes / before a match)."""
+        global _fh_figure_tags
+        for tag in _fh_figure_tags:
+            renpy.hide(tag)
+        _fh_figure_tags = set()
+
     def hide_scene_live():
         """Tear down every layer the composite owns. Use between events
         when you want a clean slate (e.g. before the match block)."""
-        global _scene_live_overlay_tags
+        global _scene_live_overlay_tags, _fh_figure_tags
         renpy.scene()
         for tag in _scene_live_overlay_tags:
             renpy.hide(tag)
         _scene_live_overlay_tags = set()
+        _fh_figure_tags = set()  # renpy.scene() already cleared them
 
 
 # --- Status bar overlay -----------------------------------------------------

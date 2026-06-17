@@ -25,9 +25,10 @@ label show_character(character, expression=None, intensity=None, mood=0.0, pose_
             pose=pose,
         )
 
-    # Display the sprite.
+    # Display the sprite. Engine returns an absolute path; RenPy's loader
+    # needs a game-relative name (see _fh_image in scene_compose.rpy).
     if sprite_path:
-        show expression sprite_path as character_sprite at center
+        show expression _fh_image(sprite_path) as character_sprite at center
     return
 
 
@@ -41,7 +42,7 @@ label set_background(location):
         bg_path = fh.session.visual_manager.render_background(location)
 
     if bg_path:
-        scene expression bg_path
+        scene expression _fh_image(bg_path)
     else:
         scene black
     return

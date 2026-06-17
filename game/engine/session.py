@@ -79,6 +79,16 @@ from .events import (
     select_event,
 )
 from .event_taxonomy import EventTone
+from .figures import (
+    FigureCategory,
+    FigureManifest,
+    FigurePosture,
+    appearance_from_descriptor,
+    select_figure,
+    select_for_character,
+)
+from .figure_layout import FigureBox, FigureDistance, FigureSlot, compute_layout
+from .sprite_pool import CharacterDescriptor
 from .motivators import Motivator
 from .narrative import (
     NarrativeTemplate,
@@ -279,8 +289,13 @@ class GameSession:
     scene_specs: dict[str, SceneGraphSpec] = field(default_factory=dict)
     background_manifest: BackgroundManifest | None = None
     background_generator: BackgroundGenerator | None = None
+    figure_manifest: "FigureManifest | None" = None  # set by ``init_backgrounds``
     grades_root: Path | None = None  # set by ``init_backgrounds``
     overlays_root: Path | None = None  # set by ``init_backgrounds``
+    # Prebaked mode (Phase 23): every cue resolves to the canonical
+    # per-spec graph (graph_id == spec_id) the pack baked, instead of
+    # creating marquee/ad-hoc graphs. Set by ``init_backgrounds``.
+    _prebaked: bool = False
 
     # During match play the status bar swaps from the clock to a label
     # (e.g. "Match vs Northgate"). Set by the match flow (Phase 11.5B);
@@ -805,6 +820,10 @@ class GameSession:
         generate_grade_pngs(self.grades_root)
         self.overlays_root = assets_root.parent / "overlays"
         generate_overlay_pngs(self.overlays_root)
+        self._prebaked = prebaked
+        # Figure assets live alongside backgrounds (game/assets/figures);
+        # load the manifest read-only (empty if not baked yet).
+        self.figure_manifest = FigureManifest.load(assets_root.parent / "figures")
         # In prebaked mode the pack already holds every marquee asset, so
         # warm-up (which schedules generation) is a no-op.
         if warm_marquees and not prebaked:
@@ -855,7 +874,20 @@ class GameSession:
         if cue.spec_id not in self.scene_specs:
             return None
 
-        if cue.graph_id is not None:
+        if self._prebaked:
+            # Every cue for a spec resolves to the canonical pre-baked
+            # graph (graph_id == spec_id) the pack holds with alternates.
+            # Marquee vs ad-hoc collapses — all suburban houses share the
+            # baked suburban_house set (accepted full-pre-bake tradeoff).
+            graph_id = cue.spec_id
+            if self.background_manifest.get_graph(graph_id) is None:
+                # Spec wasn't baked — create empty so the read-only
+                # producer placeholders gracefully instead of failing.
+                self.background_manifest.create_graph(
+                    cue.spec_id, self._descriptor_for(cue), graph_id=graph_id
+                )
+            target = (graph_id, cue.node_name)
+        elif cue.graph_id is not None:
             # Marquee — create the graph on first use.
             if self.background_manifest.get_graph(cue.graph_id) is None:
                 descriptor = self._descriptor_for(cue)
@@ -958,8 +990,13 @@ class GameSession:
 
     def release_scene(self, graph_id: str, *, close: bool = False) -> None:
         """Reap unvisited prefetches for `graph_id`. Closes the graph when
-        `close=True` (use this for ad-hoc graphs after their event ends)."""
-        if self.background_manifest is None:
+        `close=True` (use this for ad-hoc graphs after their event ends).
+
+        No-op in prebaked mode: the canonical per-spec graphs are shared
+        across every event and must never be reaped or closed, and the
+        read-only pack is never rewritten.
+        """
+        if self.background_manifest is None or self._prebaked:
             return
         self.background_manifest.reap_unvisited(graph_id)
         if close:
@@ -1207,6 +1244,74 @@ class GameSession:
             if lines:
                 parts.append(self.rng.choice(lines))
         return " ".join(parts), others
+
+    _DEFAULT_DESCRIPTOR = CharacterDescriptor()
+
+    def figure_layout_for(
+        self,
+        blueprint: EventBlueprint,
+        cast: Mapping[str, Character],
+        canvas_w: int,
+        canvas_h: int,
+        *,
+        distance: FigureDistance = FigureDistance.NORMAL,
+        max_npcs: int = 2,
+    ) -> list[tuple[str, "FigureBox", str]]:
+        """Resolve the figures to composite for an event.
+
+        Returns ``(image_path, box, role)`` per figure, ordered NPCs-first
+        then the player anchor, so Ren'Py can draw the player on top.
+        Selection maps each cast member's persisted descriptor + the
+        event tone to a baked figure; figures with no available asset are
+        skipped. Returns ``[]`` if the figure pack isn't loaded.
+        """
+        if self.figure_manifest is None or not self.figure_manifest.assets:
+            return []
+        tone = (
+            blueprint.event_id.tone
+            if blueprint.event_id is not None
+            else EventTone.NEUTRAL
+        )
+
+        def desc_of(c: Character) -> CharacterDescriptor:
+            return getattr(c, "descriptor", None) or self._DEFAULT_DESCRIPTOR
+
+        # NPCs first (focal roles preferred), then the player anchor last.
+        resolved: list[tuple[FigureSlot, str, str]] = []
+        others = [
+            (role, c) for role, c in cast.items() if role != "player"
+        ]
+        others.sort(key=lambda rc: (rc[0] not in _FOCAL_ROLE_PRIORITY, rc[0]))
+        for role, c in others[:max_npcs]:
+            asset = select_for_character(
+                self.figure_manifest, desc_of(c), c.role, tone
+            )
+            if asset is not None:
+                resolved.append((FigureSlot(role="npc"), asset.path, "npc"))
+
+        player = cast.get("player")
+        if player is not None:
+            asset = select_figure(
+                self.figure_manifest,
+                FigureCategory.PLAYER,
+                appearance_from_descriptor(desc_of(player)),
+                FigurePosture.NEUTRAL,
+            )
+            if asset is not None:
+                resolved.append(
+                    (FigureSlot(role="player"), asset.path, "player")
+                )
+
+        if not resolved:
+            return []
+        boxes = compute_layout(
+            canvas_w, canvas_h, [s for s, _, _ in resolved],
+            distance=distance,
+        )
+        return [
+            (str(self.figure_manifest.resolve(path)), box, role)
+            for (_, path, role), box in zip(resolved, boxes)
+        ]
 
     @staticmethod
     def _cast_pronouns(cast: Mapping[str, Character]) -> dict[str, str]:

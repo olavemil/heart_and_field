@@ -17,6 +17,7 @@ from .motivators import Motivator
 from .outcomes import OutcomeRecord
 from .quirks import Quirk
 from .relationships import RelationshipState
+from .sprite_pool import CharacterDescriptor
 from .stats import (
     ObservableName,
     StatName,
@@ -199,6 +200,10 @@ class TierBCharacter:
     nickname: str | None = None
     quirks: list[Quirk] = field(default_factory=list)
     gender_presentation: str = "masculine"
+    # Visual appearance axes (skin, hair, age, build) for consistent
+    # figure-asset selection across scenes. None for characters created
+    # before the figure pipeline (legacy/test). See field_assets design.
+    descriptor: CharacterDescriptor | None = None
 
     def observable(self, obs: ObservableName) -> float:
         return compute_observable(self.stats, obs)
@@ -217,6 +222,7 @@ class TierBCharacter:
                 cid: rs.to_dict() for cid, rs in self.relationships.items()
             },
             "quirks": [q.to_dict() for q in self.quirks],
+            "descriptor": self.descriptor.to_dict() if self.descriptor else None,
         }
 
     @classmethod
@@ -234,6 +240,11 @@ class TierBCharacter:
             },
             quirks=[Quirk.from_dict(q) for q in d.get("quirks", [])],
             gender_presentation=str(d.get("gender_presentation", "masculine")),
+            descriptor=(
+                CharacterDescriptor.from_dict(d["descriptor"])
+                if d.get("descriptor")
+                else None
+            ),
         )
 
 
@@ -257,6 +268,8 @@ class TierACharacter:
     # without entries here treat all their quirks as ``VISIBLE``.
     quirk_reveals: dict[str, "QuirkReveal"] = field(default_factory=dict)
     gender_presentation: str = "masculine"
+    # Visual appearance axes for consistent figure-asset selection.
+    descriptor: CharacterDescriptor | None = None
 
     def observable(self, obs: ObservableName) -> float:
         return compute_observable(self.stats, obs)
@@ -293,6 +306,7 @@ class TierACharacter:
             "quirk_reveals": {
                 k: r.to_dict() for k, r in self.quirk_reveals.items()
             },
+            "descriptor": self.descriptor.to_dict() if self.descriptor else None,
         }
 
     @classmethod
@@ -322,6 +336,11 @@ class TierACharacter:
                 for k, r in d.get("quirk_reveals", {}).items()
             },
             gender_presentation=str(d.get("gender_presentation", "masculine")),
+            descriptor=(
+                CharacterDescriptor.from_dict(d["descriptor"])
+                if d.get("descriptor")
+                else None
+            ),
         )
 
 

@@ -250,6 +250,25 @@ class TestGenerateCharacter:
         restored = TierACharacter.from_dict(c.to_dict())
         assert restored == c
 
+    def test_generated_character_persists_descriptor(self):
+        from engine.sprite_pool import CharacterDescriptor
+
+        a = generate_character(CharacterRole.STRIKER, random.Random(0), tier="A")
+        b = generate_character(CharacterRole.DEFENDER, random.Random(1))
+        assert isinstance(a.descriptor, CharacterDescriptor)
+        assert isinstance(b.descriptor, CharacterDescriptor)
+        # Round-trips with the rest of the character.
+        assert TierACharacter.from_dict(a.to_dict()).descriptor == a.descriptor
+        assert TierBCharacter.from_dict(b.to_dict()).descriptor == b.descriptor
+
+    def test_legacy_character_without_descriptor_loads_as_none(self):
+        # A save predating the figure pipeline has no "descriptor" key.
+        d = {
+            "tier": "B", "id": "x", "name": "X", "role": "midfielder",
+            "stats": {}, "gender_presentation": "feminine",
+        }
+        assert TierBCharacter.from_dict(d).descriptor is None
+
 
 class TestSlugId:
     def test_slug_id_unique_for_different_rng_state(self):

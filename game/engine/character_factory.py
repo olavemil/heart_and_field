@@ -458,6 +458,7 @@ def generate_character(
             stats=random_stats_tuple(role, rng),
             quirks=chosen_quirks,
             gender_presentation=gender_str,
+            descriptor=chosen_descriptor,
         )
     return TierBCharacter(
         id=cid,
@@ -466,6 +467,7 @@ def generate_character(
         stats=random_stats_flat(role, rng),
         quirks=chosen_quirks,
         gender_presentation=gender_str,
+        descriptor=chosen_descriptor,
     )
 
 

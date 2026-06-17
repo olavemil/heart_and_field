@@ -1,0 +1,1931 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "entry_id": "suburban_house_modern_comfortable_neutral__front_door_0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "front_door",
+      "image_paths": [
+        "suburban_house_modern_comfortable_neutral/suburban_house_f1414664/front_door.png"
+      ],
+      "seed": 4133922406,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house_f1414664",
+      "visited": true
+    },
+    {
+      "entry_id": "suburban_house_modern_comfortable_neutral__kitchen_0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "kitchen",
+      "image_paths": [
+        "suburban_house_modern_comfortable_neutral/player_home/kitchen.png",
+        "suburban_house_modern_comfortable_neutral/player_home/kitchen_v1.png"
+      ],
+      "seed": 3765080833,
+      "anchor_entry_id": null,
+      "graph_id": "player_home",
+      "visited": true
+    },
+    {
+      "entry_id": "apartment__entrance__alt0",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "entrance",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/entrance__alt0.png"
+      ],
+      "seed": 3751046301,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__entrance__alt1",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "entrance",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/entrance__alt1.png"
+      ],
+      "seed": 2216762819,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__entrance__alt2",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "entrance",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/entrance__alt2.png"
+      ],
+      "seed": 3537843837,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__living_room__alt0",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "living_room",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/living_room__alt0.png"
+      ],
+      "seed": 2404553727,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__living_room__alt1",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "living_room",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/living_room__alt1.png"
+      ],
+      "seed": 876153419,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__living_room__alt2",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "living_room",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/living_room__alt2.png"
+      ],
+      "seed": 821348036,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__kitchen__alt0",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "kitchen",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/kitchen__alt0.png"
+      ],
+      "seed": 2709977757,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__kitchen__alt1",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "kitchen",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/kitchen__alt1.png"
+      ],
+      "seed": 3069116229,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__kitchen__alt2",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "kitchen",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/kitchen__alt2.png"
+      ],
+      "seed": 2302881197,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__bathroom__alt0",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "bathroom",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/bathroom__alt0.png"
+      ],
+      "seed": 2683592242,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__bathroom__alt1",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "bathroom",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/bathroom__alt1.png"
+      ],
+      "seed": 1594721185,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__bathroom__alt2",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "bathroom",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/bathroom__alt2.png"
+      ],
+      "seed": 314278467,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__bedroom__alt0",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "bedroom",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/bedroom__alt0.png"
+      ],
+      "seed": 1267930127,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__bedroom__alt1",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "bedroom",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/bedroom__alt1.png"
+      ],
+      "seed": 639564041,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__bedroom__alt2",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "bedroom",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/bedroom__alt2.png"
+      ],
+      "seed": 760654206,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__balcony__alt0",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "balcony",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/balcony__alt0.png"
+      ],
+      "seed": 1900232443,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__balcony__alt1",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "balcony",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/balcony__alt1.png"
+      ],
+      "seed": 1105419940,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "apartment__balcony__alt2",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "apartment",
+      "node_name": "balcony",
+      "image_paths": [
+        "apartment_modern_modest_neutral_pc3cb54/apartment/balcony__alt2.png"
+      ],
+      "seed": 2326999174,
+      "anchor_entry_id": null,
+      "graph_id": "apartment",
+      "visited": false
+    },
+    {
+      "entry_id": "cafe__coffee_shop__alt0",
+      "descriptor": {
+        "kind": "cafe",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm wood, soft lamplight, cosy",
+        "appearance_details": ""
+      },
+      "spec_id": "cafe",
+      "node_name": "coffee_shop",
+      "image_paths": [
+        "cafe_modern_comfortable_warm_pd47eba/cafe/coffee_shop__alt0.png"
+      ],
+      "seed": 1761430678,
+      "anchor_entry_id": null,
+      "graph_id": "cafe",
+      "visited": false
+    },
+    {
+      "entry_id": "cafe__coffee_shop__alt1",
+      "descriptor": {
+        "kind": "cafe",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm wood, soft lamplight, cosy",
+        "appearance_details": ""
+      },
+      "spec_id": "cafe",
+      "node_name": "coffee_shop",
+      "image_paths": [
+        "cafe_modern_comfortable_warm_pd47eba/cafe/coffee_shop__alt1.png"
+      ],
+      "seed": 3548249826,
+      "anchor_entry_id": null,
+      "graph_id": "cafe",
+      "visited": false
+    },
+    {
+      "entry_id": "cafe__coffee_shop__alt2",
+      "descriptor": {
+        "kind": "cafe",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm wood, soft lamplight, cosy",
+        "appearance_details": ""
+      },
+      "spec_id": "cafe",
+      "node_name": "coffee_shop",
+      "image_paths": [
+        "cafe_modern_comfortable_warm_pd47eba/cafe/coffee_shop__alt2.png"
+      ],
+      "seed": 3825334176,
+      "anchor_entry_id": null,
+      "graph_id": "cafe",
+      "visited": false
+    },
+    {
+      "entry_id": "cafe__bakery__alt0",
+      "descriptor": {
+        "kind": "cafe",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm wood, soft lamplight, cosy",
+        "appearance_details": ""
+      },
+      "spec_id": "cafe",
+      "node_name": "bakery",
+      "image_paths": [
+        "cafe_modern_comfortable_warm_pd47eba/cafe/bakery__alt0.png"
+      ],
+      "seed": 1381460295,
+      "anchor_entry_id": null,
+      "graph_id": "cafe",
+      "visited": false
+    },
+    {
+      "entry_id": "cafe__bakery__alt1",
+      "descriptor": {
+        "kind": "cafe",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm wood, soft lamplight, cosy",
+        "appearance_details": ""
+      },
+      "spec_id": "cafe",
+      "node_name": "bakery",
+      "image_paths": [
+        "cafe_modern_comfortable_warm_pd47eba/cafe/bakery__alt1.png"
+      ],
+      "seed": 3581604670,
+      "anchor_entry_id": null,
+      "graph_id": "cafe",
+      "visited": false
+    },
+    {
+      "entry_id": "cafe__bakery__alt2",
+      "descriptor": {
+        "kind": "cafe",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm wood, soft lamplight, cosy",
+        "appearance_details": ""
+      },
+      "spec_id": "cafe",
+      "node_name": "bakery",
+      "image_paths": [
+        "cafe_modern_comfortable_warm_pd47eba/cafe/bakery__alt2.png"
+      ],
+      "seed": 2234295483,
+      "anchor_entry_id": null,
+      "graph_id": "cafe",
+      "visited": false
+    },
+    {
+      "entry_id": "pitch__pitch__alt0",
+      "descriptor": {
+        "kind": "stadium",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green turf, white lines, stadium, overcast daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "pitch",
+      "node_name": "pitch",
+      "image_paths": [
+        "stadium_modern_comfortable_neutral_p354507/pitch/pitch__alt0.png"
+      ],
+      "seed": 1691666150,
+      "anchor_entry_id": null,
+      "graph_id": "pitch",
+      "visited": false
+    },
+    {
+      "entry_id": "pitch__pitch__alt1",
+      "descriptor": {
+        "kind": "stadium",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green turf, white lines, stadium, overcast daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "pitch",
+      "node_name": "pitch",
+      "image_paths": [
+        "stadium_modern_comfortable_neutral_p354507/pitch/pitch__alt1.png"
+      ],
+      "seed": 4173442113,
+      "anchor_entry_id": null,
+      "graph_id": "pitch",
+      "visited": false
+    },
+    {
+      "entry_id": "pitch__pitch__alt2",
+      "descriptor": {
+        "kind": "stadium",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green turf, white lines, stadium, overcast daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "pitch",
+      "node_name": "pitch",
+      "image_paths": [
+        "stadium_modern_comfortable_neutral_p354507/pitch/pitch__alt2.png"
+      ],
+      "seed": 1070614722,
+      "anchor_entry_id": null,
+      "graph_id": "pitch",
+      "visited": false
+    },
+    {
+      "entry_id": "school__courtyard__alt0",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "institutional, linoleum, strip lighting",
+        "appearance_details": ""
+      },
+      "spec_id": "school",
+      "node_name": "courtyard",
+      "image_paths": [
+        "school_modern_modest_neutral_p82be60/school/courtyard__alt0.png"
+      ],
+      "seed": 3003015668,
+      "anchor_entry_id": null,
+      "graph_id": "school",
+      "visited": false
+    },
+    {
+      "entry_id": "school__hallway__alt0",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "institutional, linoleum, strip lighting",
+        "appearance_details": ""
+      },
+      "spec_id": "school",
+      "node_name": "hallway",
+      "image_paths": [
+        "school_modern_modest_neutral_p82be60/school/hallway__alt0.png"
+      ],
+      "seed": 1791302955,
+      "anchor_entry_id": null,
+      "graph_id": "school",
+      "visited": false
+    },
+    {
+      "entry_id": "school__classroom__alt0",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "institutional, linoleum, strip lighting",
+        "appearance_details": ""
+      },
+      "spec_id": "school",
+      "node_name": "classroom",
+      "image_paths": [
+        "school_modern_modest_neutral_p82be60/school/classroom__alt0.png"
+      ],
+      "seed": 1943158768,
+      "anchor_entry_id": null,
+      "graph_id": "school",
+      "visited": false
+    },
+    {
+      "entry_id": "school__locker_bay__alt0",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "institutional, linoleum, strip lighting",
+        "appearance_details": ""
+      },
+      "spec_id": "school",
+      "node_name": "locker_bay",
+      "image_paths": [
+        "school_modern_modest_neutral_p82be60/school/locker_bay__alt0.png"
+      ],
+      "seed": 1249101566,
+      "anchor_entry_id": null,
+      "graph_id": "school",
+      "visited": false
+    },
+    {
+      "entry_id": "school__gym__alt0",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "institutional, linoleum, strip lighting",
+        "appearance_details": ""
+      },
+      "spec_id": "school",
+      "node_name": "gym",
+      "image_paths": [
+        "school_modern_modest_neutral_p82be60/school/gym__alt0.png"
+      ],
+      "seed": 3902263017,
+      "anchor_entry_id": null,
+      "graph_id": "school",
+      "visited": false
+    },
+    {
+      "entry_id": "school__office__alt0",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "institutional, linoleum, strip lighting",
+        "appearance_details": ""
+      },
+      "spec_id": "school",
+      "node_name": "office",
+      "image_paths": [
+        "school_modern_modest_neutral_p82be60/school/office__alt0.png"
+      ],
+      "seed": 135873573,
+      "anchor_entry_id": null,
+      "graph_id": "school",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__garden__alt0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "garden",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/garden__alt0.png"
+      ],
+      "seed": 325605461,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__garden__alt1",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "garden",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/garden__alt1.png"
+      ],
+      "seed": 726201962,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__garden__alt2",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "garden",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/garden__alt2.png"
+      ],
+      "seed": 914444678,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__front_door__alt0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "front_door",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/front_door__alt0.png"
+      ],
+      "seed": 3027999827,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__front_door__alt1",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "front_door",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/front_door__alt1.png"
+      ],
+      "seed": 2324387000,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__front_door__alt2",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "front_door",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/front_door__alt2.png"
+      ],
+      "seed": 1231278327,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__living_room__alt0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "living_room",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/living_room__alt0.png"
+      ],
+      "seed": 4091095018,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__living_room__alt1",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "living_room",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/living_room__alt1.png"
+      ],
+      "seed": 2558360345,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__living_room__alt2",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "living_room",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/living_room__alt2.png"
+      ],
+      "seed": 2055654667,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__kitchen__alt0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "kitchen",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/kitchen__alt0.png"
+      ],
+      "seed": 1853489794,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__kitchen__alt1",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "kitchen",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/kitchen__alt1.png"
+      ],
+      "seed": 1319655342,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__kitchen__alt2",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "kitchen",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/kitchen__alt2.png"
+      ],
+      "seed": 591706806,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__hallway__alt0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "hallway",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/hallway__alt0.png"
+      ],
+      "seed": 1156894517,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__hallway__alt1",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "hallway",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/hallway__alt1.png"
+      ],
+      "seed": 1360251441,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__hallway__alt2",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "hallway",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/hallway__alt2.png"
+      ],
+      "seed": 4090439138,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__bathroom__alt0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "bathroom",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/bathroom__alt0.png"
+      ],
+      "seed": 3378403378,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__bathroom__alt1",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "bathroom",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/bathroom__alt1.png"
+      ],
+      "seed": 3808044950,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__bathroom__alt2",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "bathroom",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/bathroom__alt2.png"
+      ],
+      "seed": 3196328155,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__bedroom__alt0",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "bedroom",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/bedroom__alt0.png"
+      ],
+      "seed": 1028707260,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__bedroom__alt1",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "bedroom",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/bedroom__alt1.png"
+      ],
+      "seed": 3716330427,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "suburban_house__bedroom__alt2",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "spec_id": "suburban_house",
+      "node_name": "bedroom",
+      "image_paths": [
+        "suburban_house_modern_comfortable_warm_p8799eb/suburban_house/bedroom__alt2.png"
+      ],
+      "seed": 2544581323,
+      "anchor_entry_id": null,
+      "graph_id": "suburban_house",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__locker_room__alt0",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "locker_room",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/locker_room__alt0.png"
+      ],
+      "seed": 1021019741,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__locker_room__alt1",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "locker_room",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/locker_room__alt1.png"
+      ],
+      "seed": 242285479,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__locker_room__alt2",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "locker_room",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/locker_room__alt2.png"
+      ],
+      "seed": 1264961919,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__recreation__alt0",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "recreation",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/recreation__alt0.png"
+      ],
+      "seed": 2400592643,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__recreation__alt1",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "recreation",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/recreation__alt1.png"
+      ],
+      "seed": 2184498082,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__showers__alt0",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "showers",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/showers__alt0.png"
+      ],
+      "seed": 3980227625,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__showers__alt1",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "showers",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/showers__alt1.png"
+      ],
+      "seed": 2496785337,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__manager_office__alt0",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "manager_office",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/manager_office__alt0.png"
+      ],
+      "seed": 3278996296,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__manager_office__alt1",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "manager_office",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/manager_office__alt1.png"
+      ],
+      "seed": 1331296210,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__conference_room__alt0",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "conference_room",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/conference_room__alt0.png"
+      ],
+      "seed": 3633292419,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "team_hq__conference_room__alt1",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "spec_id": "team_hq",
+      "node_name": "conference_room",
+      "image_paths": [
+        "team_hq_modern_comfortable_neutral_p4b4fc6/team_hq/conference_room__alt1.png"
+      ],
+      "seed": 297366785,
+      "anchor_entry_id": null,
+      "graph_id": "team_hq",
+      "visited": false
+    },
+    {
+      "entry_id": "training_ground__training_ground__alt0",
+      "descriptor": {
+        "kind": "training_ground",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green training pitch, overcast daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "training_ground",
+      "node_name": "training_ground",
+      "image_paths": [
+        "training_ground_modern_comfortable_neutral_p320089/training_ground/training_ground__alt0.png"
+      ],
+      "seed": 250629253,
+      "anchor_entry_id": null,
+      "graph_id": "training_ground",
+      "visited": false
+    },
+    {
+      "entry_id": "training_ground__training_ground__alt1",
+      "descriptor": {
+        "kind": "training_ground",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green training pitch, overcast daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "training_ground",
+      "node_name": "training_ground",
+      "image_paths": [
+        "training_ground_modern_comfortable_neutral_p320089/training_ground/training_ground__alt1.png"
+      ],
+      "seed": 4047957570,
+      "anchor_entry_id": null,
+      "graph_id": "training_ground",
+      "visited": false
+    },
+    {
+      "entry_id": "training_ground__training_ground__alt2",
+      "descriptor": {
+        "kind": "training_ground",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green training pitch, overcast daylight",
+        "appearance_details": ""
+      },
+      "spec_id": "training_ground",
+      "node_name": "training_ground",
+      "image_paths": [
+        "training_ground_modern_comfortable_neutral_p320089/training_ground/training_ground__alt2.png"
+      ],
+      "seed": 3777880936,
+      "anchor_entry_id": null,
+      "graph_id": "training_ground",
+      "visited": false
+    },
+    {
+      "entry_id": "bar__bar__alt0",
+      "descriptor": {
+        "kind": "bar",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "warm",
+        "palette": "dark wood, brass, dim evening light, pub",
+        "appearance_details": ""
+      },
+      "spec_id": "bar",
+      "node_name": "bar",
+      "image_paths": [
+        "bar_modern_modest_warm_p707433/bar/bar__alt0.png"
+      ],
+      "seed": 1486878401,
+      "anchor_entry_id": null,
+      "graph_id": "bar",
+      "visited": false
+    },
+    {
+      "entry_id": "bar__bar__alt1",
+      "descriptor": {
+        "kind": "bar",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "warm",
+        "palette": "dark wood, brass, dim evening light, pub",
+        "appearance_details": ""
+      },
+      "spec_id": "bar",
+      "node_name": "bar",
+      "image_paths": [
+        "bar_modern_modest_warm_p707433/bar/bar__alt1.png"
+      ],
+      "seed": 3037402840,
+      "anchor_entry_id": null,
+      "graph_id": "bar",
+      "visited": false
+    },
+    {
+      "entry_id": "media__press_room__alt0",
+      "descriptor": {
+        "kind": "media",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "branded backdrop, bright even lighting, corporate",
+        "appearance_details": ""
+      },
+      "spec_id": "media",
+      "node_name": "press_room",
+      "image_paths": [
+        "media_modern_comfortable_neutral_pdac30c/media/press_room__alt0.png"
+      ],
+      "seed": 1822169599,
+      "anchor_entry_id": null,
+      "graph_id": "media",
+      "visited": false
+    },
+    {
+      "entry_id": "media__press_room__alt1",
+      "descriptor": {
+        "kind": "media",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "branded backdrop, bright even lighting, corporate",
+        "appearance_details": ""
+      },
+      "spec_id": "media",
+      "node_name": "press_room",
+      "image_paths": [
+        "media_modern_comfortable_neutral_pdac30c/media/press_room__alt1.png"
+      ],
+      "seed": 4274405382,
+      "anchor_entry_id": null,
+      "graph_id": "media",
+      "visited": false
+    },
+    {
+      "entry_id": "transit__team_bus__alt0",
+      "descriptor": {
+        "kind": "transit",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "coach seats, motorway light through windows",
+        "appearance_details": ""
+      },
+      "spec_id": "transit",
+      "node_name": "team_bus",
+      "image_paths": [
+        "transit_modern_comfortable_neutral_p7d92a2/transit/team_bus__alt0.png"
+      ],
+      "seed": 3450908684,
+      "anchor_entry_id": null,
+      "graph_id": "transit",
+      "visited": false
+    },
+    {
+      "entry_id": "transit__team_bus__alt1",
+      "descriptor": {
+        "kind": "transit",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "coach seats, motorway light through windows",
+        "appearance_details": ""
+      },
+      "spec_id": "transit",
+      "node_name": "team_bus",
+      "image_paths": [
+        "transit_modern_comfortable_neutral_p7d92a2/transit/team_bus__alt1.png"
+      ],
+      "seed": 2852454733,
+      "anchor_entry_id": null,
+      "graph_id": "transit",
+      "visited": false
+    }
+  ],
+  "graphs": [
+    {
+      "graph_id": "player_home",
+      "spec_id": "suburban_house",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "kitchen": "suburban_house_modern_comfortable_neutral__kitchen_0"
+      },
+      "visit_counts": {
+        "kitchen": 1
+      },
+      "closed": false,
+      "node_alternates": {}
+    },
+    {
+      "graph_id": "main_school",
+      "spec_id": "school",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "",
+        "appearance_details": ""
+      },
+      "node_entries": {},
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {}
+    },
+    {
+      "graph_id": "suburban_house_f1414664",
+      "spec_id": "suburban_house",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "front_door": "suburban_house_modern_comfortable_neutral__front_door_0"
+      },
+      "visit_counts": {
+        "front_door": 1
+      },
+      "closed": false,
+      "node_alternates": {}
+    },
+    {
+      "graph_id": "apartment",
+      "spec_id": "apartment",
+      "descriptor": {
+        "kind": "apartment",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "compact modern flat, white walls, soft daylight",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "entrance": "apartment__entrance__alt0",
+        "living_room": "apartment__living_room__alt0",
+        "kitchen": "apartment__kitchen__alt0",
+        "bathroom": "apartment__bathroom__alt0",
+        "bedroom": "apartment__bedroom__alt0",
+        "balcony": "apartment__balcony__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "entrance": [
+          "apartment__entrance__alt0",
+          "apartment__entrance__alt1",
+          "apartment__entrance__alt2"
+        ],
+        "living_room": [
+          "apartment__living_room__alt0",
+          "apartment__living_room__alt1",
+          "apartment__living_room__alt2"
+        ],
+        "kitchen": [
+          "apartment__kitchen__alt0",
+          "apartment__kitchen__alt1",
+          "apartment__kitchen__alt2"
+        ],
+        "bathroom": [
+          "apartment__bathroom__alt0",
+          "apartment__bathroom__alt1",
+          "apartment__bathroom__alt2"
+        ],
+        "bedroom": [
+          "apartment__bedroom__alt0",
+          "apartment__bedroom__alt1",
+          "apartment__bedroom__alt2"
+        ],
+        "balcony": [
+          "apartment__balcony__alt0",
+          "apartment__balcony__alt1",
+          "apartment__balcony__alt2"
+        ]
+      }
+    },
+    {
+      "graph_id": "cafe",
+      "spec_id": "cafe",
+      "descriptor": {
+        "kind": "cafe",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm wood, soft lamplight, cosy",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "coffee_shop": "cafe__coffee_shop__alt0",
+        "bakery": "cafe__bakery__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "coffee_shop": [
+          "cafe__coffee_shop__alt0",
+          "cafe__coffee_shop__alt1",
+          "cafe__coffee_shop__alt2"
+        ],
+        "bakery": [
+          "cafe__bakery__alt0",
+          "cafe__bakery__alt1",
+          "cafe__bakery__alt2"
+        ]
+      }
+    },
+    {
+      "graph_id": "pitch",
+      "spec_id": "pitch",
+      "descriptor": {
+        "kind": "stadium",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green turf, white lines, stadium, overcast daylight",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "pitch": "pitch__pitch__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "pitch": [
+          "pitch__pitch__alt0",
+          "pitch__pitch__alt1",
+          "pitch__pitch__alt2"
+        ]
+      }
+    },
+    {
+      "graph_id": "school",
+      "spec_id": "school",
+      "descriptor": {
+        "kind": "school",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "neutral",
+        "palette": "institutional, linoleum, strip lighting",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "courtyard": "school__courtyard__alt0",
+        "hallway": "school__hallway__alt0",
+        "classroom": "school__classroom__alt0",
+        "locker_bay": "school__locker_bay__alt0",
+        "gym": "school__gym__alt0",
+        "office": "school__office__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "courtyard": [
+          "school__courtyard__alt0"
+        ],
+        "hallway": [
+          "school__hallway__alt0"
+        ],
+        "classroom": [
+          "school__classroom__alt0"
+        ],
+        "locker_bay": [
+          "school__locker_bay__alt0"
+        ],
+        "gym": [
+          "school__gym__alt0"
+        ],
+        "office": [
+          "school__office__alt0"
+        ]
+      }
+    },
+    {
+      "graph_id": "suburban_house",
+      "spec_id": "suburban_house",
+      "descriptor": {
+        "kind": "suburban_house",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "warm",
+        "palette": "warm oak floors, neutral walls, lived-in",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "garden": "suburban_house__garden__alt0",
+        "front_door": "suburban_house__front_door__alt0",
+        "living_room": "suburban_house__living_room__alt0",
+        "kitchen": "suburban_house__kitchen__alt0",
+        "hallway": "suburban_house__hallway__alt0",
+        "bathroom": "suburban_house__bathroom__alt0",
+        "bedroom": "suburban_house__bedroom__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "garden": [
+          "suburban_house__garden__alt0",
+          "suburban_house__garden__alt1",
+          "suburban_house__garden__alt2"
+        ],
+        "front_door": [
+          "suburban_house__front_door__alt0",
+          "suburban_house__front_door__alt1",
+          "suburban_house__front_door__alt2"
+        ],
+        "living_room": [
+          "suburban_house__living_room__alt0",
+          "suburban_house__living_room__alt1",
+          "suburban_house__living_room__alt2"
+        ],
+        "kitchen": [
+          "suburban_house__kitchen__alt0",
+          "suburban_house__kitchen__alt1",
+          "suburban_house__kitchen__alt2"
+        ],
+        "hallway": [
+          "suburban_house__hallway__alt0",
+          "suburban_house__hallway__alt1",
+          "suburban_house__hallway__alt2"
+        ],
+        "bathroom": [
+          "suburban_house__bathroom__alt0",
+          "suburban_house__bathroom__alt1",
+          "suburban_house__bathroom__alt2"
+        ],
+        "bedroom": [
+          "suburban_house__bedroom__alt0",
+          "suburban_house__bedroom__alt1",
+          "suburban_house__bedroom__alt2"
+        ]
+      }
+    },
+    {
+      "graph_id": "team_hq",
+      "spec_id": "team_hq",
+      "descriptor": {
+        "kind": "team_hq",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "painted concrete, club colours, functional",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "locker_room": "team_hq__locker_room__alt0",
+        "recreation": "team_hq__recreation__alt0",
+        "showers": "team_hq__showers__alt0",
+        "manager_office": "team_hq__manager_office__alt0",
+        "conference_room": "team_hq__conference_room__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "locker_room": [
+          "team_hq__locker_room__alt0",
+          "team_hq__locker_room__alt1",
+          "team_hq__locker_room__alt2"
+        ],
+        "recreation": [
+          "team_hq__recreation__alt0",
+          "team_hq__recreation__alt1"
+        ],
+        "showers": [
+          "team_hq__showers__alt0",
+          "team_hq__showers__alt1"
+        ],
+        "manager_office": [
+          "team_hq__manager_office__alt0",
+          "team_hq__manager_office__alt1"
+        ],
+        "conference_room": [
+          "team_hq__conference_room__alt0",
+          "team_hq__conference_room__alt1"
+        ]
+      }
+    },
+    {
+      "graph_id": "training_ground",
+      "spec_id": "training_ground",
+      "descriptor": {
+        "kind": "training_ground",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "green training pitch, overcast daylight",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "training_ground": "training_ground__training_ground__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "training_ground": [
+          "training_ground__training_ground__alt0",
+          "training_ground__training_ground__alt1",
+          "training_ground__training_ground__alt2"
+        ]
+      }
+    },
+    {
+      "graph_id": "bar",
+      "spec_id": "bar",
+      "descriptor": {
+        "kind": "bar",
+        "era": "modern",
+        "socioeconomic": "modest",
+        "mood": "warm",
+        "palette": "dark wood, brass, dim evening light, pub",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "bar": "bar__bar__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "bar": [
+          "bar__bar__alt0",
+          "bar__bar__alt1"
+        ]
+      }
+    },
+    {
+      "graph_id": "media",
+      "spec_id": "media",
+      "descriptor": {
+        "kind": "media",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "branded backdrop, bright even lighting, corporate",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "press_room": "media__press_room__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "press_room": [
+          "media__press_room__alt0",
+          "media__press_room__alt1"
+        ]
+      }
+    },
+    {
+      "graph_id": "transit",
+      "spec_id": "transit",
+      "descriptor": {
+        "kind": "transit",
+        "era": "modern",
+        "socioeconomic": "comfortable",
+        "mood": "neutral",
+        "palette": "coach seats, motorway light through windows",
+        "appearance_details": ""
+      },
+      "node_entries": {
+        "team_bus": "transit__team_bus__alt0"
+      },
+      "visit_counts": {},
+      "closed": false,
+      "node_alternates": {
+        "team_bus": [
+          "transit__team_bus__alt0",
+          "transit__team_bus__alt1"
+        ]
+      }
+    }
+  ]
+}

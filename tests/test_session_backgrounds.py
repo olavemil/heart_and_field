@@ -344,3 +344,113 @@ class TestPrebakedServing:
         v2 = s.scene_variants("ph", "kitchen")
         assert p2.name == "k_1_p.png"
         assert [v.name for v in v2] == ["k_1_p.png", "k_1_m.png"]
+
+
+class TestPrebakedResolve:
+    """Phase 23: prebaked cue -> canonical per-spec graph mapping."""
+
+    def _prebaked_session(self, tmp_path: Path) -> GameSession:
+        from engine.background_pool import BackgroundEntry
+
+        s = GameSession.new_game("Alex Morgan", seed=1)
+        s.init_backgrounds(tmp_path / "bg", prebaked=True)
+        # Simulate a baked canonical graph for suburban_house.
+        mf = s.background_manifest
+        desc = s._descriptor_for(
+            LocationCue(spec_id="suburban_house", node_name="kitchen")
+        )
+        mf.create_graph("suburban_house", desc, graph_id="suburban_house")
+        mf.attach_alternate(
+            "suburban_house", "kitchen",
+            BackgroundEntry(
+                entry_id="sh_kitchen_0", descriptor=desc,
+                spec_id="suburban_house", node_name="kitchen",
+                image_paths=["x/kitchen.png"],
+            ),
+        )
+        return s
+
+    def test_marquee_cue_redirects_to_canonical(self, tmp_path: Path):
+        s = self._prebaked_session(tmp_path)
+        bp = _house_blueprint(graph_id="player_home", node="kitchen")
+        assert s.resolve_scene(bp, {}) == ("suburban_house", "kitchen")
+
+    def test_adhoc_cue_redirects_to_canonical(self, tmp_path: Path):
+        s = self._prebaked_session(tmp_path)
+        bp = _house_blueprint(graph_id=None, node="kitchen")
+        # Not a fresh uuid graph — the canonical spec graph.
+        assert s.resolve_scene(bp, {}) == ("suburban_house", "kitchen")
+
+    def test_release_does_not_close_canonical_graph(self, tmp_path: Path):
+        s = self._prebaked_session(tmp_path)
+        s.release_scene("suburban_house", close=True)
+        assert s.background_manifest.get_graph("suburban_house").closed is False
+
+
+class TestFigureLayoutFor:
+    """Phase 23: figure selection + layout integration on the session."""
+
+    def _session(self, tmp_path):
+        from engine.figures import (
+            FigureAppearance, FigureAsset, FigureCategory, FigureManifest,
+            FigurePosture,
+        )
+        s = GameSession.new_game("Alex Morgan", seed=1)
+        s.init_backgrounds(tmp_path / "bg", prebaked=True)
+        mf = FigureManifest(assets_root=tmp_path / "figures")
+        mf.add(FigureAsset(FigureCategory.PLAYER, FigureAppearance(),
+                           FigurePosture.NEUTRAL, "player.png"))
+        mf.add(FigureAsset(FigureCategory.INTERLOCUTOR,
+                           FigureAppearance(gender="masculine"),
+                           FigurePosture.TENSE, "npc.png"))
+        s.figure_manifest = mf
+        return s
+
+    def _blueprint(self, tone):
+        from engine.event_taxonomy import (
+            EventDomain, EventId, EventNature, EventTone,
+        )
+        from engine.events import EventBlueprint, RoleSlot, SceneBlock
+
+        return EventBlueprint(
+            id="t.fig",
+            tags={"conflict"},
+            participants=[
+                RoleSlot(role="player", filter=lambda c: c.id == "player"),
+                RoleSlot(role="target", filter=lambda c: c.id != "player"),
+            ],
+            blocks=[SceneBlock(id="main")],
+            outcomes={},
+            event_id=EventId(
+                nature=EventNature.CONFRONTATION,
+                domain=EventDomain.RELATIONSHIP,
+                tone=tone,
+            ),
+        )
+
+    def test_returns_player_anchor_last_and_npc(self, tmp_path):
+        from engine.event_taxonomy import EventTone
+
+        s = self._session(tmp_path)
+        chars = list(s.state.characters.values())
+        player = s.state.characters["player"]
+        other = next(c for c in chars if c.id != "player")
+        cast = {"player": player, "target": other}
+        placements = s.figure_layout_for(self._blueprint(EventTone.HOSTILE),
+                                         cast, 1280, 720)
+        roles = [r for _, _, r in placements]
+        assert "player" in roles and "npc" in roles
+        assert roles[-1] == "player"  # drawn on top
+        # Player anchor is foreground-left, larger than canvas (cropped).
+        player_box = next(b for _, b, r in placements if r == "player")
+        assert player_box.height > 720
+
+    def test_empty_when_no_figure_pack(self, tmp_path):
+        from engine.event_taxonomy import EventTone
+
+        s = GameSession.new_game("Alex Morgan", seed=1)
+        s.init_backgrounds(tmp_path / "bg", prebaked=True)
+        s.figure_manifest = None
+        cast = {"player": s.state.characters["player"]}
+        assert s.figure_layout_for(self._blueprint(EventTone.WARM),
+                                   cast, 1280, 720) == []
