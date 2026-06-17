@@ -1,0 +1,448 @@
+{
+ "assets": [
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player_m.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player_f.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "npc_warm_f.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "npc_tense_m.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "neutral",
+   "path": "manager_m.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_light_dark_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_light_dark_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_light_dark_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_light_dark_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_light_light_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_light_light_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_light_light_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_light_light_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_light_red_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_light_red_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_light_red_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_light_red_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_dark_dark_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_dark_dark_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_dark_dark_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_dark_dark_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_dark_light_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_dark_light_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_dark_light_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_dark_light_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_dark_red_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_dark_red_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/masculine_dark_red_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/masculine_dark_red_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_light_dark_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_light_dark_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_light_dark_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_light_dark_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_light_light_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_light_light_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_light_light_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_light_light_long_adult_tense.png"
+  }
+ ]
+}
