@@ -29,10 +29,9 @@ label drama_block(slot_index):
     if scene_info is not None:
         $ show_scene_live(fh.session, scene_info[0], scene_info[1])
 
-    # Put the focal cast member on screen (Phase 22D).
-    $ focal = fh.session.focal_character(cast)
-    if focal is not None:
-        call show_character(focal, mood=fh.session.team_morale) from _call_show_focal_drama
+    # Composite the event's figures over the background (Phase 23):
+    # player anchor + interlocutor(s), selected by descriptor + tone.
+    $ show_figures(fh.session, fh.bp, cast)
 
     # Engine-built scene intro: place, company, atmosphere (Phase 22D).
     $ intro = fh.session.scene_intro(fh.bp, cast)
@@ -60,8 +59,7 @@ label drama_block(slot_index):
             close = cue is not None and cue.graph_id is None
             fh.session.release_scene(scene_info[0], close=close)
 
-    if focal is not None:
-        hide character_sprite
+    $ hide_figures()
 
     # Drain a few prefetch jobs while the player reads — keeps the
     # background generator warm without blocking.

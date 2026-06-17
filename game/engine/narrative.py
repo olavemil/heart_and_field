@@ -1,14 +1,57 @@
 """Narrative template system (design §7, technical §6).
 
-Templates do the structural and factual work; the LLM (when enabled later)
-rephrases a filled template for variety. The filled template is always the
-fallback.
+Templates do the structural and factual work; the LLM (``engine.llm``,
+opt-in per event tag) rephrases a filled template for variety. The filled
+template is always the fallback.
 
 A template references slots with `{slot_name}`. Resolvers map slot names
 to state-aware strings via `SLOT_RESOLVERS`. Resolvers receive a
 `NarrationContext` — a small bundle of pre-computed fields so resolvers
 don't need to walk the world.
 """
+
+# ===========================================================================
+# Narrative enhancement notes  (for the planned narration + progression pass)
+# ===========================================================================
+#
+# Distilled from the Phase 22/23 presentation + visual work, for whoever
+# picks up the narrative branch. The cross-cutting idea:
+#
+#   EventTone (on every EventBlueprint.event_id) is the shared "scene mood"
+#   key. It already drives figure posture (engine.figures.posture_for) and
+#   should drive figure *proximity* (engine.figure_layout.FigureDistance:
+#   INTIMATE/CLOSE/NORMAL/DISTANT) and could feed background atmosphere mood.
+#   Template selection keys off the coarser context_requirements tags
+#   (mood/composure/etc.). When adding tone-aware narration, reuse EventTone
+#   rather than inventing a parallel mood axis — narration, figures, and
+#   proximity should read the same scene the same way.
+#
+# Open hooks (see field_and_heart_figure_assets.md, field_and_heart_prebake_
+# rendering.md):
+#
+#  1. Event-role cues. Figures need per-scene proximity + posture cues, and
+#     scenes want intro framing — today these default. The pass should let
+#     event roles / blueprints author them next to the narration, one
+#     surface for "how this scene reads."
+#  2. Escalating cast (2 -> 3 -> 4). Model as event chains where each step
+#     pins the prior cast forward (cast_event(pinned=...)) and adds a role.
+#     Engine gap: a "carry prior cast into the chained event" helper (chains
+#     re-cast fresh today). arc_summary already carries continuity;
+#     NarrationContext.cast already supports multiple figures.
+#  3. scene_intro lives in session.py (deterministic pre-choice scene-setting
+#     + optional LLM pass), parallel to this template system. Consider
+#     aligning it with templates so intros and outcome narration share voice
+#     and slot resolvers.
+#  4. standout_action (NarrationContext) is a phase-sim hook stub; the 22F
+#     in-phase match beats (narrate_match_phase, below) could feed it.
+#  5. Branch summaries now support pronoun slots ({they:player}) and are
+#     third-person past tense. scripts/check_summary_pronouns.py guards
+#     gender / second-person / verb agreement; the pass should also audit
+#     tone consistency and on-location framing (small LLMs drift genre).
+#  6. LLM grounding (engine.llm): location + cast-pronoun hints are wired,
+#     default model liquid/lfm2-24b-a2b, reasoning-block stripping. Tune
+#     opt-in tags / prompt grounding there, not in template bodies.
+# ===========================================================================
 
 from __future__ import annotations
 

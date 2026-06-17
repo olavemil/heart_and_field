@@ -50,12 +50,11 @@ init -1 python:
         )
 
     def fh_init_backgrounds():
+        # Prebaked mode (Phase 23): load the shipped pack read-only — no
+        # ComfyUI, no GPU, no mid-scene generation. Every cue resolves to
+        # the canonical per-spec graph the bake produced.
         bg_root = os.path.join(config.gamedir, "assets", "backgrounds")
-        fh.session.init_backgrounds(
-            bg_root,
-            comfyui_client=fh.session.comfyui_client,
-            warm_marquees=True,
-        )
+        fh.session.init_backgrounds(bg_root, prebaked=True)
 
 
 # Engine state for native saves. A plain JSON string — always picklable.

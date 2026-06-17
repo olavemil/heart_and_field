@@ -436,12 +436,29 @@ is content (spec authoring) + the pre-bake driver.
    by the `for kind in LocationKind` test) + an optional overlays row
    (defaults to grain) + an optional reverse-bridge row. No
    architectural churn; adding a kind now also *improves* prompts.
-5. **Bake + wire** — run the driver, point runtime at the pack, play
-   background + text end-to-end.
+5. **Bake + wire.** ✅ **Done (Phase 23G).**
+   - 74-shot bake completed on the dev ComfyUI (hot tier + the 3 gap
+     specs).
+   - Runtime wired to prebaked mode: `runtime.rpy fh_init_backgrounds`
+     calls `init_backgrounds(prebaked=True)`.
+   - **Cue → canonical-graph mapping** (the deferred piece): in prebaked
+     mode `resolve_scene` redirects *every* cue — marquee and ad-hoc — to
+     the canonical per-spec graph (`graph_id == spec_id`) the pack baked,
+     so the runtime's `player_home` / fresh-uuid graphs collapse onto the
+     baked `suburban_house` etc. Marquee-vs-ad-hoc instancing collapses
+     (all suburban houses share the baked set — the accepted full-pre-bake
+     tradeoff; per-visit alternates still vary the shot).
+   - `release_scene` is a no-op in prebaked mode (canonical graphs are
+     shared and the pack is read-only).
+   - Verified headlessly against the real pack: every sampled event
+     (cafe, bar, media, transit, locker, house) resolves to a canonical
+     graph and serves an existing baked PNG. 936 tests green, lint clean.
+   - Remaining manual step: launch via `play.command` and eyeball
+     in-game.
 
-Steps 1–4 are implementable and testable headlessly now; step 5 needs
-the dev's ComfyUI (port 8000) and produces the actual images. The
-placeholder producer keeps the prototype playable before the bake.
+All steps complete. The placeholder producer remains the fallback for
+any unbaked spec (creates an empty canonical graph → placeholder rather
+than failing).
 
 ## Appendix C — Locked generation recipe (validated)
 
