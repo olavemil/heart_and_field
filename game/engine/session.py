@@ -54,6 +54,7 @@ from .characters import (
     Character,
     CharacterRole,
     Disposition,
+    NON_PLAYING_ROLES,
     TierACharacter,
     TierBCharacter,
     TierDSeed,
@@ -1308,15 +1309,32 @@ class GameSession:
         return opp_name
 
     def roster_players(self) -> list[Character]:
-        """Return the playable roster (all characters in state)."""
+        """Return every character in state (players + staff + drama NPCs)."""
         return list(self.state.characters.values())
+
+    def playing_squad(self) -> list[Character]:
+        """Characters eligible to take the field, in stable roster order.
+
+        Filters :meth:`roster_players` down to actual playing roles by
+        dropping :data:`NON_PLAYING_ROLES` (manager, physio, assistant
+        coach, media, family, other). This is the *single source of
+        truth* for the match: ``simulate_phase`` is fed this list, so
+        ``PhaseResult.goal_scorer_index`` indexes into it — every
+        consumer of that index (``narrate_match_phase``,
+        ``_scorer_character``, ``evaluate_match``) must filter through
+        the same method or the rows won't line up.
+
+        Roster membership doesn't change mid-match, so dict insertion
+        order makes this deterministic across calls within a match.
+        """
+        return [c for c in self.roster_players() if c.role not in NON_PLAYING_ROLES]
 
     def simulate_game_phase(self, phase_index: int, total_phases: int = 8) -> PhaseResult:
         """Run one phase of the match simulation.
 
         Returns a ``PhaseResult`` for Ren'Py to display.
         """
-        players = self.roster_players()
+        players = self.playing_squad()
         result = simulate_phase(
             players,
             self.opponent,
@@ -1342,7 +1360,7 @@ class GameSession:
         """
         scorer_name: str | None = None
         if result.goal_scored and result.goal_scorer_index is not None:
-            players = self.roster_players()
+            players = self.playing_squad()
             if result.goal_scorer_index < len(players):
                 scorer = players[result.goal_scorer_index]
                 scorer_name = scorer.nickname or scorer.name
@@ -1424,7 +1442,11 @@ class GameSession:
     def _scorer_character(self, result: PhaseResult) -> Character | None:
         if not result.goal_scored or result.goal_scorer_index is None:
             return None
-        players = self.roster_players()
+        # ``goal_scorer_index`` indexes the playing squad fed to
+        # ``simulate_phase`` — never the full roster — so staff can't be
+        # resolved as a scorer (and the pinned ``scorer`` always satisfies
+        # the ``teammate()`` cast filter for in-match beats).
+        players = self.playing_squad()
         if 0 <= result.goal_scorer_index < len(players):
             return players[result.goal_scorer_index]
         return None
@@ -1442,8 +1464,10 @@ class GameSession:
             self.state.clock.fast_forward_to_slot(Slot.EVENING)
             return {"perceived": 0.5, "mood_delta": 0.0, "morale_delta": 0.0}
 
-        # Average performance across phases for each player.
-        players = self.roster_players()
+        # Average performance across phases for each player. Must use the
+        # same squad the phases were simulated with so the performance
+        # rows line up with the character list.
+        players = self.playing_squad()
         all_perfs = np.stack([r.performances for r in self.match_results])
         mean_perfs = all_perfs.mean(axis=0)
 
