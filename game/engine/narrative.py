@@ -467,6 +467,7 @@ def narrate(
     use_llm: bool = False,
     llm_client: "LLMClient | None" = None,
     event_tags: set[str] = frozenset(),
+    recent_narration: str | None = None,
     max_chars: int = PAGE_MAX_CHARS,
 ) -> list[str]:
     """Pick a template and return the filled narration as a list of pages.
@@ -511,6 +512,7 @@ def narrate(
             filled,
             event_tags=event_tags,
             arc_summary=ctx.arc_summary,
+            recent_narration=recent_narration,
             previous_summary=(
                 ctx.previous_outcome.summary if ctx.previous_outcome else None
             ),

@@ -83,6 +83,7 @@ def build_llm_prompt(
     filled_template: str,
     *,
     arc_summary: str | None = None,
+    recent_narration: str | None = None,
     previous_summary: str | None = None,
     cast_names: Sequence[str] = (),
     branch_summary: str | None = None,
@@ -96,12 +97,25 @@ def build_llm_prompt(
     otherwise drift genre (a locker-room scene once came back set in a
     tavern). ``cast_pronouns`` maps a cast name to its pronoun set
     (``"she/her"``) so the model doesn't infer gender from the name.
+
+    Two continuity tracks are grounded as **separate** sections so the
+    model treats them differently (see ``engine.journal``):
+
+    - ``arc_summary`` → "Story so far" — long-running threads that ebb
+      and flow across weeks (the quest log).
+    - ``recent_narration`` → "Moments before" — the prose the player
+      just read, for immediate scene-to-scene flow.
+
+    When ``recent_narration`` is supplied it supersedes the older
+    one-line ``previous_summary`` (kept for back-compat callers).
     """
     parts: list[str] = []
 
     if arc_summary:
-        parts.append(f"Story so far: {arc_summary}")
-    if previous_summary:
+        parts.append(f"Story so far (ongoing threads): {arc_summary}")
+    if recent_narration:
+        parts.append(f"Moments before (continue from this): {recent_narration}")
+    elif previous_summary:
         parts.append(f"Previously: {previous_summary}")
     if cast_names:
         labelled = [
@@ -259,6 +273,7 @@ def enhance_narration(
     *,
     event_tags: set[str] = frozenset(),
     arc_summary: str | None = None,
+    recent_narration: str | None = None,
     previous_summary: str | None = None,
     cast_names: Sequence[str] = (),
     branch_summary: str | None = None,
@@ -280,6 +295,7 @@ def enhance_narration(
     prompt = build_llm_prompt(
         filled_template,
         arc_summary=arc_summary,
+        recent_narration=recent_narration,
         previous_summary=previous_summary,
         cast_names=cast_names,
         branch_summary=branch_summary,
@@ -308,6 +324,8 @@ def enhance_scene_intro(
     cast_names: Sequence[str] = (),
     location: str | None = None,
     cast_pronouns: "Mapping[str, str] | None" = None,
+    arc_summary: str | None = None,
+    recent_narration: str | None = None,
 ) -> str:
     """Rephrase an assembled scene intro via the LLM, or return it unchanged.
 
@@ -315,6 +333,10 @@ def enhance_scene_intro(
     universal scene-setting — but the same setting/pronoun grounding and
     silent fallback apply. Kept short by a tight token cap so intros stay
     atmospheric rather than ballooning into prose.
+
+    ``arc_summary`` / ``recent_narration`` let an intro pick up threads
+    and immediate continuity so a scene opens connected to what came
+    before instead of resetting.
     """
     if not intro_text.strip():
         return intro_text
@@ -324,6 +346,8 @@ def enhance_scene_intro(
         cast_names=cast_names,
         location=location,
         cast_pronouns=cast_pronouns,
+        arc_summary=arc_summary,
+        recent_narration=recent_narration,
     )
     prompt.max_tokens = min(prompt.max_tokens, 90)
 
@@ -344,6 +368,98 @@ def _trim_to_last_sentence(text: str) -> str:
     """Cut *text* back to its last sentence-ending punctuation."""
     cut = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
     return text[: cut + 1].strip() if cut != -1 else text.strip()
+
+
+# --- Summarisation (Phase 24A — journal compression layer) -------------------
+
+_SUMMARY_SYSTEM_PROMPT = """\
+You compress sports-drama scene narration into a single tight paragraph \
+for a story journal. Rules:
+
+1. Write ONE paragraph, third person past tense, 1-3 sentences.
+2. Capture what happened: the trigger, what the player did, and the \
+outcome or shift in mood/relationship.
+3. Keep ALL character names exactly as given. Invent nothing.
+4. No commentary, no labels, no preamble — return only the paragraph.\
+"""
+
+# Deterministic-fallback compression cap (characters) when the LLM is off.
+SUMMARY_FALLBACK_MAX_CHARS = 320
+
+
+def _fallback_summary(beats: Sequence[str], max_chars: int) -> str:
+    """Deterministic compression: join beats, clamp at a sentence-ish
+    boundary near ``max_chars``. Used when the LLM is unavailable."""
+    joined = " ".join(b.strip() for b in beats if b and b.strip()).strip()
+    if len(joined) <= max_chars:
+        return joined
+    head = joined[:max_chars]
+    cut = max(head.rfind(". "), head.rfind("! "), head.rfind("? "))
+    if cut != -1:
+        return head[: cut + 1].strip()
+    space = head.rfind(" ")
+    return (head[:space] if space != -1 else head).strip()
+
+
+def summarise_narration(
+    client: LLMClient,
+    beats: Sequence[str],
+    *,
+    cast_names: Sequence[str] = (),
+    cast_pronouns: "Mapping[str, str] | None" = None,
+    kind: str = "scene",
+    max_chars: int = SUMMARY_FALLBACK_MAX_CHARS,
+) -> str:
+    """Compress rendered narration beats into a one-paragraph summary.
+
+    Used by the journal's scene/day/week compression layer
+    (``engine.journal``). The LLM produces a tight paragraph; on any
+    failure (disabled, error, name-dropping drift) the deterministic
+    join-and-clamp fallback is returned instead. **Never raises** and
+    always returns a usable string — play never blocks on the LLM.
+
+    ``kind`` ("scene" / "day" / "week") only tunes the instruction
+    wording; the structure is the same.
+    """
+    clean = [b.strip() for b in beats if b and b.strip()]
+    if not clean:
+        return ""
+    fallback = _fallback_summary(clean, max_chars)
+
+    if not client.enabled:
+        return fallback
+
+    span = {
+        "scene": "this scene",
+        "day": "the day's events",
+        "week": "the week's events",
+    }.get(kind, "this scene")
+    parts: list[str] = []
+    if cast_names:
+        labelled = [
+            f"{n} ({cast_pronouns[n]})"
+            if cast_pronouns and n in cast_pronouns
+            else n
+            for n in cast_names
+        ]
+        parts.append(f"Characters: {', '.join(labelled)}")
+    parts.append(f"Narration of {span} to summarise:\n" + "\n".join(clean))
+    prompt = LLMPrompt(
+        system=_SUMMARY_SYSTEM_PROMPT,
+        user="\n\n".join(parts),
+        max_tokens=160,
+    )
+
+    result = client.generate(prompt)
+    if result is None:
+        return fallback
+    result = _strip_pronoun_labels(result).strip()
+    if not result:
+        return fallback
+    # Guard against name-dropping drift, mirroring enhance_narration.
+    if cast_names and not any(name in result for name in cast_names):
+        return fallback
+    return _trim_to_last_sentence(result) or result
 
 
 # --- Serialisable config (for save.py) ---------------------------------------

@@ -24,7 +24,6 @@ from typing import Any, Mapping, Sequence
 from PIL import Image, ImageDraw
 
 from .characters import Character, TierACharacter, TierBCharacter, TierDSeed
-from .comfyui import ComfyUIClient, face_prompt, background_prompt
 from .stock_faces import StockFacePool
 from .stats import ObservableName, StatName, clamp, stat_value
 
@@ -285,7 +284,6 @@ class CharacterVisual:
     base_face_path: str | None = None
     layers: list[SpriteLayer] = field(default_factory=list)
     _cache_root: Path = field(default_factory=lambda: Path("game") / GENERATED_DIR)
-    _comfyui: ComfyUIClient | None = field(default=None, repr=False)
     _stock_face_path: Path | None = field(default=None, repr=False)
 
     # ------------------------------------------------------------------
@@ -375,70 +373,30 @@ class CharacterVisual:
     # ------------------------------------------------------------------
 
     def _load_or_generate_base(self) -> Image.Image:
-        """Load the base face from cache, or generate via ComfyUI / placeholder."""
+        """Load the base face from cache, a stock face, or a placeholder.
+
+        Runtime no longer generates faces via ComfyUI — character art is
+        pre-baked at build time (see ``scripts/generate_stock_faces.py``).
+        A pre-assigned stock face is used directly when present; otherwise
+        a deterministic placeholder face (seeded from the spec) stands in.
+        This path never touches the network, so it never blocks a scene.
+        """
         face_path = self._face_cache_path()
         if face_path.exists():
             return Image.open(str(face_path)).convert("RGBA")
 
-        # Try ComfyUI generation first.
-        img = self._try_comfyui_face()
-        if img is None:
-            # Fallback: generate a placeholder face (deterministic from seed).
+        if self._stock_face_path is not None and self._stock_face_path.exists():
+            img = Image.open(str(self._stock_face_path)).convert("RGBA")
+            if img.size != (FACE_WIDTH, FACE_HEIGHT):
+                img = img.resize((FACE_WIDTH, FACE_HEIGHT))
+        else:
+            # Deterministic placeholder face (seeded from the spec).
             img = generate_placeholder_face(self.spec)
 
         face_path.parent.mkdir(parents=True, exist_ok=True)
         img.save(str(face_path), "PNG")
         self.base_face_path = str(face_path)
         return img
-
-    def _try_comfyui_face(self) -> Image.Image | None:
-        """Attempt to generate a face via ComfyUI.
-
-        When a stock face is assigned, uses img2img with the stock face
-        as an anchor (low denoise keeps the structural likeness).  Falls
-        back to txt2img only when no stock face is available.
-        """
-        if self._comfyui is None or not self._comfyui.enabled:
-            return None
-        try:
-            import io
-            prompt = face_prompt(
-                role=self.spec.role,
-                age_group=self.spec.age_group,
-                build=self.spec.build,
-                gender_presentation=self.spec.gender_presentation,
-            )
-            data: bytes | None = None
-            if self._stock_face_path is not None and self._stock_face_path.exists():
-                stock_bytes = self._stock_face_path.read_bytes()
-                uploaded = self._comfyui.upload_image(
-                    stock_bytes,
-                    f"fh_stock_{self.character_id}.png",
-                )
-                if uploaded:
-                    data = self._comfyui.img2img(
-                        prompt,
-                        input_image=uploaded,
-                        seed=self.spec.seed,
-                        width=FACE_WIDTH,
-                        height=FACE_HEIGHT,
-                        steps=47,
-                        denoise=0.40,
-                        filename_prefix=f"fh_face_{self.character_id}",
-                    )
-            if data is None:
-                data = self._comfyui.txt2img(
-                    prompt,
-                    seed=self.spec.seed,
-                    width=FACE_WIDTH,
-                    height=FACE_HEIGHT,
-                    filename_prefix=f"fh_face_{self.character_id}",
-                )
-            if data:
-                return Image.open(io.BytesIO(data)).convert("RGBA")
-        except Exception:
-            pass
-        return None
 
     def ensure_base_face(self) -> str:
         """Pre-generate and cache the base face. Returns the path.
@@ -640,7 +598,7 @@ def procedural_layers(
 
 
 # ---------------------------------------------------------------------------
-# Placeholder face generator (prototype — replaced by ComfyUI in future)
+# Placeholder face generator (fallback when no stock face is assigned)
 # ---------------------------------------------------------------------------
 
 
@@ -648,8 +606,9 @@ def generate_placeholder_face(spec: FaceGenerationSpec) -> Image.Image:
     """Generate a simple deterministic placeholder face from the spec.
 
     This produces a stylised oval with colour variation based on the
-    character's seed. It is NOT the final face generator — ComfyUI / SD
-    replaces this when available.
+    character's seed. It is the runtime fallback when a character has no
+    pre-baked stock face assigned; real faces are baked at build time
+    (``scripts/generate_stock_faces.py``).
     """
     import random as _random
 
@@ -741,7 +700,8 @@ def apply_overlay(
 
 
 # ---------------------------------------------------------------------------
-# Background generation (stub — ComfyUI deferred)
+# Background generation (legacy placeholder stub — superseded by the
+# pre-baked scene-graph pipeline in engine.background_generator)
 # ---------------------------------------------------------------------------
 
 BACKGROUND_PROMPTS: dict[str, str] = {
@@ -759,12 +719,14 @@ BACKGROUND_PROMPTS: dict[str, str] = {
 def get_background(
     location: str,
     cache_root: Path | None = None,
-    comfyui: ComfyUIClient | None = None,
 ) -> str | None:
-    """Return a path to a background image, generating if needed.
+    """Return a path to a placeholder background image, creating if needed.
 
-    Returns ``None`` if the location is unknown or generation is
-    unavailable. Ren'Py falls back to its default background.
+    Legacy single-image background stub (Phase 7). The shipping game
+    resolves scenes through the pre-baked scene-graph pipeline
+    (``engine.background_generator``) instead; this remains only as a
+    deterministic placeholder fallback. Returns ``None`` if the location
+    is unknown — Ren'Py then falls back to its default background.
     """
     root = cache_root or Path("game") / GENERATED_DIR
     cache_path = root / BACKGROUNDS_DIR / f"{location}.png"
@@ -775,38 +737,10 @@ def get_background(
     if location not in BACKGROUND_PROMPTS:
         return None
 
-    # Try ComfyUI generation first.
-    img = _try_comfyui_background(location, comfyui)
-    if img is None:
-        # Fallback: simple gradient placeholder.
-        img = _generate_placeholder_background(location)
-
+    img = _generate_placeholder_background(location)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(cache_path), "PNG")
     return str(cache_path)
-
-
-def _try_comfyui_background(
-    location: str, comfyui: ComfyUIClient | None
-) -> Image.Image | None:
-    """Attempt to generate a background via ComfyUI."""
-    if comfyui is None or not comfyui.enabled:
-        return None
-    try:
-        import io
-        prompt = background_prompt(location)
-        data = comfyui.txt2img(
-            prompt,
-            seed=hash(location) & 0xFFFFFFFF,
-            width=800,
-            height=600,
-            filename_prefix=f"fh_bg_{location}",
-        )
-        if data:
-            return Image.open(io.BytesIO(data)).convert("RGB")
-    except Exception:
-        pass
-    return None
 
 
 def _generate_placeholder_background(location: str) -> Image.Image:
@@ -850,7 +784,6 @@ class VisualManager:
 
     visuals: dict[str, CharacterVisual] = field(default_factory=dict)
     cache_root: Path = field(default_factory=lambda: Path("game") / GENERATED_DIR)
-    comfyui: ComfyUIClient | None = None
     stock_pool: StockFacePool | None = None
 
     def get_visual(
@@ -880,7 +813,6 @@ class VisualManager:
             character_id=cid,
             spec=spec,
             _cache_root=self.cache_root,
-            _comfyui=self.comfyui,
             _stock_face_path=stock_path,
         )
         self.visuals[cid] = visual
@@ -935,5 +867,10 @@ class VisualManager:
         return visual.render(expression, intensity, pose)
 
     def render_background(self, location: str) -> str | None:
-        """Render a background image for a location."""
-        return get_background(location, self.cache_root, self.comfyui)
+        """Render a placeholder background image for a location.
+
+        Legacy path — the shipping game uses the pre-baked scene-graph
+        pipeline (``GameSession.resolve_scene``). Kept for the simple
+        single-image fallback.
+        """
+        return get_background(location, self.cache_root)

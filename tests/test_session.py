@@ -299,6 +299,91 @@ class TestSerialiseDeserialise:
         assert restored.momentum == -0.2
 
 
+class TestNarrativeJournal:
+    """Phase 24A — temporal-continuity journal wiring on the session.
+
+    The journal records rendered prose and compresses it at scene
+    boundaries. These tests run with the LLM off so the deterministic
+    template / fallback paths exercise the wiring without a network.
+    """
+
+    def _resolved_event(self, session):
+        """Drive selection until one drama/training event resolves.
+        Returns ``(blueprint, cast, record)`` or ``None``."""
+        session.start_week()
+        for idx, slot in session.pending_slots():
+            if slot.block_type not in (BlockType.DRAMA, BlockType.TRAINING):
+                continue
+            bp = session.select_event_for_slot(idx)
+            if bp is None:
+                continue
+            cast = session.cast_event(bp)
+            if cast is None:
+                continue
+            branch = list(bp.outcomes.keys())[0]
+            record = session.resolve_event(bp, branch, cast, idx)
+            return bp, cast, record
+        return None
+
+    def test_narrate_outcome_records_beats(self):
+        session = _build_session()
+        session.use_llm = False
+        resolved = self._resolved_event(session)
+        assert resolved is not None, "expected a castable drama/training event"
+        bp, cast, record = resolved
+
+        assert session.journal.recent_beats == []
+        pages = session.narrate_outcome(bp, cast, record)
+        # Every non-empty rendered page is folded into the journal.
+        assert session.journal.recent_beats == [p for p in pages if p.strip()]
+
+    def test_scene_intro_records_beat(self):
+        session = _build_session()
+        session.use_llm = False
+        resolved = self._resolved_event(session)
+        assert resolved is not None
+        bp, cast, _ = resolved
+
+        intro = session.scene_intro(bp, cast)
+        if intro:
+            assert intro in session.journal.recent_beats
+
+    def test_close_scene_compresses_and_clears(self):
+        session = _build_session()
+        session.use_llm = False  # deterministic fallback compression
+        session.journal.record_beat("Coach pulled Alex aside after training.")
+        session.journal.record_beat("Alex held the line and said nothing.")
+
+        summary = session.close_scene()
+        assert summary  # deterministic join-and-clamp is non-empty
+        assert session.journal.recent_beats == []
+        assert session.journal.scene_summaries == [summary]
+
+    def test_close_scene_noop_when_no_open_scene(self):
+        session = _build_session()
+        session.use_llm = False
+        assert session.close_scene() == ""
+        assert session.journal.scene_summaries == []
+
+    def test_recent_context_feeds_next_scene(self):
+        session = _build_session()
+        session.use_llm = False
+        session.journal.record_beat("a beat")
+        session.close_scene()
+        # Verbatim window cleared, but the summary still grounds the next.
+        assert session.journal.recent_context() is not None
+
+    def test_journal_round_trips_through_save(self):
+        session = _build_session()
+        session.journal.record_beat("first beat")
+        session.journal.record_scene_summary("a closed scene")
+        session.journal.record_beat("an open beat")
+
+        restored = GameSession.deserialise(json.loads(json.dumps(session.serialise())))
+        assert restored.journal.recent_beats == session.journal.recent_beats
+        assert restored.journal.scene_summaries == session.journal.scene_summaries
+
+
 class TestFullWeekHeadless:
     """The Phase 6 exit criterion: a complete week runs headlessly."""
 

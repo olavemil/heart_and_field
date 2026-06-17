@@ -51,6 +51,10 @@ label drama_block(slot_index):
         for page in pages:
             renpy.say(e, page)
 
+    # Scene boundary: compress this event's prose into a one-paragraph
+    # journal summary so the next scene continues from it (Phase 24A).
+    $ fh.session.close_scene(cast)
+
     # Reap any prefetched-but-unvisited backgrounds. Ad-hoc graphs close;
     # marquee graphs (graph_id authored on the cue) stay open across events.
     if scene_info is not None:

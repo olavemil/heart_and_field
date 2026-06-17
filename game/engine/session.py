@@ -19,7 +19,6 @@ import numpy as np
 from .arcs import ArcGraph, build_arc_graph, find_prior_arc_outcome
 from .background_generator import (
     BackgroundGenerator,
-    ComfyUIImageProducer,
     DeferredPrefetchScheduler,
     NoOpPrefetchScheduler,
     PlaceholderImageProducer,
@@ -101,8 +100,14 @@ from .narrative import (
 )
 from .outcomes import OutcomeRecord, WeekPhase
 from .relationships import RelationshipState
-from .comfyui import ComfyUIClient, comfyui_config_from_dict, comfyui_config_to_dict
-from .llm import LLMClient, llm_config_from_dict, llm_config_to_dict, should_enhance
+from .journal import NarrativeJournal
+from .llm import (
+    LLMClient,
+    llm_config_from_dict,
+    llm_config_to_dict,
+    should_enhance,
+    summarise_narration,
+)
 from .save import deserialise, serialise
 from .schedule import BlockType, EventSlot, WeekSchedule, generate_week
 from .simulation import PhaseResult, Sport, self_evaluate, simulate_phase, team_morale_delta
@@ -273,15 +278,21 @@ class GameSession:
     np_rng: np.random.Generator
     sport: Sport = Sport.SOCCER
 
-    # Visual manager — handles rendering and caching.
+    # Visual manager — handles rendering and caching. Runtime visuals are
+    # served from pre-baked / stock assets; image *generation* (ComfyUI)
+    # happens at build time only (see ``scripts/prebake_assets.py``), so
+    # the session holds no ComfyUI client.
     visual_manager: VisualManager = field(default_factory=VisualManager)
-
-    # ComfyUI image generation — enabled by default, auto-disables on errors.
-    comfyui_client: ComfyUIClient = field(default_factory=ComfyUIClient)
 
     # LLM narration enhancer — enabled by default, auto-disables on errors.
     llm_client: LLMClient = field(default_factory=LLMClient)
     use_llm: bool = True
+
+    # Narrative journal (Phase 24A) — temporal continuity: rolling
+    # rendered prose + scene/day/week summaries. Distinct from the arc
+    # context (``arc_graph`` / ``OutcomeRecord.arc_summary``), which
+    # tracks long-running threads. Both feed LLM grounding separately.
+    journal: NarrativeJournal = field(default_factory=NarrativeJournal)
 
     # Background pipeline — wired in by ``new_game`` / ``deserialise``.
     # ``background_generator`` is None when no scene specs are loaded; the
@@ -491,8 +502,7 @@ class GameSession:
             sport=sport,
             scene_specs={s.spec_id: s for s in scene_specs},
         )
-        # Wire ComfyUI and stock face pool into the visual manager.
-        session.visual_manager.comfyui = session.comfyui_client
+        # Wire the stock face pool into the visual manager (pre-baked art).
         stock_root = root.parent / "assets" / "stock_faces"
         session.visual_manager.stock_pool = StockFacePool.load(stock_root)
         # Warm up visuals for the starting roster.
@@ -510,7 +520,7 @@ class GameSession:
         data["momentum"] = self.momentum
         data["llm_config"] = llm_config_to_dict(self.llm_client)
         data["use_llm"] = self.use_llm
-        data["comfyui_config"] = comfyui_config_to_dict(self.comfyui_client)
+        data["journal"] = self.journal.to_dict()
         return data
 
     @classmethod
@@ -544,10 +554,8 @@ class GameSession:
         if "llm_config" in data:
             session.llm_client = llm_config_from_dict(data["llm_config"])
         session.use_llm = bool(data.get("use_llm", True))
-        if "comfyui_config" in data:
-            session.comfyui_client = comfyui_config_from_dict(data["comfyui_config"])
-        # Wire ComfyUI and stock face pool into the visual manager.
-        session.visual_manager.comfyui = session.comfyui_client
+        session.journal = NarrativeJournal.from_dict(data.get("journal"))
+        # Wire the stock face pool into the visual manager (pre-baked art).
         stock_root = root.parent / "assets" / "stock_faces"
         session.visual_manager.stock_pool = StockFacePool.load(stock_root)
         # Warm up visuals for loaded roster.
@@ -753,7 +761,6 @@ class GameSession:
         assets_root: Path,
         *,
         producer=None,
-        comfyui_client=None,
         prefetch_scheduler=None,
         warm_marquees: bool = False,
         prebaked: bool = False,
@@ -767,15 +774,14 @@ class GameSession:
 
         ``prebaked`` (Phase 23) is the shipped-build path: load the
         packaged manifest read-only, use a ``PrebakedImageProducer`` (no
-        ComfyUI, no GPU) and a ``NoOpPrefetchScheduler`` (nothing to
-        generate), and skip marquee warm-up (assets already on disk). An
-        explicit ``producer`` still wins; ``comfyui_client`` is ignored.
+        GPU, no network) and a ``NoOpPrefetchScheduler`` (nothing to
+        generate), and skip marquee warm-up (assets already on disk).
 
-        Otherwise (dev/author path): ``producer`` takes priority if
-        given. Then, if ``comfyui_client`` is provided and available, a
-        ``ComfyUIImageProducer`` is used. Falls back to
-        ``PlaceholderImageProducer`` when neither is set or ComfyUI is
-        unreachable.
+        Image *generation* (ComfyUI) is a build-time concern only — see
+        ``scripts/prebake_assets.py``, which wires a ``ComfyUIImageProducer``
+        directly. At runtime an explicit ``producer`` wins; otherwise the
+        in-process ``PlaceholderImageProducer`` is used (so dev sessions
+        without baked assets still get solid-colour stand-ins).
 
         ``prefetch_scheduler`` defaults to ``DeferredPrefetchScheduler``
         so prefetch jobs queue up and ``drain_background_prefetch`` runs
@@ -802,9 +808,6 @@ class GameSession:
                 producer = PrebakedImageProducer()
             if prefetch_scheduler is None:
                 prefetch_scheduler = NoOpPrefetchScheduler()
-        if producer is None and comfyui_client is not None:
-            if comfyui_client.is_available():
-                producer = ComfyUIImageProducer(client=comfyui_client)
         if producer is None:
             producer = PlaceholderImageProducer()
 
@@ -1182,14 +1185,20 @@ class GameSession:
                 else None
             ),
         )
-        return narrate(
+        pages = narrate(
             event_templates,
             ctx,
             self.rng,
             use_llm=self.use_llm,
             llm_client=self.llm_client,
             event_tags=blueprint.tags,
+            recent_narration=self.journal.recent_context(),
         )
+        # Fold the rendered prose into the journal so the *next* beat /
+        # event continues from what the player just read (temporal track).
+        for page in pages:
+            self.journal.record_beat(page)
+        return pages
 
     def scene_intro(
         self,
@@ -1217,8 +1226,50 @@ class GameSession:
                 cast_names=others,
                 location=cue.node_name if cue is not None else None,
                 cast_pronouns=self._cast_pronouns(cast),
+                arc_summary=self._latest_arc_summary(),
+                recent_narration=self.journal.recent_context(),
             )
+        # The intro opens the scene — record it as the first beat so the
+        # outcome narration continues from it (temporal track).
+        self.journal.record_beat(intro)
         return intro
+
+    def _latest_arc_summary(self) -> str | None:
+        """Most recent arc digest from the outcome log, for grounding the
+        thread track (distinct from the journal's temporal track)."""
+        for o in reversed(self.state.outcome_log):
+            if o.arc_summary:
+                return o.arc_summary
+        return None
+
+    def close_scene(self, cast: Mapping[str, Character] | None = None) -> str:
+        """Scene boundary: compress the open journal beats into a single
+        paragraph and reset the verbatim window (Phase 24A).
+
+        Ren'Py calls this at the end of an event (one event == one scene
+        for now). The summary is what later scenes ground on once the
+        verbatim beats roll off, so the journal stays bounded while still
+        carrying continuity. Returns the summary, or ``""`` when there is
+        nothing open. Never blocks — deterministic compression is the
+        fallback when the LLM is off.
+        """
+        if not self.journal.has_open_scene():
+            return ""
+        cast_pronouns: dict[str, str] = {}
+        cast_names: list[str] = []
+        if cast:
+            cast_pronouns = self._cast_pronouns(cast)
+            cast_names = list(cast_pronouns)
+        client = self.llm_client if (self.use_llm and self.llm_client) else None
+        summary = summarise_narration(
+            client or LLMClient(enabled=False),
+            list(self.journal.recent_beats),
+            cast_names=cast_names,
+            cast_pronouns=cast_pronouns,
+            kind="scene",
+        )
+        self.journal.record_scene_summary(summary)
+        return summary
 
     def _assemble_scene_intro(
         self,
