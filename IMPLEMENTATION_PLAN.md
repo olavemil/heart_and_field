@@ -1043,6 +1043,17 @@ separately, never conflated:**
   `recent_context()` fallback descends beats → scene → day → week.
 - Tone audit across all 55 blueprints — catalogue largely consistent.
 
+### 24F — Multi-limit pagination ✅
+
+- `narrative.paginate` caps each page by whichever limit binds first:
+  `PAGE_MAX_SENTENCES` (2), `PAGE_MAX_WORDS`, or `PAGE_MAX_CHARS`.
+- A single sentence too long for one page breaks mid-sentence with an
+  em-dash continuation (`_split_long_sentence`): the page ends `" —"`,
+  the next begins `"— "`, sized so the marked page still fits.
+- Ordering (from `narrative_adjustments.md`) already holds: each beat's
+  text is fully LLM-resolved before `drama_block` shows its pages;
+  setup/recap are produced pre-choice, action/reaction/result post-choice.
+
 **Deferred from Phase 24:**
 
 - **General dynamic role assignment** — extend the weighted stance
