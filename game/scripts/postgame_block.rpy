@@ -18,6 +18,9 @@ label postgame_block(slot_index):
     # Resolve the player's stance for this event once (Phase 24C).
     $ fh.session.resolve_player_stance(fh.bp, cast)
 
+    # Resolve this event's tone once (Phase 25.2).
+    $ fh.session.resolve_tone(fh.bp)
+
     # Resolve the background, if this event has a location cue.
     $ scene_info = fh.session.resolve_scene(fh.bp, cast)
     if scene_info is not None:

@@ -1167,3 +1167,69 @@ class TestInPhaseMatchEvents:
         assert [s.resolved_event_id for s in session.schedule.slots] == before
         assert (session.state.clock.weekday, session.state.clock.hour) == clock_before
         assert rec in session.state.outcome_log
+
+
+class TestEventTone:
+    """Phase 25.2b — resolved tone wired through the session."""
+
+    def _bp(self, tones):
+        from engine.event_taxonomy import EventDomain, EventNature, EventType
+        from engine.events import BranchOutcome, EventBlueprint, RoleSlot
+
+        return EventBlueprint(
+            id="t.tone",
+            participants=[RoleSlot(role="player")],
+            event_id=EventType(
+                EventNature.INVITATION, EventDomain.RELATIONSHIP,
+                possible_tones=frozenset(tones),
+            ),
+            outcomes={"x": BranchOutcome(summary="s")},
+        )
+
+    def test_resolve_tone_caches(self):
+        from engine.event_taxonomy import EventTone
+
+        session = _build_session()
+        session.use_llm = False
+        bp = self._bp({EventTone.TENSE, EventTone.WARM})
+        tone = session.resolve_tone(bp)
+        assert session._current_event_tone is tone
+        assert tone in {EventTone.TENSE, EventTone.WARM}
+
+    def test_resolve_event_stamps_resolved_tone(self):
+        from engine.event_taxonomy import EventTone
+
+        session = _build_session()
+        session.use_llm = False
+        bp = self._bp({EventTone.WARM})  # single tone → deterministic
+        cast = {"player": session.state.characters["player"]}
+        session.resolve_tone(bp)
+        record = session.resolve_event(bp, "x", cast, 0)
+        assert record.resolved_tone == EventTone.WARM.value
+        session.close_scene(cast)
+        assert session._current_event_tone is None
+
+    def test_last_resolved_tone_is_continuity_anchor(self):
+        from engine.event_taxonomy import EventTone
+        from engine.outcomes import OutcomeRecord, WeekPhase
+
+        session = _build_session()
+        session.state.outcome_log.append(OutcomeRecord(
+            event_id="x", timestamp=WeekPhase(1, 1), participants={},
+            branch_taken="b", summary="s",
+            resolved_tone=EventTone.ROMANTIC.value,
+        ))
+        assert session._last_resolved_tone() is EventTone.ROMANTIC
+
+    def test_resolved_tone_round_trips(self):
+        from engine.event_taxonomy import EventTone
+        from engine.outcomes import OutcomeRecord, WeekPhase
+
+        session = _build_session()
+        session.state.outcome_log.append(OutcomeRecord(
+            event_id="x", timestamp=WeekPhase(1, 1), participants={},
+            branch_taken="b", summary="s",
+            resolved_tone=EventTone.PLAYFUL.value,
+        ))
+        restored = GameSession.deserialise(json.loads(json.dumps(session.serialise())))
+        assert restored.state.outcome_log[-1].resolved_tone == EventTone.PLAYFUL.value

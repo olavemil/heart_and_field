@@ -79,7 +79,7 @@ from .events import (
     select_event,
     weighted_player_stance,
 )
-from .event_taxonomy import EventTone
+from .event_taxonomy import EventTone, resolve_event_tone
 from .figures import (
     FigureCategory,
     FigureManifest,
@@ -408,6 +408,13 @@ class GameSession:
     # intro paths + stamped onto the outcome record. Transient — the
     # persistent record lives on ``OutcomeRecord.player_stance``.
     _current_player_stance: PlayerStance | None = None
+
+    # Tone resolved for the current event (Phase 25.2). Set by
+    # ``resolve_tone`` at event start, read by the figure / intro paths and
+    # stamped onto the outcome record; carried to the next event for mood
+    # continuity. Transient — persistent value is ``OutcomeRecord
+    # .resolved_tone``.
+    _current_event_tone: EventTone | None = None
 
     # Set by ``enter_slot`` and consumed by the next ``resolve_scene``
     # that resolves a real ``LocationCue``. Implements the auto-teleport
@@ -805,6 +812,9 @@ class GameSession:
         # cache stays set until ``close_scene`` so a post-resolve figure
         # re-frame (Phase 24D result_tone) keeps the same stance.
         record.player_stance = self._active_player_stance(blueprint).value
+        # Stamp the resolved tone so the next event inherits the mood
+        # (Phase 25.2). Cache cleared at ``close_scene``.
+        record.resolved_tone = self._active_event_tone(blueprint).value
 
         if self.schedule is not None:
             slot = self.schedule.slots[slot_index]
@@ -1536,9 +1546,11 @@ class GameSession:
         nothing open. Never blocks — deterministic compression is the
         fallback when the LLM is off.
         """
-        # Scene over — drop the per-event stance cache (Phase 24C/D)
-        # regardless of journal state; the next event resolves its own.
+        # Scene over — drop the per-event stance + tone caches (Phase
+        # 24C/D, 25.2) regardless of journal state; the next event resolves
+        # its own.
         self._current_player_stance = None
+        self._current_event_tone = None
         if not self.journal.has_open_scene():
             return ""
         summary = self._summarise(self.journal.recent_beats, kind="scene", cast=cast)
@@ -1631,7 +1643,7 @@ class GameSession:
         elif others:
             parts.append("With " + ", ".join(others[:-1]) + f" and {others[-1]}.")
         if blueprint.event_id is not None:
-            lines = _TONE_INTRO_LINES.get(blueprint.event_id.tone, ())
+            lines = _TONE_INTRO_LINES.get(self._active_event_tone(blueprint), ())
             if lines:
                 parts.append(self.rng.choice(lines))
         return " ".join(parts), others
@@ -1677,6 +1689,50 @@ class GameSession:
         anchor when none was resolved (tests / non-stance flows)."""
         return self._current_player_stance or blueprint.player_stance
 
+    def resolve_tone(self, blueprint: EventBlueprint) -> EventTone:
+        """Resolve and cache this event's tone (Phase 25.2).
+
+        Sampled from the event type's ``possible_tones`` (``resolve_event
+        _tone``), biased toward the tone carried from the prior event
+        (continuity) and the current mood (team morale + momentum). Called
+        once at event start; figure proximity/posture, the scene-intro
+        atmosphere, and the stamped outcome record all read the cached
+        result. Returns the resolved tone (NEUTRAL when the blueprint has
+        no event type).
+        """
+        if blueprint.event_id is None:
+            self._current_event_tone = EventTone.NEUTRAL
+            return EventTone.NEUTRAL
+        tone = resolve_event_tone(
+            blueprint.event_id,
+            rng=self.rng,
+            carried_tone=self._last_resolved_tone(),
+            morale=self.team_morale,
+            momentum=self.momentum,
+        )
+        self._current_event_tone = tone
+        return tone
+
+    def _last_resolved_tone(self) -> EventTone | None:
+        """The tone of the most recent event that recorded one — the
+        continuity anchor for ``resolve_tone``."""
+        for record in reversed(self.state.outcome_log):
+            if record.resolved_tone:
+                try:
+                    return EventTone(record.resolved_tone)
+                except ValueError:
+                    return None
+        return None
+
+    def _active_event_tone(self, blueprint: EventBlueprint) -> EventTone:
+        """The resolved tone for the current event, or the event type's
+        representative tone when none was resolved (tests / direct calls)."""
+        if self._current_event_tone is not None:
+            return self._current_event_tone
+        if blueprint.event_id is not None and blueprint.event_id.tone is not None:
+            return blueprint.event_id.tone
+        return EventTone.NEUTRAL
+
     _DEFAULT_DESCRIPTOR = CharacterDescriptor()
 
     def figure_layout_for(
@@ -1706,11 +1762,9 @@ class GameSession:
         """
         if self.figure_manifest is None or not self.figure_manifest.assets:
             return []
-        tone = tone_override or (
-            blueprint.event_id.tone
-            if blueprint.event_id is not None
-            else EventTone.NEUTRAL
-        )
+        # Resolved tone (Phase 25.2) drives posture + proximity; an explicit
+        # override (24D result-tone re-frame) still wins.
+        tone = tone_override or self._active_event_tone(blueprint)
         # Scene dress context (locker/shower → context-appropriate figures).
         context = context_for_node(
             blueprint.location.node_name if blueprint.location is not None else None

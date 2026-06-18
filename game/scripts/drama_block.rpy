@@ -26,6 +26,10 @@ label drama_block(slot_index):
     # read the cached result so they agree.
     $ fh.session.resolve_player_stance(fh.bp, cast)
 
+    # Resolve this event's tone once (Phase 25.2) — biased by the carried
+    # mood + context; drives figure proximity/posture + intro atmosphere.
+    $ fh.session.resolve_tone(fh.bp)
+
     # Resolve the background, if this event has a location cue. The
     # composite stacks the primary background, weather/mood/time
     # grades, and per-scene noise overlays so the scene reads as

@@ -54,6 +54,10 @@ class OutcomeRecord:
     # Stored so the next event can bias toward continuity ("role in the
     # prior event"). ``None`` on legacy saves / non-stance flows.
     player_stance: str | None = None
+    # The tone this event resolved to (``EventTone`` value). Carried to the
+    # next event so a thread keeps its mood unless context shifts it
+    # (Phase 25.2). ``None`` on legacy saves.
+    resolved_tone: str | None = None
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -74,6 +78,8 @@ class OutcomeRecord:
             d["day_ordinal"] = self.day_ordinal
         if self.player_stance is not None:
             d["player_stance"] = self.player_stance
+        if self.resolved_tone is not None:
+            d["resolved_tone"] = self.resolved_tone
         return d
 
     @classmethod
@@ -96,4 +102,5 @@ class OutcomeRecord:
             taxonomy_id=EventType.from_dict(tid) if tid is not None else None,
             day_ordinal=d.get("day_ordinal"),
             player_stance=d.get("player_stance"),
+            resolved_tone=d.get("resolved_tone"),
         )
