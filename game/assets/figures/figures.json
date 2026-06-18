@@ -443,6 +443,1134 @@
    },
    "posture": "tense",
    "path": "interlocutor/feminine_light_light_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_light_red_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_light_red_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_light_red_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_light_red_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_dark_dark_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_dark_dark_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_dark_dark_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_dark_dark_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_dark_light_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_dark_light_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_dark_light_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_dark_light_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_dark_red_short_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_dark_red_short_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "warm",
+   "path": "interlocutor/feminine_dark_red_long_adult_warm.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "red",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "tense",
+   "path": "interlocutor/feminine_dark_red_long_adult_tense.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/masculine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/masculine_light_light_short_adult_neutral.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/masculine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/masculine_dark_light_short_adult_neutral.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/feminine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/feminine_light_light_short_adult_neutral.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/feminine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "interlocutor",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "interlocutor/feminine_dark_light_short_adult_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "comforting",
+   "path": "authority/masculine_light_dark_short_adult_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "sceptical",
+   "path": "authority/masculine_light_dark_short_adult_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "angry",
+   "path": "authority/masculine_light_dark_short_adult_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "authority/masculine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "comforting",
+   "path": "authority/masculine_dark_dark_short_adult_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "sceptical",
+   "path": "authority/masculine_dark_dark_short_adult_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "angry",
+   "path": "authority/masculine_dark_dark_short_adult_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "authority/masculine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "comforting",
+   "path": "authority/feminine_light_dark_short_adult_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "sceptical",
+   "path": "authority/feminine_light_dark_short_adult_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "angry",
+   "path": "authority/feminine_light_dark_short_adult_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "authority/feminine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "comforting",
+   "path": "authority/feminine_dark_dark_short_adult_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "sceptical",
+   "path": "authority/feminine_dark_dark_short_adult_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "angry",
+   "path": "authority/feminine_dark_dark_short_adult_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "authority/feminine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "comforting",
+   "path": "authority/masculine_light_dark_short_older_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "sceptical",
+   "path": "authority/masculine_light_dark_short_older_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "angry",
+   "path": "authority/masculine_light_dark_short_older_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "neutral",
+   "path": "authority/masculine_light_dark_short_older_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "comforting",
+   "path": "authority/masculine_dark_dark_short_older_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "sceptical",
+   "path": "authority/masculine_dark_dark_short_older_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "angry",
+   "path": "authority/masculine_dark_dark_short_older_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "neutral",
+   "path": "authority/masculine_dark_dark_short_older_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "comforting",
+   "path": "authority/feminine_light_dark_short_older_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "sceptical",
+   "path": "authority/feminine_light_dark_short_older_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "angry",
+   "path": "authority/feminine_light_dark_short_older_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "neutral",
+   "path": "authority/feminine_light_dark_short_older_neutral.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "comforting",
+   "path": "authority/feminine_dark_dark_short_older_comforting.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "sceptical",
+   "path": "authority/feminine_dark_dark_short_older_sceptical.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "angry",
+   "path": "authority/feminine_dark_dark_short_older_angry.png"
+  },
+  {
+   "category": "authority",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "older"
+   },
+   "posture": "neutral",
+   "path": "authority/feminine_dark_dark_short_older_neutral.png"
+  },
+  {
+   "category": "service",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "service/masculine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "service",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "service/masculine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "service",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "service/feminine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "service",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "service/feminine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "medical",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "medical/masculine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "medical",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "medical/masculine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "medical",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "medical/feminine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "medical",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "medical/feminine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "office",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "office/masculine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "office",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "office/masculine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "office",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "office/feminine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "office",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "office/feminine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_light_dark_long_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_light_light_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_light_light_long_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_dark_dark_long_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_dark_light_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/masculine_dark_light_long_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_light_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_light_dark_long_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_light_light_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_light_light_long_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_dark_dark_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "dark",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_dark_dark_long_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_dark_light_short_adult_neutral.png"
+  },
+  {
+   "category": "player",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "dark",
+    "hair_color": "light",
+    "hair_length": "long",
+    "age": "adult"
+   },
+   "posture": "neutral",
+   "path": "player/feminine_dark_light_long_adult_neutral.png"
+  },
+  {
+   "category": "motion",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "action",
+   "path": "motion/soccer_masculine.png"
+  },
+  {
+   "category": "motion",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "action",
+   "path": "motion/soccer_feminine.png"
+  },
+  {
+   "category": "motion",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "action",
+   "path": "motion/rugby_masculine.png"
+  },
+  {
+   "category": "motion",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "action",
+   "path": "motion/rugby_feminine.png"
+  },
+  {
+   "category": "motion",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "action",
+   "path": "motion/basketball_masculine.png"
+  },
+  {
+   "category": "motion",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "action",
+   "path": "motion/basketball_feminine.png"
+  },
+  {
+   "category": "anonymous",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "peripheral",
+   "path": "anonymous/masculine_locker.png"
+  },
+  {
+   "category": "anonymous",
+   "appearance": {
+    "gender": "masculine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "peripheral",
+   "path": "anonymous/masculine_shower.png"
+  },
+  {
+   "category": "anonymous",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "peripheral",
+   "path": "anonymous/feminine_locker.png"
+  },
+  {
+   "category": "anonymous",
+   "appearance": {
+    "gender": "feminine",
+    "skin": "light",
+    "hair_color": "dark",
+    "hair_length": "short",
+    "age": "adult"
+   },
+   "posture": "peripheral",
+   "path": "anonymous/feminine_shower.png"
   }
  ]
 }

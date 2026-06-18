@@ -1,31 +1,33 @@
-2026-05-07 10:55:25 UTC
-macOS-26.4.1-arm64-arm-64bit
+2026-06-18 10:04:01 UTC
+macOS-26.5.1-arm64-arm-64bit
 Ren'Py 8.5.2.26010301
 
-Early init took 21 ms
-Loading error handling took 9 ms
-Loading script took 32 ms
-Loading save slot metadata took 11 ms
+Early init took 42 ms
+Loading error handling took 22 ms
+Loading script took 137 ms
+Loading save slot metadata took 17 ms
 Loading persistent took 0 ms
-Running init code took 112 ms
-Loading analysis data took 3 ms
-Analyze and compile ATL took 0 ms
-Reloading save slot metadata took 3 ms
-Dump and make backups took 0 ms
+ - Init at game/scripts/game_loop.rpy:7 took 451 ms.
+Running init code took 476 ms
+Loading analysis data took 6 ms
+Analyze and compile ATL took 1 ms
+Reloading save slot metadata took 8 ms
+Backing up script files to '/Users/olavemil/Library/RenPy/backups/heart_and_field':
+Dump and make backups took 2 ms
 Cleaning cache took 0 ms
 Making clean stores took 0 ms
-Initial gc took 14 ms
+Initial gc took 19 ms
 DPI scale factor: 1.000000
 Creating interface object took 0 ms
 Init translation took 0 ms
 Cleaning stores took 0 ms
-Load screen analysis took 7 ms
-Analyze screens took 0 ms
-Save screen analysis took 0 ms
-Save pyanalysis took 0 ms
-Save bytecode took 0 ms
-Running _start took 0 ms
-Interface start took 271 ms
+Load screen analysis took 0 ms
+Analyze screens took 4 ms
+Save screen analysis took 6 ms
+Save pyanalysis took 2 ms
+Save bytecode took 15 ms
+Running _start took 1 ms
+Interface start took 2506 ms
 
 Initializing gl2 renderer:
 primary display bounds: (0, 0, 1728, 1117)
@@ -35,51 +37,13 @@ Vendor: 'Apple'
 Renderer: 'Apple M4 Max'
 Version: '2.1 Metal - 90.5'
 Display Info: <Info({'bitsize': 32, 'bytesize': 4, 'masks': (16711680, 65280, 255, 4278190080), 'shifts': (16, 8, 0, 24), 'losses': (0, 0, 0, 0), 'current_w': 1728, 'current_h': 1117, 'refresh_rate': 120, 'hw': False, 'wm': True, 'video_mem': 268435456, 'blit_hw': False, 'blit_hw_CC': False, 'blit_hw_A': False, 'blit_sw': False, 'blit_sw_CC': False, 'blit_sw_A': False})>
-Screen sizes: virtual=(1280, 720) physical=(1280, 720) drawable=(2560, 1440)
+Screen sizes: virtual=(1280, 720) physical=(1372, 772) drawable=(2744, 1544)
 Maximum texture size: 4096x4096
-Traceback (most recent call last):
-  File "./renpy-8.5.2-sdk/lib/py3-mac-universal/../../renpy.py", line 304, in <module>
-    main()
-  File "./renpy-8.5.2-sdk/lib/py3-mac-universal/../../renpy.py", line 300, in main
-    renpy.bootstrap.bootstrap(renpy_base)
-  File "renpy/bootstrap.py", line 401, in bootstrap
-    renpy.main.main()
-  File "renpy/main.py", line 591, in main
-    run(restart)
-  File "renpy/main.py", line 137, in run
-    renpy.execution.run_context(True)
-  File "renpy/execution.py", line 1036, in run_context
-    context.run()
-  File "game/scripts/game_loop.rpy", line 114, in script
-    python:
-  File "renpy/ast.py", line 1187, in execute
-    renpy.python.py_exec_bytecode(self.code.bytecode, self.hide, store=self.store)
-  File "renpy/python.py", line 1273, in py_exec_bytecode
-    exec(bytecode, globals, locals)
-  File "game/scripts/game_loop.rpy", line 130, in <module>
-    session = GameSession.new_game(
-        player_name,
-    ...<3 lines>...
-        league_config=league_config,
-    )
-  File "engine/session.py", line 389, in new_game
-    session.visual_manager.warm_up(characters)
-  File "engine/visual.py", line 896, in warm_up
-    visual.ensure_base_face()
-  File "engine/visual.py", line 448, in ensure_base_face
-    self._load_or_generate_base()
-  File "engine/visual.py", line 384, in _load_or_generate_base
-    img = self._try_comfyui_face()
-  File "engine/visual.py", line 419, in _try_comfyui_face
-    data = self._comfyui.img2img(
-        prompt,
-    ...<6 lines>...
-        filename_prefix=f"fh_face_{self.character_id}",
-    )
-  File "engine/comfyui.py", line 688, in img2img
-    return self._submit_and_wait(workflow)
-  File "engine/comfyui.py", line 717, in _submit_and_wait
-    output_info = self._poll_until_done(prompt_id)
-  File "engine/comfyui.py", line 776, in _poll_until_done
-    time.sleep(POLL_INTERVAL)
-KeyboardInterrupt
+Screen sizes: virtual=(1280, 720) physical=(1372, 772) drawable=(1372, 772)
+Maximum texture size: 4096x4096
+Resize event: <Event(65533-VIDEORESIZE h=772, mod=0, size=(1372, 772), w=1372)>
+Screen sizes: virtual=(1280, 720) physical=(1372, 772) drawable=(2560, 1440)
+Maximum texture size: 4096x4096
+Screen sizes: virtual=(1280, 720) physical=(2560, 1440) drawable=(2560, 1440)
+Maximum texture size: 4096x4096
+Resize event: <Event(65533-VIDEORESIZE h=1440, mod=0, size=(2560, 1440), w=2560)>
