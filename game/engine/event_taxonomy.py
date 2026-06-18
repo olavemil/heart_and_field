@@ -75,34 +75,42 @@ def _representative_tone(tones: "frozenset[EventTone]") -> "EventTone | None":
 
 @dataclass(frozen=True)
 class EventType:
-    """Categorical event *essence* plus the tones it can carry (ADR-001).
+    """Categorical event type — ``(domain, nature, possible_tones)`` (ADR-001).
 
-    **Identity is ``(domain, nature)`` only** — that essence is what chains
-    and the valid-combinations registry key on. ``possible_tones`` is
-    carried data, *excluded from equality/hash* (``compare=False``),
-    because only the *resolved* tone matters at a continuation boundary,
-    not which tones an event could have taken. So two ``EventType``s with
-    the same domain/nature are equal regardless of their tone sets.
+    **Identity is all three** (natural equality): two event types differ
+    if their tone sets differ — ``(invitation, sport, {hostile,
+    melancholy})`` is not the same type as ``(invitation, sport,
+    {romantic, warm})``. ``possible_tones`` is a *type-level* property
+    (which tones this event can take), distinct from the per-instance
+    *resolved* tone that drives continuation.
+
+    These are axes of an event's descriptor. The intended continuation
+    model (ADR-001) treats ``(domain, nature, tone, time, location)`` as a
+    state vector and generates follow-ups by perturbing a subset of axes —
+    no single 2-tuple "essence" is privileged. ``key()`` exposes a coarse
+    ``(domain, nature)`` label only for the *interim* registry/chain
+    scaffolding (``VALID_EVENT_COMBINATIONS``, ``chains_from``), which the
+    dimensional continuation engine will supersede.
 
     Not a primary key: ``blueprint.id`` identifies a blueprint; many
     blueprints may share one ``EventType`` (→ weighted selection).
 
-    ``tone`` is a transition-era convenience. Authors may still pass a
-    single ``tone=`` (it populates ``possible_tones``); ``.tone`` then
-    exposes a representative tone for code that still reads a single value
-    (figure posture/proximity, scene intro) until the tone resolver lands
-    in 25.x. Passing ``possible_tones=`` directly is the forward form.
+    ``tone`` is a transition-era convenience (excluded from identity).
+    Authors may still pass a single ``tone=`` (it populates
+    ``possible_tones``); ``.tone`` exposes a representative tone for code
+    that still reads a single value (figure posture/proximity, scene
+    intro) until the tone resolver lands. Passing ``possible_tones=``
+    directly is the forward form.
     """
 
     # Field order preserves back-compat positional/keyword use
-    # (``EventType(nature, domain, tone)``). Identity = (nature, domain);
-    # tone + possible_tones are excluded from eq/hash.
+    # (``EventType(nature, domain, tone)``). ``tone`` is the derived
+    # representative bridge and is excluded from identity; ``possible_tones``
+    # IS part of identity.
     nature: EventNature
     domain: EventDomain
     tone: EventTone | None = field(default=None, compare=False)
-    possible_tones: frozenset[EventTone] = field(
-        default_factory=frozenset, compare=False
-    )
+    possible_tones: frozenset[EventTone] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:
         tones = self.possible_tones
@@ -117,8 +125,8 @@ class EventType:
             object.__setattr__(self, "tone", _representative_tone(tones))
 
     def key(self) -> str:
-        """Canonical *essence* string — ``{domain}_{nature}`` (tone is no
-        longer part of identity)."""
+        """Coarse ``{domain}_{nature}`` label for the interim registry /
+        coverage checks — NOT the identity (see ``to_dict``)."""
         return f"{self.domain.value}_{self.nature.value}"
 
     def to_dict(self) -> dict:
@@ -226,9 +234,14 @@ VALID_EVENT_COMBINATIONS: frozenset[EventType] = frozenset({
 
 
 def is_valid_event_id(event_id: EventType) -> bool:
-    """``True`` when the (domain, nature, tone) triple is in the
-    authored event list. Content tooling can call this to surface
-    blueprint ids that no longer match the curated list."""
+    """``True`` when ``event_id`` is in the authored event list.
+
+    INTERIM scaffolding (Phase 17). The dimensional continuation model
+    (ADR-001) generates follow-ups by perturbing the event state vector,
+    so a hard validity registry becomes a loose authoring/coverage aid
+    rather than a gate. Left as exact membership while content is
+    single-tone; revisited when the continuation engine lands.
+    """
     return event_id in VALID_EVENT_COMBINATIONS
 
 
@@ -346,7 +359,13 @@ def chains_from(
 ) -> list[EventChainEdge]:
     """Return chain edges originating at ``event_id``. Optional
     ``dimensions`` filter restricts to a subset (e.g. only SCENE
-    edges when staying in the same room)."""
+    edges when staying in the same room).
+
+    INTERIM scaffolding (Phase 17): the dimensional continuation engine
+    (ADR-001) will replace authored edge-matching with state-vector
+    perturbation + per-axis compatibility. Exact ``==`` holds while
+    content is single-tone.
+    """
     out = [e for e in CHAIN_EDGES if e.from_id == event_id]
     if dimensions is not None:
         out = [e for e in out if e.dimension in dimensions]

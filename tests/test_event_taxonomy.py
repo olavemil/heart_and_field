@@ -54,15 +54,20 @@ class TestEventType:
         )
         assert restored.possible_tones == frozenset({EventTone.MELANCHOLY})
 
-    def test_identity_ignores_tone(self):
-        # Same essence, different tone sets → equal and hash-equal.
+    def test_identity_includes_tone_set(self):
+        # Same domain/nature but different tone sets → DIFFERENT types
+        # (natural identity; ADR-001 corrected).
         a = EventType(EventNature.CONFRONTATION, EventDomain.RELATIONSHIP,
                       tone=EventTone.HOSTILE)
         b = EventType(EventNature.CONFRONTATION, EventDomain.RELATIONSHIP,
                       tone=EventTone.TENSE)
-        assert a == b
-        assert hash(a) == hash(b)
-        assert {a, b} == {a}
+        assert a != b
+        assert {a, b} == {a, b}
+        # Identical descriptors collapse.
+        c = EventType(EventNature.CONFRONTATION, EventDomain.RELATIONSHIP,
+                      tone=EventTone.HOSTILE)
+        assert a == c
+        assert hash(a) == hash(c)
 
     def test_from_key_round_trips_essence(self):
         eid = EventType(nature=EventNature.OBSERVATION, domain=EventDomain.SECRET)
