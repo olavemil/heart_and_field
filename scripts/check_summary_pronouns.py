@@ -54,38 +54,55 @@ def _char(gp: str) -> TierBCharacter:
     return c
 
 
+def _check_text(
+    bp_id: str, label: str, text: str, roles: list[str]
+) -> list[tuple[str, str, str, str]]:
+    """Run every guard on one authored narration string."""
+    problems: list[tuple[str, str, str, str]] = []
+    if not text:
+        return problems
+    hit = _GENDERED.search(text)
+    if hit:
+        problems.append((bp_id, label, f"gendered word '{hit.group()}'", text))
+    sp = _SECOND_PERSON.search(text)
+    if sp:
+        problems.append(
+            (bp_id, label, f"second person '{sp.group()}' (use third person)", text)
+        )
+    ba = _BAD_AGREEMENT.search(text)
+    if ba:
+        problems.append(
+            (bp_id, label, f"verb agreement '{ba.group()}' breaks for he/she", text)
+        )
+    for gp in ("masculine", "feminine", "androgynous"):
+        cast = {r: _char(gp) for r in roles}
+        ctx = NarrationContext(
+            target=cast.get("player"), cast=cast, branch_summary=text
+        )
+        resolved = _substitute(text, ctx)
+        leftover = _SLOT_LEFTOVER.search(resolved)
+        if leftover:
+            problems.append((bp_id, label, f"unresolved {leftover.group()}", resolved))
+            break
+    return problems
+
+
 def check_module(modname: str) -> list[tuple[str, str, str, str]]:
     m = importlib.import_module(f"content.events.{modname}")
     problems: list[tuple[str, str, str, str]] = []
     for bp in m.BLUEPRINTS:
         roles = [s.role for s in bp.participants]
+        # Pre-choice setup beat (Phase 24B).
+        problems += _check_text(bp.id, "setup", bp.setup or "", roles)
         for branch, outcome in bp.outcomes.items():
-            summary = outcome.summary or ""
-            hit = _GENDERED.search(summary)
-            if hit:
-                problems.append((bp.id, branch, f"gendered word '{hit.group()}'", summary))
-            sp = _SECOND_PERSON.search(summary)
-            if sp:
-                problems.append(
-                    (bp.id, branch, f"second person '{sp.group()}' (use third person)", summary)
-                )
-            ba = _BAD_AGREEMENT.search(summary)
-            if ba:
-                problems.append(
-                    (bp.id, branch, f"verb agreement '{ba.group()}' breaks for he/she", summary)
-                )
-            for gp in ("masculine", "feminine", "androgynous"):
-                cast = {r: _char(gp) for r in roles}
-                ctx = NarrationContext(
-                    target=cast.get("player"), cast=cast, branch_summary=summary
-                )
-                resolved = _substitute(summary, ctx)
-                leftover = _SLOT_LEFTOVER.search(resolved)
-                if leftover:
-                    problems.append(
-                        (bp.id, branch, f"unresolved {leftover.group()}", resolved)
-                    )
-                    break
+            # Result beat plus the optional action / reaction beats (24B).
+            problems += _check_text(bp.id, branch, outcome.summary or "", roles)
+            problems += _check_text(
+                bp.id, f"{branch}/action", outcome.action_summary or "", roles
+            )
+            problems += _check_text(
+                bp.id, f"{branch}/reaction", outcome.reaction_summary or "", roles
+            )
     return problems
 
 

@@ -142,6 +142,13 @@ class WorldClock:
     def total_minutes_in_day(self) -> int:
         return self.hour * 60 + self.minute
 
+    def day_ordinal(self) -> int:
+        """Absolute day index since the start of the game (week 1 Monday
+        == 0). Lets callers tell whether two timestamps fall on the same
+        calendar day or are separated by a gap — used to decide when an
+        arc thread has lapsed long enough to warrant a recap."""
+        return (self.week - 1) * 7 + _WEEKDAY_ORDER.index(self.weekday)
+
     # ---- Advance / fast-forward --------------------------------------
 
     def advance(self, minutes: int) -> None:

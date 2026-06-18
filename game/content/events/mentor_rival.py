@@ -67,8 +67,17 @@ BLUEPRINTS = [
             node_name="locker_bay",
             graph_id="main_school",
         ),
+        setup=(
+            "The bay had cleared out except for {name:mentor}, unhurried over a "
+            "pair of boots. {name:mentor} waited until {name:player} was within "
+            "earshot before saying anything, the way the old pros always seemed to."
+        ),
         outcomes={
             "lands": BranchOutcome(
+                action_summary=(
+                    "{name:player} stopped, actually stopped, and let the advice "
+                    "land instead of bouncing off the usual armour."
+                ),
                 summary=(
                     "{name:mentor} said something short and then went back to "
                     "{their:mentor} boots. It stayed with {them:player}."
@@ -87,6 +96,10 @@ BLUEPRINTS = [
                 ],
             ),
             "brushed_off": BranchOutcome(
+                action_summary=(
+                    "{name:player} nodded along on the outside and had already "
+                    "filed it under things {they:player} did not need to hear."
+                ),
                 summary=(
                     "{They:player} heard the words. {They:player} decided {they:player} already knew them."
                 ),

@@ -370,6 +370,66 @@ def _trim_to_last_sentence(text: str) -> str:
     return text[: cut + 1].strip() if cut != -1 else text.strip()
 
 
+# --- Arc recap (Phase 24C — thread callback before a resumed scene) ----------
+
+_RECAP_SYSTEM_PROMPT = """\
+You write a brief "previously" callback for a sports-drama game: one or \
+two sentences reminding the player what last happened in this storyline \
+before the scene picks it back up. Rules:
+
+1. One or two sentences, third person past tense.
+2. Keep ALL character names exactly as given; invent nothing new.
+3. It is a recollection of an earlier moment, not a new event — keep the \
+sense of elapsed time if the input has it (e.g. "days earlier").
+4. Use each character's given pronouns.
+5. Return ONLY the callback sentence(s), no labels or commentary.\
+"""
+
+
+def recap_arc(
+    client: LLMClient,
+    recap_text: str,
+    *,
+    cast_names: Sequence[str] = (),
+    cast_pronouns: "Mapping[str, str] | None" = None,
+) -> str:
+    """Polish an engine-assembled arc recap into a natural callback.
+
+    ``recap_text`` is the deterministic lead-in + prior-thread summary the
+    session assembled (already slot-resolved). The LLM tightens it into a
+    "previously on …" beat; on any failure the assembled text is returned
+    unchanged. Like :func:`enhance_scene_intro` there is no opt-in gate and
+    the token cap is tight so the recap stays a beat, not a paragraph.
+    Never raises.
+    """
+    if not recap_text.strip():
+        return recap_text
+    parts: list[str] = []
+    if cast_names:
+        labelled = [
+            f"{n} ({cast_pronouns[n]})"
+            if cast_pronouns and n in cast_pronouns
+            else n
+            for n in cast_names
+        ]
+        parts.append(f"Characters: {', '.join(labelled)}")
+    parts.append(f"Earlier moment to recap:\n{recap_text}")
+    prompt = LLMPrompt(
+        system=_RECAP_SYSTEM_PROMPT,
+        user="\n\n".join(parts),
+        max_tokens=110,
+    )
+    result = client.generate(prompt)
+    if result is None:
+        return recap_text
+    result = _strip_pronoun_labels(result).strip()
+    if not result:
+        return recap_text
+    if cast_names and not any(name in result for name in cast_names):
+        return recap_text
+    return _trim_to_last_sentence(result) or result
+
+
 # --- Summarisation (Phase 24A — journal compression layer) -------------------
 
 _SUMMARY_SYSTEM_PROMPT = """\

@@ -384,6 +384,201 @@ class TestNarrativeJournal:
         assert restored.journal.scene_summaries == session.journal.scene_summaries
 
 
+class TestEventBeats:
+    """Phase 24B — multi-beat event narration (setup → action → reaction
+    → result). Run with the LLM off so the deterministic template /
+    summary-fallback paths exercise the beat plumbing."""
+
+    def _bp_and_record(self, *, with_extra_beats: bool, with_setup: bool = False):
+        from engine.events import BranchOutcome, EventBlueprint, RoleSlot
+        from engine.outcomes import OutcomeRecord, WeekPhase
+
+        outcome = BranchOutcome(
+            summary="{They:player} settled it, one way or another.",
+            action_summary=(
+                "{name:player} made the call and moved." if with_extra_beats else None
+            ),
+            reaction_summary=(
+                "{name:target} took it in and answered." if with_extra_beats else None
+            ),
+        )
+        bp = EventBlueprint(
+            id="t.beats",
+            tags=set(),
+            participants=[RoleSlot(role="player"), RoleSlot(role="target")],
+            outcomes={"x": outcome},
+            setup=("The room waited on {name:player}." if with_setup else None),
+        )
+        record = OutcomeRecord(
+            event_id="t.beats",
+            timestamp=WeekPhase(1, 1),
+            participants={"player": "player", "target": "tm_jordan"},
+            branch_taken="x",
+            summary=outcome.summary,
+        )
+        return bp, record
+
+    def _cast(self, session):
+        return {
+            "player": session.state.characters["player"],
+            "target": session.state.characters["tm_jordan"],
+        }
+
+    def test_single_beat_when_no_extra_authored(self):
+        session = _build_session()
+        session.use_llm = False
+        bp, record = self._bp_and_record(with_extra_beats=False)
+        beats = session.narrate_event(bp, self._cast(session), record)
+        assert [b.kind for b in beats] == ["result"]
+        assert all(b.pages for b in beats)
+
+    def test_action_reaction_result_in_order(self):
+        session = _build_session()
+        session.use_llm = False
+        bp, record = self._bp_and_record(with_extra_beats=True)
+        beats = session.narrate_event(bp, self._cast(session), record)
+        assert [b.kind for b in beats] == ["action", "reaction", "result"]
+        assert all(b.pages for b in beats)
+
+    def test_beats_recorded_into_journal_in_order(self):
+        session = _build_session()
+        session.use_llm = False
+        bp, record = self._bp_and_record(with_extra_beats=True)
+        session.narrate_event(bp, self._cast(session), record)
+        # Every beat's pages land in the journal, action before result.
+        joined = " ".join(session.journal.recent_beats)
+        assert "made the call" in joined
+        assert "took it in" in joined
+        assert joined.index("made the call") < joined.index("took it in")
+
+    def test_setup_returns_pages_when_authored(self):
+        session = _build_session()
+        session.use_llm = False
+        bp, _ = self._bp_and_record(with_extra_beats=False, with_setup=True)
+        pages = session.narrate_setup(bp, self._cast(session))
+        assert pages and any(p.strip() for p in pages)
+        assert session.journal.recent_beats == [p for p in pages if p.strip()]
+
+    def test_setup_empty_when_unauthored(self):
+        session = _build_session()
+        session.use_llm = False
+        bp, _ = self._bp_and_record(with_extra_beats=False, with_setup=False)
+        assert session.narrate_setup(bp, self._cast(session)) == []
+
+    def test_marquee_event_authors_full_beats(self):
+        # Content sanity: the conflict arc opener carries setup + action +
+        # reaction on every branch (the 24B authoring pass).
+        session = _build_session()
+        bp = next(b for b in session.blueprints if b.id == "conflict.blame_assignment")
+        assert bp.setup
+        for branch, outcome in bp.outcomes.items():
+            assert outcome.action_summary, branch
+            assert outcome.reaction_summary, branch
+
+
+class TestArcRecap:
+    """Phase 24C — arc callback beat. Surfaces the thread track when an
+    arc resumes after a day gap. LLM off → deterministic recap framing."""
+
+    def _prior_blame(self, *, day_ordinal):
+        from engine.outcomes import OutcomeRecord, WeekPhase
+
+        return OutcomeRecord(
+            event_id="conflict.blame_assignment",
+            timestamp=WeekPhase(1, 1),
+            participants={"player": "player", "target": "tm_jordan"},
+            branch_taken="escalate",
+            summary="{They:player} pointed a finger across the dressing room.",
+            arc_summary="{They:player} pointed a finger across the dressing room.",
+            day_ordinal=day_ordinal,
+        )
+
+    def _apology_bp(self, session):
+        return next(b for b in session.blueprints if b.id == "conflict.apology")
+
+    def _cast(self, session):
+        return {
+            "player": session.state.characters["player"],
+            "target": session.state.characters["tm_jordan"],
+        }
+
+    def _set_day(self, session, *, weekday):
+        from engine.clock import Weekday, WorldClock
+
+        session.state.clock = WorldClock(week=1, weekday=weekday)
+
+    def test_recap_fires_after_day_gap(self):
+        from engine.clock import Weekday
+
+        session = _build_session()
+        session.use_llm = False
+        session.state.outcome_log.append(self._prior_blame(day_ordinal=0))  # Mon
+        self._set_day(session, weekday=Weekday.WED)  # ordinal 2
+
+        pages = session.narrate_arc_recap(self._apology_bp(session), self._cast(session))
+        assert pages and any(p.strip() for p in pages)
+        joined = " ".join(pages)
+        assert "A couple of days earlier" in joined
+        # Recorded into the journal so the resumed scene continues from it.
+        assert any("days earlier" in b for b in session.journal.recent_beats)
+
+    def test_no_recap_same_day(self):
+        from engine.clock import Weekday
+
+        session = _build_session()
+        session.use_llm = False
+        session.state.outcome_log.append(self._prior_blame(day_ordinal=0))
+        self._set_day(session, weekday=Weekday.MON)  # ordinal 0 == prior
+
+        assert session.narrate_arc_recap(self._apology_bp(session), self._cast(session)) == []
+
+    def test_no_recap_without_prior_arc(self):
+        from engine.clock import Weekday
+
+        session = _build_session()
+        session.use_llm = False
+        self._set_day(session, weekday=Weekday.WED)
+        # No prior blame outcome in the log → nothing to recap.
+        assert session.narrate_arc_recap(self._apology_bp(session), self._cast(session)) == []
+
+    def test_no_recap_when_prior_day_unknown(self):
+        from engine.clock import Weekday
+
+        session = _build_session()
+        session.use_llm = False
+        session.state.outcome_log.append(self._prior_blame(day_ordinal=None))  # legacy
+        self._set_day(session, weekday=Weekday.WED)
+        assert session.narrate_arc_recap(self._apology_bp(session), self._cast(session)) == []
+
+    def test_resolve_event_records_day_ordinal(self):
+        from engine.clock import Weekday, WorldClock
+
+        session = _build_session()
+        session.start_week()
+        session.state.clock = WorldClock(week=1, weekday=Weekday.THU)  # ordinal 3
+        for idx, slot in session.pending_slots():
+            if slot.block_type not in (BlockType.DRAMA, BlockType.TRAINING):
+                continue
+            bp = session.select_event_for_slot(idx)
+            if bp is None:
+                continue
+            cast = session.cast_event(bp)
+            if cast is None:
+                continue
+            branch = list(bp.outcomes.keys())[0]
+            record = session.resolve_event(bp, branch, cast, idx)
+            assert record.day_ordinal == 3
+            break
+
+    def test_day_ordinal_round_trips(self):
+        from engine.clock import Weekday, WorldClock
+
+        session = _build_session()
+        session.state.outcome_log.append(self._prior_blame(day_ordinal=5))
+        restored = GameSession.deserialise(json.loads(json.dumps(session.serialise())))
+        assert restored.state.outcome_log[-1].day_ordinal == 5
+
+
 class TestFullWeekHeadless:
     """The Phase 6 exit criterion: a complete week runs headlessly."""
 

@@ -38,6 +38,20 @@ label drama_block(slot_index):
     if intro:
         e "[intro]"
 
+    # Pre-choice premise beat, on its own screen(s) (Phase 24B). Empty
+    # when the blueprint authors no setup beyond the intro line.
+    $ setup_pages = fh.session.narrate_setup(fh.bp, cast)
+    python:
+        for page in setup_pages:
+            renpy.say(e, page)
+
+    # Arc recap (Phase 24C): if this event resumes a storyline whose last
+    # beat was on an earlier day, remind the player before they choose.
+    $ recap_pages = fh.session.narrate_arc_recap(fh.bp, cast)
+    python:
+        for page in recap_pages:
+            renpy.say(e, page)
+
     # Player-facing branch choice (any branch count).
     $ branch = fh_choose_branch(fh.session.get_choices(fh.bp))
 
@@ -45,11 +59,14 @@ label drama_block(slot_index):
     $ record = fh.session.resolve_event(fh.bp, branch, cast, slot_index)
     $ fh_checkpoint()
 
-    # Narrate the outcome.
-    $ pages = fh.session.narrate_outcome(fh.bp, cast, record)
+    # Narrate the resolution as ordered beats: action -> reaction ->
+    # result, each on its own screen(s) (Phase 24B). Unauthored optional
+    # beats are simply absent; the result beat always plays.
+    $ beats = fh.session.narrate_event(fh.bp, cast, record)
     python:
-        for page in pages:
-            renpy.say(e, page)
+        for beat in beats:
+            for page in beat.pages:
+                renpy.say(e, page)
 
     # Scene boundary: compress this event's prose into a one-paragraph
     # journal summary so the next scene continues from it (Phase 24A).

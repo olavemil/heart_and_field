@@ -46,6 +46,12 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TRAINING_GROUND],
         boosted_by_aspects=[AspectType.HISTORY],
         reveals_exposure=0.1,
+        setup=(
+            "The dressing room had found its scapegoat before anyone had even "
+            "showered. {name:target} said it again — louder this time, so nobody "
+            "could pretend not to hear — and let the name hang in the air next to "
+            "{name:player}."
+        ),
         weight_modifiers=[
             WeightRule(
                 predicate=lambda ctx, st: 2.0 if ctx.team_morale < -0.2 else 1.0,
@@ -56,6 +62,16 @@ BLUEPRINTS = [
         unlocks=["conflict.apology"],
         outcomes={
             "escalate": BranchOutcome(
+                action_summary=(
+                    "{name:player} stood, scraped the bench back, and crossed the "
+                    "floor. Whatever caution {they:player} usually kept got left "
+                    "behind on it."
+                ),
+                reaction_summary=(
+                    "{name:target} didn't give an inch — chin up, voice climbing "
+                    "to meet {them:player}. The others rearranged themselves into "
+                    "an audience."
+                ),
                 summary=(
                     "{They:player} pointed a finger. The room went still; the accusation "
                     "landed wide of anyone who could deflect it."
@@ -75,6 +91,14 @@ BLUEPRINTS = [
                 flags={"unresolved", "public"},
             ),
             "hold_back": BranchOutcome(
+                action_summary=(
+                    "{name:player} held still. The retort built, then got folded "
+                    "away somewhere it wouldn't show."
+                ),
+                reaction_summary=(
+                    "{name:target} waited for the fight, didn't get one, and looked "
+                    "almost cheated by the quiet."
+                ),
                 summary="{They:player} swallowed it. Said nothing. Something sat wrong.",
                 stat_effects=[
                     StatEffect("player", StatName.INSECURITY, 0.02),
@@ -106,8 +130,17 @@ BLUEPRINTS = [
         valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.PARK],
         prerequisites=["conflict.blame_assignment"],
         carries_arc_context=True,
+        setup=(
+            "The thing from before still sat between them, taking up room. "
+            "{name:player} found {name:target} alone — which felt like the only "
+            "chance there would be to say anything at all."
+        ),
         outcomes={
             "sincere": BranchOutcome(
+                action_summary=(
+                    "{name:player} said the words without dressing them up. No "
+                    "'but', no ledger of who had done what to whom."
+                ),
                 summary=(
                     "{They:player} said it plainly. No qualifiers. {name:target} looked "
                     "at the floor for a long time before answering."
@@ -126,6 +159,11 @@ BLUEPRINTS = [
                 ],
             ),
             "deflect": BranchOutcome(
+                action_summary=(
+                    "{name:player} started with the apology and arrived, somehow, "
+                    "at a list of reasons it had never really been {their:player} "
+                    "fault."
+                ),
                 summary=(
                     "{Their:player} apology came wrapped in excuses. It read as another "
                     "kind of blame."

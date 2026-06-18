@@ -64,8 +64,21 @@ BLUEPRINTS = [
             SceneType.APARTMENT,
         ],
         boosted_by_aspects=[AspectType.RELATIONSHIP, AspectType.AGENDA],
+        setup=(
+            "The evening had no agenda and nowhere to be. {name:partner} sat close "
+            "enough that the small talk kept running out, and the pauses started "
+            "doing more of the talking than either of them."
+        ),
         outcomes={
             "closer": BranchOutcome(
+                action_summary=(
+                    "{name:player} stopped performing for a moment and just answered "
+                    "honestly, the way {they:player} rarely let {themself:player}."
+                ),
+                reaction_summary=(
+                    "{name:partner} noticed the shift and met it, and the distance "
+                    "between them quietly stopped needing managing."
+                ),
                 summary=(
                     "They didn't do anything special. {They:player} left feeling better than "
                     "{they:player}'d arrived."
@@ -85,6 +98,10 @@ BLUEPRINTS = [
                 ],
             ),
             "distant": BranchOutcome(
+                action_summary=(
+                    "{name:player} kept it to easy ground — jokes, scores, the "
+                    "safe stuff — and let the real thing stay unsaid."
+                ),
                 summary=(
                     "The conversation stayed shallow. Both of them noticed."
                 ),

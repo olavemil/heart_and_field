@@ -45,6 +45,11 @@ class OutcomeRecord:
     # Canonical EventId triple from the blueprint, when set. Used by
     # chain bias logic to look up outgoing edges.
     taxonomy_id: "EventId | None" = None
+    # Absolute calendar day this outcome resolved on (``WorldClock
+    # .day_ordinal``; week 1 Monday == 0). ``WeekPhase`` only tracks the
+    # week, so this is what lets the arc-recap beat tell that a thread
+    # last advanced on an earlier day. ``None`` on legacy saves.
+    day_ordinal: int | None = None
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -61,6 +66,8 @@ class OutcomeRecord:
         }
         if self.taxonomy_id is not None:
             d["taxonomy_id"] = self.taxonomy_id.to_dict()
+        if self.day_ordinal is not None:
+            d["day_ordinal"] = self.day_ordinal
         return d
 
     @classmethod
@@ -81,4 +88,5 @@ class OutcomeRecord:
             },
             flags=set(d.get("flags", [])),
             taxonomy_id=EventId.from_dict(tid) if tid is not None else None,
+            day_ordinal=d.get("day_ordinal"),
         )

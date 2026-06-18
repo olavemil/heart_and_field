@@ -135,6 +135,21 @@ class BranchOutcome:
     branch is reached — the same player choice may resolve to outcomes
     of different lengths (e.g. "ate with friends" runs longer than
     "ate alone after the social check failed").
+
+    Multi-beat narration (Phase 24B). ``summary`` is the **result** beat
+    (the consequence / where things land) and is always authored — it is
+    the single-beat fallback. The two optional beats play *before* it,
+    each on its own screen, so a resolved choice reads as action →
+    reaction → result rather than one block:
+
+    - ``action_summary`` — what the player did, immediately after the
+      choice lands.
+    - ``reaction_summary`` — the other party's reaction to it.
+
+    Both use the same role-scoped pronoun slots as ``summary``
+    (``{they:player}`` …) and are LLM-enhanced with journal continuity so
+    each beat flows from the last. Leave them ``None`` to keep the event
+    single-beat.
     """
 
     summary: str
@@ -142,6 +157,8 @@ class BranchOutcome:
     flags: set[str] = field(default_factory=set)
     relationship_effects: list["RelationshipEffect"] = field(default_factory=list)
     duration_minutes: int | None = None
+    action_summary: str | None = None
+    reaction_summary: str | None = None
 
 
 @dataclass
@@ -174,6 +191,11 @@ class EventBlueprint:
     carries_arc_context: bool = False
     location: LocationCue | None = None
     duration_minutes: int = 60
+    # Pre-choice premise beat (Phase 24B). Narrated after the atmospheric
+    # scene intro and before the choice menu, on its own screen(s). Uses
+    # role-scoped pronoun slots like the branch summaries. ``None`` keeps
+    # the event's setup to the one-line scene intro only.
+    setup: str | None = None
 
     # ---- Phase 17 — taxonomy + chaining + secret/quirk gating ---------
     #
@@ -641,6 +663,7 @@ def resolve_outcome(
         stat_deltas=stat_deltas,
         flags=set(outcome.flags),
         taxonomy_id=blueprint.event_id,
+        day_ordinal=state.clock.day_ordinal() if state.clock is not None else None,
     )
     state.outcome_log.append(record)
     state.completed_event_ids.add(blueprint.id)

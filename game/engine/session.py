@@ -91,10 +91,14 @@ from .figure_layout import FigureBox, FigureDistance, FigureSlot, compute_layout
 from .sprite_pool import CharacterDescriptor
 from .motivators import Motivator
 from .narrative import (
+    NarrationContext,
     NarrativeTemplate,
+    _substitute,
     build_narration_context,
+    compress_arc_summary,
     narrate,
     narrate_match_phase,
+    paginate,
     self_evaluation_line,
     templates_for_event,
 )
@@ -105,6 +109,7 @@ from .llm import (
     LLMClient,
     llm_config_from_dict,
     llm_config_to_dict,
+    recap_arc,
     should_enhance,
     summarise_narration,
 )
@@ -149,6 +154,21 @@ class ClockDisplay:
     next_slot_in_minutes: int
     transition_warning: bool
     match_label: str | None = None
+
+
+@dataclass
+class NarratedBeat:
+    """One screen-group of an event's narration (Phase 24B).
+
+    ``kind`` is ``"setup"`` / ``"action"`` / ``"reaction"`` / ``"result"``;
+    ``pages`` are the screen-sized strings Ren'Py shows in turn. Carrying
+    the beat kind (rather than a flat page list) gives the presentation
+    layer a hook to re-frame between beats — e.g. re-pose figures when a
+    reaction lands (Phase 24D).
+    """
+
+    kind: str
+    pages: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -248,6 +268,21 @@ _TONE_INTRO_LINES: dict[EventTone, tuple[str, ...]] = {
         "An ordinary hour, so far.",
     ),
 }
+
+def _recap_distance_phrase(gap_days: int) -> str:
+    """Lead-in for the arc recap beat, scaled to how long the thread has
+    lapsed (Phase 24C). Used as the deterministic framing and as LLM
+    grounding so the callback keeps a sense of elapsed time."""
+    if gap_days <= 1:
+        return "The day before"
+    if gap_days <= 3:
+        return "A couple of days earlier"
+    if gap_days <= 6:
+        return "Earlier that week"
+    if gap_days <= 13:
+        return "The week before"
+    return "Some time before"
+
 
 # Role names checked, in order, when picking which cast member a scene
 # puts on screen (Phase 22D sprite wiring).
@@ -1155,30 +1190,34 @@ class GameSession:
             merged.update(cue.descriptor_overrides)
         return LocationDescriptor.from_dict(merged)
 
-    def narrate_outcome(
+    def _narrate_text_beat(
         self,
+        text: str,
         blueprint: EventBlueprint,
-        cast: dict[str, Character],
-        record: OutcomeRecord,
+        cast: Mapping[str, Character],
+        *,
+        templates: "Sequence[NarrativeTemplate] | None" = None,
+        trigger_outcome: OutcomeRecord | None = None,
     ) -> list[str]:
-        """Produce paginated narration for a resolved event.
+        """Narrate one beat of authored text and fold it into the journal.
 
-        Returns a list of screen-sized pages. Short narration yields a
-        single-page list; long template fills or LLM rephrasings split
-        on sentence boundaries. Callers iterate the list to display each
-        page in turn.
+        Shared by the setup / action / reaction / result beats (Phase
+        24B). ``text`` becomes the ``{summary}`` source (so role-scoped
+        pronoun slots resolve); ``templates`` lets the result beat run
+        through the event's template pool, while the action/reaction/setup
+        beats pass ``None`` (the authored text is itself the prose and is
+        only LLM-polished). Recent journal context grounds every beat so
+        each flows from the last; the rendered pages are then recorded so
+        the *next* beat continues from them.
         """
         player = cast.get("player")
-        event_templates = templates_for_event(
-            self.templates, blueprint.id, blueprint.tags
-        )
         ctx = build_narration_context(
             target=player,
             cast=cast,
             outcome_log=self.state.outcome_log,
-            trigger_outcome=record,
+            trigger_outcome=trigger_outcome,
             team_morale=self.team_morale,
-            branch_summary=record.summary,
+            branch_summary=text,
             location=(
                 blueprint.location.node_name
                 if blueprint.location is not None
@@ -1186,7 +1225,7 @@ class GameSession:
             ),
         )
         pages = narrate(
-            event_templates,
+            templates if templates is not None else [],
             ctx,
             self.rng,
             use_llm=self.use_llm,
@@ -1194,11 +1233,149 @@ class GameSession:
             event_tags=blueprint.tags,
             recent_narration=self.journal.recent_context(),
         )
-        # Fold the rendered prose into the journal so the *next* beat /
-        # event continues from what the player just read (temporal track).
         for page in pages:
             self.journal.record_beat(page)
         return pages
+
+    def narrate_outcome(
+        self,
+        blueprint: EventBlueprint,
+        cast: dict[str, Character],
+        record: OutcomeRecord,
+    ) -> list[str]:
+        """Produce paginated narration for a resolved event's result beat.
+
+        Returns a list of screen-sized pages. Short narration yields a
+        single-page list; long template fills or LLM rephrasings split
+        on sentence boundaries. Callers iterate the list to display each
+        page in turn. This is the result beat of :meth:`narrate_event`,
+        and the single-beat fallback when a branch authors no extra beats.
+        """
+        event_templates = templates_for_event(
+            self.templates, blueprint.id, blueprint.tags
+        )
+        return self._narrate_text_beat(
+            record.summary,
+            blueprint,
+            cast,
+            templates=event_templates,
+            trigger_outcome=record,
+        )
+
+    def narrate_setup(
+        self,
+        blueprint: EventBlueprint,
+        cast: Mapping[str, Character],
+    ) -> list[str]:
+        """Pre-choice premise beat (Phase 24B).
+
+        Narrated after the atmospheric scene intro and before the choice
+        menu. Returns ``[]`` when the blueprint authors no ``setup`` — the
+        scene intro line then stands as the only pre-choice framing.
+        """
+        if not blueprint.setup:
+            return []
+        return self._narrate_text_beat(blueprint.setup, blueprint, cast)
+
+    def narrate_arc_recap(
+        self,
+        blueprint: EventBlueprint,
+        cast: Mapping[str, Character],
+    ) -> list[str]:
+        """Arc callback beat (Phase 24C) — the thread track made visible.
+
+        When this event resumes an arc thread whose previous beat resolved
+        on an *earlier day*, recap that beat so the current scene is read
+        in light of what came before. Placed after the scene setup and
+        before the choice. Returns ``[]`` when there is no prior arc beat,
+        when the prior beat was the same day (no gap to bridge), or when
+        no day was recorded (legacy outcomes).
+
+        This is distinct from the journal (immediate continuity): it
+        surfaces the arc digest (``OutcomeRecord.arc_summary``), resolved
+        against the cast that was present then, framed by how long the
+        thread has lapsed.
+        """
+        prior = find_prior_arc_outcome(
+            blueprint.id, self.arc_graph, self.state.outcome_log
+        )
+        if prior is None or prior.day_ordinal is None:
+            return []
+        today = (
+            self.state.clock.day_ordinal() if self.state.clock is not None else None
+        )
+        if today is None or prior.day_ordinal >= today:
+            return []
+
+        thread = (prior.arc_summary or prior.summary or "").strip()
+        if not thread:
+            return []
+        thread = compress_arc_summary(thread)
+
+        # Resolve the prior thread's pronoun slots against the cast that
+        # was present when it happened (current cast fills shared roles).
+        recap_cast: dict[str, Character] = dict(cast)
+        for role, cid in prior.participants.items():
+            ch = self.state.characters.get(cid)
+            if ch is not None:
+                recap_cast[role] = ch
+        ctx = NarrationContext(
+            target=recap_cast.get("player"),
+            cast=recap_cast,
+            branch_summary=thread,
+        )
+        resolved = _substitute(thread, ctx)
+
+        gap = today - prior.day_ordinal
+        recap = f"{_recap_distance_phrase(gap)}: {resolved}"
+
+        if self.use_llm and self.llm_client is not None:
+            names = [
+                c.nickname or c.name
+                for c in recap_cast.values()
+                if getattr(c, "name", None)
+            ]
+            recap = recap_arc(
+                self.llm_client,
+                recap,
+                cast_names=names,
+                cast_pronouns=self._cast_pronouns(recap_cast),
+            )
+
+        pages = paginate(recap)
+        for page in pages:
+            self.journal.record_beat(page)
+        return pages
+
+    def narrate_event(
+        self,
+        blueprint: EventBlueprint,
+        cast: dict[str, Character],
+        record: OutcomeRecord,
+    ) -> list["NarratedBeat"]:
+        """Ordered post-choice beats: action → reaction → result (24B).
+
+        The optional action/reaction beats play only when the resolved
+        branch authors them; the result beat (branch summary, run through
+        the template pool) always plays and is the single-beat fallback.
+        Each beat is recorded into the journal before the next is
+        narrated, so reaction flows from action and result from both.
+        Ren'Py iterates the beats and, within each, the pages.
+        """
+        beats: list[NarratedBeat] = []
+        outcome = blueprint.outcomes.get(record.branch_taken)
+        if outcome is not None and outcome.action_summary:
+            beats.append(NarratedBeat("action", self._narrate_text_beat(
+                outcome.action_summary, blueprint, cast, trigger_outcome=record,
+            )))
+        if outcome is not None and outcome.reaction_summary:
+            beats.append(NarratedBeat("reaction", self._narrate_text_beat(
+                outcome.reaction_summary, blueprint, cast, trigger_outcome=record,
+            )))
+        beats.append(
+            NarratedBeat("result", self.narrate_outcome(blueprint, cast, record))
+        )
+        return beats
 
     def scene_intro(
         self,
