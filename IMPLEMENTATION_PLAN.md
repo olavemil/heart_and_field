@@ -1058,14 +1058,18 @@ separately, never conflated:**
 
 - **General dynamic role assignment** — extend the weighted stance
   resolver to *all* participants (not just the player), with persistence
-  + trait weighting on casting.
+  + trait weighting on casting. Shares the anchor + weighted-resolver
+  pattern with the tone rework below (build one `weighted_resolve` helper).
 - **Escalating-cast content** — author a chained event that adds a role
   mid-scene, actually exercising `session.cast_chained_event` (the helper
   exists and is tested; no content uses it yet).
-- **Two tone retones** — `external.media_scrum` → TENSE and
-  `training.showing_off` → PLAYFUL read better, but tone is part of the
-  `EventId` triple + `VALID_EVENT_COMBINATIONS`, so retoning is a taxonomy
-  change. Flagged with in-place `NOTE` comments; do it as a taxonomy pass.
+- **Event-taxonomy / tone rework (proposed Phase 25)** — `EventId →
+  EventType = (domain, nature, possible_tones)`; tone becomes a carried,
+  soft-resolved dial driving continuity + variation, not part of the
+  essence key. Subsumes the two deferred tone retones (`media_scrum`,
+  `training.showing_off`), which become plain field edits once tone leaves
+  the identity triple. Full ADR + migration plan:
+  `field_and_heart_event_tone_adr.md`.
 
 ## Cross-cutting concerns (maintained throughout)
 
