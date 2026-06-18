@@ -166,3 +166,67 @@ class TestManifestRoundTrip:
         assert a.category is FigureCategory.AUTHORITY
         assert a.posture is FigurePosture.ANGRY
         assert a.appearance.age == "older"
+
+
+class TestContext:
+    def test_context_preferred_over_default(self, tmp_path):
+        from engine.figures import FigureContext
+        mf = FigureManifest(assets_root=tmp_path)
+        # Same gender/posture, one default + one locker-context.
+        casual = _asset(FigureCategory.INTERLOCUTOR, FigurePosture.NEUTRAL,
+                        gender="feminine", skin="light", hair_color="dark",
+                        hair_length="short", age="adult")
+        locker = FigureAsset(FigureCategory.INTERLOCUTOR,
+                             FigureAppearance(gender="feminine"),
+                             FigurePosture.NEUTRAL, "locker_f.png",
+                             FigureContext.LOCKER)
+        mf.add(casual)
+        mf.add(locker)
+        want = FigureAppearance(gender="feminine")
+        # In a locker scene the locker figure wins.
+        a = select_figure(mf, FigureCategory.INTERLOCUTOR, want,
+                          FigurePosture.NEUTRAL, FigureContext.LOCKER)
+        assert a is locker
+        # In a default scene the casual figure wins.
+        b = select_figure(mf, FigureCategory.INTERLOCUTOR, want,
+                          FigurePosture.NEUTRAL, FigureContext.DEFAULT)
+        assert b is casual
+
+    def test_context_degrades_to_same_gender_default(self, tmp_path):
+        from engine.figures import FigureContext
+        mf = FigureManifest(assets_root=tmp_path)
+        # Only default figures exist; a shower scene still returns the
+        # right-gender one rather than nothing or a wrong gender.
+        mf.add(_asset(FigureCategory.INTERLOCUTOR, FigurePosture.NEUTRAL,
+                      gender="feminine", skin="light", hair_color="dark",
+                      hair_length="short", age="adult"))
+        mf.add(_asset(FigureCategory.INTERLOCUTOR, FigurePosture.NEUTRAL,
+                      gender="masculine", skin="light", hair_color="dark",
+                      hair_length="short", age="adult"))
+        a = select_figure(mf, FigureCategory.INTERLOCUTOR,
+                          FigureAppearance(gender="feminine"),
+                          FigurePosture.NEUTRAL, FigureContext.SHOWER)
+        assert a.appearance.gender == "feminine"
+
+    def test_context_for_node(self):
+        from engine.figures import FigureContext, context_for_node
+        assert context_for_node("showers") is FigureContext.SHOWER
+        assert context_for_node("locker_room") is FigureContext.LOCKER
+        assert context_for_node("kitchen") is FigureContext.DEFAULT
+        assert context_for_node(None) is FigureContext.DEFAULT
+
+    def test_context_round_trips(self, tmp_path):
+        from engine.figures import FigureContext
+        mf = FigureManifest(assets_root=tmp_path)
+        mf.add(FigureAsset(FigureCategory.INTERLOCUTOR, FigureAppearance(),
+                           FigurePosture.WARM, "x.png", FigureContext.SHOWER))
+        mf.save()
+        reloaded = FigureManifest.load(tmp_path)
+        assert reloaded.assets[0].context is FigureContext.SHOWER
+        # Legacy entry without a context field loads as DEFAULT.
+        legacy = FigureAsset.from_dict({
+            "category": "interlocutor",
+            "appearance": FigureAppearance().to_dict(),
+            "posture": "neutral", "path": "y.png",
+        })
+        assert legacy.context is FigureContext.DEFAULT

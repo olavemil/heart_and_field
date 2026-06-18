@@ -37,6 +37,15 @@ class FigureCategory(str, Enum):
     ANONYMOUS = "anonymous"        # locker/shower/peripheral figures
 
 
+class FigureContext(str, Enum):
+    """Scene-dependent dress/setting of a figure. A locker-room or shower
+    conversation needs context-appropriate figures, not casual clothes."""
+
+    DEFAULT = "default"   # casual; the bulk of figures
+    LOCKER = "locker"     # locker-room attire / towel
+    SHOWER = "shower"     # towel, steam
+
+
 class FigurePosture(str, Enum):
     # Conversation tones.
     WARM = "warm"
@@ -86,6 +95,7 @@ class FigureAsset:
     appearance: FigureAppearance
     posture: FigurePosture
     path: str  # manifest-relative
+    context: FigureContext = FigureContext.DEFAULT
 
     def to_dict(self) -> dict:
         return {
@@ -93,6 +103,7 @@ class FigureAsset:
             "appearance": self.appearance.to_dict(),
             "posture": self.posture.value,
             "path": self.path,
+            "context": self.context.value,
         }
 
     @classmethod
@@ -102,6 +113,7 @@ class FigureAsset:
             appearance=FigureAppearance.from_dict(d["appearance"]),
             posture=FigurePosture(d["posture"]),
             path=str(d["path"]),
+            context=FigureContext(d.get("context", "default")),
         )
 
 
@@ -197,6 +209,22 @@ def posture_for(category: FigureCategory, tone: EventTone) -> FigurePosture:
     return FigurePosture.NEUTRAL
 
 
+_NODE_CONTEXT: dict[str, FigureContext] = {
+    "showers": FigureContext.SHOWER,
+    "shower": FigureContext.SHOWER,
+    "locker_room": FigureContext.LOCKER,
+    "locker_bay": FigureContext.LOCKER,
+}
+
+
+def context_for_node(node_name: str | None) -> FigureContext:
+    """Scene context (dress) for a background node — locker/shower scenes
+    need context-appropriate figures, everything else is DEFAULT."""
+    if node_name is None:
+        return FigureContext.DEFAULT
+    return _NODE_CONTEXT.get(node_name, FigureContext.DEFAULT)
+
+
 _PLAYING_ROLES = {
     CharacterRole.STRIKER, CharacterRole.MIDFIELDER,
     CharacterRole.DEFENDER, CharacterRole.GOALKEEPER,
@@ -221,6 +249,10 @@ def category_for_role(role: CharacterRole, *, in_match: bool = False) -> FigureC
 # Appearance-axis match weights (gender/posture dominate identity read).
 _W_GENDER = 8
 _W_POSTURE = 6
+# Context is weighted just below gender — a shower/locker scene strongly
+# prefers context-appropriate dress, but degrades to a same-gender casual
+# figure before a wrong gender if no context match was baked.
+_W_CONTEXT = 7
 _W_AGE = 2
 _W_SKIN = 1
 _W_HAIR_COLOR = 1
@@ -232,12 +264,14 @@ def select_figure(
     category: FigureCategory,
     appearance: FigureAppearance,
     posture: FigurePosture,
+    context: FigureContext = FigureContext.DEFAULT,
 ) -> FigureAsset | None:
     """Best-matching asset in *category*, or None if the category is empty.
 
-    Scores every asset in the category; gender and posture dominate so a
-    missing exact appearance degrades gracefully (a different hair colour
-    before a wrong gender or emotional read). Deterministic on ties.
+    Scores every asset in the category; gender, context, and posture
+    dominate so a missing exact appearance degrades gracefully (a
+    different hair colour before a wrong gender, dress, or emotional
+    read). Deterministic on ties.
     """
     pool = [a for a in manifest.assets if a.category is category]
     if not pool:
@@ -248,6 +282,8 @@ def select_figure(
         ap = a.appearance
         if ap.gender == appearance.gender:
             s += _W_GENDER
+        if a.context is context:
+            s += _W_CONTEXT
         if a.posture is posture:
             s += _W_POSTURE
         if ap.age == appearance.age:
@@ -272,9 +308,10 @@ def select_for_character(
     tone: EventTone,
     *,
     in_match: bool = False,
+    context: FigureContext = FigureContext.DEFAULT,
 ) -> FigureAsset | None:
-    """Convenience: descriptor + role + tone → asset."""
+    """Convenience: descriptor + role + tone (+ scene context) → asset."""
     category = category_for_role(role, in_match=in_match)
     appearance = appearance_from_descriptor(descriptor)
     posture = posture_for(category, tone)
-    return select_figure(manifest, category, appearance, posture)
+    return select_figure(manifest, category, appearance, posture, context)
