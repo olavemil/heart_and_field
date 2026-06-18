@@ -256,8 +256,37 @@ def test_paginate_no_split_inside_a_word():
     text = "alpha bravo charlie delta echo foxtrot golf hotel."
     pages = paginate(text, max_chars=20)
     for page in pages:
-        # Every page is whole words.
-        assert all(tok in text for tok in page.split())
+        # Every page is whole words (ignoring em-dash continuation marks).
+        toks = page.replace("—", "").split()
+        assert all(tok in text for tok in toks)
+
+
+def test_paginate_caps_at_two_sentences():
+    text = "One. Two. Three. Four. Five."
+    pages = paginate(text, max_chars=280)  # all five fit on chars, not sentences
+    assert pages == ["One. Two.", "Three. Four.", "Five."]
+
+
+def test_paginate_caps_on_word_count():
+    # Two short sentences but a tight word cap forces one-per-page.
+    text = "Alpha bravo charlie delta. Echo foxtrot golf hotel."
+    pages = paginate(text, max_chars=280, max_words=4)
+    assert pages == ["Alpha bravo charlie delta.", "Echo foxtrot golf hotel."]
+
+
+def test_paginate_em_dash_continuation_for_one_long_sentence():
+    # A single sentence with no internal break, too long for one page.
+    text = "The ball moved through the lines and the crowd held its breath."
+    pages = paginate(text, max_chars=30)
+    assert len(pages) > 1
+    # First page ends with the continuation dash, last begins with it.
+    assert pages[0].endswith("—")
+    assert pages[-1].startswith("—")
+    for page in pages:
+        assert len(page) <= 30
+    # Stripping the markers reconstructs the original words in order.
+    rebuilt = " ".join(p.replace("—", "").strip() for p in pages).split()
+    assert rebuilt == text.split()
 
 
 def test_narrate_paginates_long_template_fill_without_llm():

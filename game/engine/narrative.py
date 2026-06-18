@@ -388,20 +388,42 @@ def templates_for_event(
 # --- Narrate ----------------------------------------------------------------
 
 
+# A page is capped by whichever limit binds first: at most two sentences,
+# ``PAGE_MAX_WORDS`` words, or ``PAGE_MAX_CHARS`` characters. Two sentences
+# keeps a screen readable; the word/char caps stop a pair of long sentences
+# from overflowing.
 PAGE_MAX_CHARS = 280
+PAGE_MAX_WORDS = 50
+PAGE_MAX_SENTENCES = 2
 
+# Continuation marker for a single sentence too long to fit one page: the
+# page ends "… —" and the next begins "— …".
+_CONT_DASH = "—"  # em dash
 
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
 
-def paginate(text: str, max_chars: int = PAGE_MAX_CHARS) -> list[str]:
+def _fits(text: str, max_chars: int, max_words: int) -> bool:
+    return len(text) <= max_chars and len(text.split()) <= max_words
+
+
+def paginate(
+    text: str,
+    max_chars: int = PAGE_MAX_CHARS,
+    *,
+    max_words: int = PAGE_MAX_WORDS,
+    max_sentences: int = PAGE_MAX_SENTENCES,
+) -> list[str]:
     """Split a narration string into screen-sized pages.
 
-    Pages are packed greedily up to ``max_chars`` on sentence boundaries
-    (`. ! ?` followed by whitespace). Paragraph breaks (`\\n\\n`) are
-    treated as hard page boundaries. A run-on with no sentence boundary
-    is word-wrapped so no page exceeds the cap. Empty input yields a
-    single empty page so callers can iterate uniformly.
+    A page holds whole sentences up to whichever limit binds first:
+    ``max_sentences`` (default 2), ``max_words``, or ``max_chars``.
+    Paragraph breaks (`\\n\\n`) are hard page boundaries. A single
+    sentence too long for one page is broken mid-sentence with an em-dash
+    continuation — the page ends ``" —"`` and the next begins ``"— "`` —
+    so a run-on never silently overflows and the reader sees it continues.
+    Empty input yields a single empty page so callers can iterate
+    uniformly.
     """
     text = text.strip()
     if not text:
@@ -412,50 +434,77 @@ def paginate(text: str, max_chars: int = PAGE_MAX_CHARS) -> list[str]:
         paragraph = paragraph.strip()
         if not paragraph:
             continue
-        sentences = _SENTENCE_END.split(paragraph)
         current = ""
-        for sentence in sentences:
+        current_sentences = 0
+        for sentence in _SENTENCE_END.split(paragraph):
+            sentence = sentence.strip()
             if not sentence:
                 continue
-            if len(sentence) > max_chars:
-                # Flush current page, then word-wrap the long sentence.
+            if not _fits(sentence, max_chars, max_words):
+                # Too big to share or fit a page — flush, then em-dash split.
                 if current:
                     pages.append(current)
                     current = ""
-                pages.extend(_wrap_words(sentence, max_chars))
+                    current_sentences = 0
+                pages.extend(_split_long_sentence(sentence, max_chars, max_words))
                 continue
             candidate = f"{current} {sentence}".strip() if current else sentence
-            if len(candidate) > max_chars:
+            if current and (
+                current_sentences >= max_sentences
+                or not _fits(candidate, max_chars, max_words)
+            ):
                 pages.append(current)
                 current = sentence
+                current_sentences = 1
             else:
                 current = candidate
+                current_sentences += 1
         if current:
             pages.append(current)
     return pages or [""]
 
 
-def _wrap_words(text: str, max_chars: int) -> list[str]:
-    """Word-wrap a long run-on into chunks no larger than ``max_chars``."""
-    out: list[str] = []
-    current = ""
-    for word in text.split():
-        if len(word) > max_chars:
+def _split_long_sentence(
+    sentence: str, max_chars: int, max_words: int
+) -> list[str]:
+    """Break one over-long sentence across pages with em-dash continuation.
+
+    Each page but the last ends ``" —"``; each but the first begins
+    ``"— "``. Chunks are sized against a reduced budget so the *marked*
+    page still respects ``max_chars`` / ``max_words``. A single token
+    longer than the budget is hard-sliced.
+    """
+    budget_chars = max(1, max_chars - 4)  # room for " —" + "— "
+    budget_words = max(1, max_words - 2)  # the two marker tokens
+
+    chunks: list[str] = []
+    current: list[str] = []
+    for word in sentence.split():
+        if len(word) > budget_chars:
             if current:
-                out.append(current)
-                current = ""
-            # A single token longer than the cap — hard-slice it.
-            for i in range(0, len(word), max_chars):
-                out.append(word[i : i + max_chars])
+                chunks.append(" ".join(current))
+                current = []
+            for i in range(0, len(word), budget_chars):
+                chunks.append(word[i : i + budget_chars])
             continue
-        candidate = f"{current} {word}".strip() if current else word
-        if len(candidate) > max_chars:
-            out.append(current)
-            current = word
+        trial = " ".join(current + [word])
+        if current and (len(trial) > budget_chars or len(current) + 1 > budget_words):
+            chunks.append(" ".join(current))
+            current = [word]
         else:
-            current = candidate
+            current.append(word)
     if current:
-        out.append(current)
+        chunks.append(" ".join(current))
+
+    if len(chunks) <= 1:
+        return chunks or [sentence]
+
+    last = len(chunks) - 1
+    out: list[str] = []
+    for i, chunk in enumerate(chunks):
+        prefix = f"{_CONT_DASH} " if i > 0 else ""
+        suffix = f" {_CONT_DASH}" if i < last else ""
+        out.append(f"{prefix}{chunk}{suffix}")
     return out
 
 
