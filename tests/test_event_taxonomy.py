@@ -2,8 +2,11 @@
 
 import pytest
 
+import random
+
 from engine.event_taxonomy import (
     CHAIN_EDGES,
+    TONE_VALENCE,
     VALID_EVENT_COMBINATIONS,
     ChainDimension,
     EventChainEdge,
@@ -13,6 +16,7 @@ from engine.event_taxonomy import (
     EventTone,
     chains_from,
     is_valid_event_id,
+    resolve_event_tone,
 )
 
 
@@ -150,3 +154,63 @@ class TestChainEdges:
         edge = next(e for e in CHAIN_EDGES if e.condition is not None)
         d = edge.to_dict()
         assert EventChainEdge.from_dict(d).condition == edge.condition
+
+
+# --- Tone resolver (Phase 25.2) ------------------------------------------
+
+
+class TestToneResolver:
+    def _et(self, *tones):
+        return EventType(
+            EventNature.INVITATION, EventDomain.RELATIONSHIP,
+            possible_tones=frozenset(tones),
+        )
+
+    def _dist(self, et, n=4000, **kw):
+        rng = random.Random(13)
+        counts: dict = {}
+        for _ in range(n):
+            t = resolve_event_tone(et, rng=rng, **kw)
+            counts[t] = counts.get(t, 0) + 1
+        return counts
+
+    def test_valence_covers_all_tones(self):
+        for t in EventTone:
+            assert t in TONE_VALENCE
+
+    def test_single_tone_is_deterministic(self):
+        et = self._et(EventTone.ROMANTIC)
+        # Even with a strong contrary context, a one-tone type yields it.
+        assert resolve_event_tone(
+            et, rng=random.Random(1), morale=-1.0
+        ) is EventTone.ROMANTIC
+
+    def test_empty_falls_back_to_neutral(self):
+        et = EventType(EventNature.OBSERVATION, EventDomain.SPORT)  # no tones
+        assert resolve_event_tone(et, rng=random.Random(1)) is EventTone.NEUTRAL
+
+    def test_deterministic_under_fixed_rng(self):
+        et = self._et(EventTone.TENSE, EventTone.WARM, EventTone.NEUTRAL)
+        a = [resolve_event_tone(et, rng=random.Random(5)) for _ in range(3)]
+        b = [resolve_event_tone(et, rng=random.Random(5)) for _ in range(3)]
+        assert a == b
+
+    def test_carried_tone_persists(self):
+        et = self._et(EventTone.TENSE, EventTone.WARM, EventTone.ROMANTIC)
+        without = self._dist(et)
+        withp = self._dist(et, carried_tone=EventTone.WARM)
+        assert withp[EventTone.WARM] > without[EventTone.WARM]
+
+    def test_context_pulls_toward_mood(self):
+        et = self._et(EventTone.HOSTILE, EventTone.WARM)
+        up = self._dist(et, morale=1.0, momentum=1.0)
+        down = self._dist(et, morale=-1.0, momentum=-1.0)
+        assert up[EventTone.WARM] > down[EventTone.WARM]
+        assert down[EventTone.HOSTILE] > up[EventTone.HOSTILE]
+
+    def test_carried_adjacency_boosts_near_tone(self):
+        # Carried PLAYFUL (0.5) isn't available; WARM (0.6) is adjacent.
+        et = self._et(EventTone.WARM, EventTone.HOSTILE)
+        without = self._dist(et)
+        withadj = self._dist(et, carried_tone=EventTone.PLAYFUL)
+        assert withadj[EventTone.WARM] > without[EventTone.WARM]

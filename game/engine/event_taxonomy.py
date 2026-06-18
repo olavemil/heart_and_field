@@ -161,6 +161,101 @@ class EventType:
 
 
 # ===========================================================================
+# Tone resolution (Phase 25.2)
+# ===========================================================================
+#
+# The per-instance resolved tone is sampled from an EventType's
+# ``possible_tones`` — biased toward the tone carried from the prior event
+# (continuity) and toward a context-derived target mood (morale/momentum),
+# with chance as the tiebreak. This is the tone axis of the eventual
+# dimensional continuation model; for now it just colours a single event.
+#
+# Standalone for now (one consumer). When dynamic participant roles land,
+# the shared weighting shape will be extracted into a generic helper.
+
+# Rough affective valence per tone, on [-1, 1]. Used to (a) pull the
+# resolved tone toward a context target and (b) judge tone "adjacency"
+# for carrying continuity onto a near-by available tone.
+TONE_VALENCE: dict[EventTone, float] = {
+    EventTone.HOSTILE: -1.0,
+    EventTone.TENSE: -0.5,
+    EventTone.MELANCHOLY: -0.4,
+    EventTone.NEUTRAL: 0.0,
+    EventTone.ROMANTIC: 0.3,
+    EventTone.PLAYFUL: 0.5,
+    EventTone.WARM: 0.6,
+    EventTone.TRIUMPHANT: 1.0,
+}
+
+_TONE_PERSIST = 1.8       # carried tone is itself available
+_TONE_ADJACENT = 1.3      # carried tone is valence-close to an available tone
+_TONE_ADJ_BAND = 0.3      # |valence diff| within this counts as adjacent
+_TONE_CONTEXT_W = 0.8     # how strongly context pulls toward the target mood
+
+
+def resolve_event_tone(
+    event_type: EventType,
+    *,
+    rng,
+    carried_tone: EventTone | None = None,
+    morale: float = 0.0,
+    momentum: float = 0.0,
+) -> EventTone:
+    """Resolve a single tone for one firing of ``event_type``.
+
+    Samples from ``event_type.possible_tones`` (falling back to
+    ``NEUTRAL`` when none are declared), weighting each candidate by:
+
+    - **continuity** — the ``carried_tone`` from the prior event is
+      boosted when available, or a valence-adjacent candidate is mildly
+      boosted, so a thread keeps its mood unless something shifts it;
+    - **context** — candidates whose valence is near a target mood
+      (derived from ``morale`` + ``momentum``) are boosted, so a bruising
+      loss darkens and a surge warms;
+    - **chance** — weighted-sampled with the injected ``rng``.
+
+    A single-tone (or empty) type resolves deterministically. Pure +
+    rng-injected; never raises.
+    """
+    # Deterministic order so sampling is reproducible (frozenset order
+    # is not stable).
+    candidates = sorted(
+        event_type.possible_tones, key=lambda t: (TONE_VALENCE.get(t, 0.0), t.value)
+    )
+    if not candidates:
+        return EventTone.NEUTRAL
+    if len(candidates) == 1:
+        return candidates[0]
+
+    target = max(-1.0, min(1.0, 0.5 * morale + 0.5 * momentum))
+    carried_v = (
+        TONE_VALENCE.get(carried_tone) if carried_tone is not None else None
+    )
+
+    weights: list[float] = []
+    for t in candidates:
+        v = TONE_VALENCE.get(t, 0.0)
+        w = 1.0 + _TONE_CONTEXT_W * (1.0 - abs(v - target) / 2.0)
+        if carried_tone is not None:
+            if t == carried_tone:
+                w *= _TONE_PERSIST
+            elif carried_v is not None and abs(v - carried_v) <= _TONE_ADJ_BAND:
+                w *= _TONE_ADJACENT
+        weights.append(w)
+
+    total = sum(weights)
+    if total <= 0:
+        return candidates[0]
+    roll = rng.random() * total
+    acc = 0.0
+    for t, w in zip(candidates, weights):
+        acc += w
+        if roll <= acc:
+            return t
+    return candidates[-1]
+
+
+# ===========================================================================
 # Valid event combinations (addendum §4.4)
 # ===========================================================================
 #
