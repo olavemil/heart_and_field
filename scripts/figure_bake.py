@@ -30,7 +30,8 @@ sys.path.insert(0, str(ROOT / "game"))
 
 from engine.comfyui import ComfyUIClient, _sd3_txt2img_workflow  # noqa: E402
 from engine.figures import (  # noqa: E402
-    FigureAppearance, FigureAsset, FigureCategory, FigureManifest, FigurePosture,
+    FigureAppearance, FigureAsset, FigureCategory, FigureContext,
+    FigureManifest, FigurePosture,
 )
 
 OUT = ROOT / "game" / "assets" / "figures"
@@ -67,6 +68,7 @@ BEHIND_STYLE = (
     "background, alla prima, full body"
 )
 BEHIND_NEG = (
+    "ball, football, sports ball, holding a ball, "
     "face, facial features, eyes, mouth, portrait, looking at viewer, "
     "front view, facing camera, detailed face, identifiable person, sharp "
     "focus, fine detail, photorealistic, photograph, 3d render, cgi, "
@@ -140,12 +142,16 @@ class Spec:
     frontal: bool
 
 
-def _spec(cat, app, posture, frontal, prompt) -> Spec:
+def _spec(cat, app, posture, frontal, prompt,
+          context=FigureContext.DEFAULT) -> Spec:
+    # Default-context paths stay as before (don't invalidate the existing
+    # bake); other contexts get a prefix.
+    ctx = "" if context is FigureContext.DEFAULT else f"{context.value}_"
     name = (
-        f"{cat.value}/{app.gender}_{app.skin}_{app.hair_color}_"
+        f"{cat.value}/{ctx}{app.gender}_{app.skin}_{app.hair_color}_"
         f"{app.hair_length}_{app.age}_{posture.value}.png"
     )
-    return Spec(FigureAsset(cat, app, posture, name), prompt, frontal)
+    return Spec(FigureAsset(cat, app, posture, name, context), prompt, frontal)
 
 
 def enumerate_catalogue() -> list[Spec]:
@@ -167,6 +173,25 @@ def enumerate_catalogue() -> list[Spec]:
                 f"{_INTERLOCUTOR[FigurePosture.NEUTRAL]}, casual clothes, {GAZE_NPC}")
         specs.append(_spec(FigureCategory.INTERLOCUTOR, app, FigurePosture.NEUTRAL,
                            True, f"{subj}, {FRONTAL_STYLE}"))
+
+    # Locker-room / shower interlocutors — context-appropriate dress so
+    # conversations in those scenes have a real frontal partner (not the
+    # casual-clothes default, and not a from-behind anonymous figure).
+    for ctx, dress, postures in (
+        (FigureContext.LOCKER, "wearing locker-room kit, a towel over the "
+         "shoulder, standing by the lockers",
+         (FigurePosture.WARM, FigurePosture.NEUTRAL, FigurePosture.TENSE)),
+        (FigureContext.SHOWER, "wrapped in a towel, steam, communal shower "
+         "room",
+         (FigurePosture.NEUTRAL, FigurePosture.WARM)),
+    ):
+        for g in GENDERS:
+            app = FigureAppearance(g, "light", "dark", "short", "adult")
+            for posture in postures:
+                pose = _INTERLOCUTOR[posture].split(",")[0]
+                subj = (f"a {_gender_word(g)} {dress}, {pose}, {GAZE_NPC}")
+                specs.append(_spec(FigureCategory.INTERLOCUTOR, app, posture,
+                                   True, f"{subj}, {FRONTAL_STYLE}", ctx))
 
     # Authority — both genders × both ages × four postures.
     for age in ("adult", "older"):
@@ -205,9 +230,11 @@ def enumerate_catalogue() -> list[Spec]:
     for sport in ("soccer", "rugby", "basketball"):
         for g in GENDERS:
             app = FigureAppearance(g, "light", "dark", "short", "adult")
-            subj = (f"a {_gender_word(g)} {sport} player running with the "
-                    f"ball, dynamic athletic action, sports kit, seen from "
-                    f"behind, running away")
+            # No ball — it rendered in odd places (behind the back). The
+            # negative (BEHIND_NEG) also forbids it.
+            subj = (f"a {_gender_word(g)} {sport} player running, dynamic "
+                    f"athletic action, sports kit, seen from behind, "
+                    f"running away")
             # Encode sport in the path so the keys don't collide.
             sp = _spec(FigureCategory.MOTION, app, FigurePosture.ACTION, False,
                        f"{subj}, {BEHIND_STYLE}")

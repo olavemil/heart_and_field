@@ -84,6 +84,7 @@ from .figures import (
     FigureManifest,
     FigurePosture,
     appearance_from_descriptor,
+    context_for_node,
     select_figure,
     select_for_character,
 )
@@ -1272,6 +1273,10 @@ class GameSession:
             if blueprint.event_id is not None
             else EventTone.NEUTRAL
         )
+        # Scene dress context (locker/shower → context-appropriate figures).
+        context = context_for_node(
+            blueprint.location.node_name if blueprint.location is not None else None
+        )
 
         def desc_of(c: Character) -> CharacterDescriptor:
             return getattr(c, "descriptor", None) or self._DEFAULT_DESCRIPTOR
@@ -1284,7 +1289,7 @@ class GameSession:
         others.sort(key=lambda rc: (rc[0] not in _FOCAL_ROLE_PRIORITY, rc[0]))
         for role, c in others[:max_npcs]:
             asset = select_for_character(
-                self.figure_manifest, desc_of(c), c.role, tone
+                self.figure_manifest, desc_of(c), c.role, tone, context=context,
             )
             if asset is not None:
                 resolved.append((FigureSlot(role="npc"), asset.path, "npc"))
@@ -1296,6 +1301,7 @@ class GameSession:
                 FigureCategory.PLAYER,
                 appearance_from_descriptor(desc_of(player)),
                 FigurePosture.NEUTRAL,
+                context,
             )
             if asset is not None:
                 resolved.append(
