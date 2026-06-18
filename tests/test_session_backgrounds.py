@@ -406,11 +406,11 @@ class TestFigureLayoutFor:
         s.figure_manifest = mf
         return s
 
-    def _blueprint(self, tone):
+    def _blueprint(self, tone, stance=None):
         from engine.event_taxonomy import (
             EventDomain, EventId, EventNature, EventTone,
         )
-        from engine.events import EventBlueprint, RoleSlot, SceneBlock
+        from engine.events import EventBlueprint, PlayerStance, RoleSlot, SceneBlock
 
         return EventBlueprint(
             id="t.fig",
@@ -421,6 +421,7 @@ class TestFigureLayoutFor:
             ],
             blocks=[SceneBlock(id="main")],
             outcomes={},
+            player_stance=stance or PlayerStance.ACTOR,
             event_id=EventId(
                 nature=EventNature.CONFRONTATION,
                 domain=EventDomain.RELATIONSHIP,
@@ -454,3 +455,25 @@ class TestFigureLayoutFor:
         cast = {"player": s.state.characters["player"]}
         assert s.figure_layout_for(self._blueprint(EventTone.WARM),
                                    cast, 1280, 720) == []
+
+    def test_player_stance_shrinks_silhouette(self, tmp_path):
+        # Phase 24C: a spectator's player figure is smaller and further
+        # aside than an actor's foreground anchor.
+        from engine.event_taxonomy import EventTone
+        from engine.events import PlayerStance
+
+        s = self._session(tmp_path)
+        player = s.state.characters["player"]
+        other = next(c for c in s.state.characters.values() if c.id != "player")
+        cast = {"player": player, "target": other}
+
+        def player_box(stance):
+            placements = s.figure_layout_for(
+                self._blueprint(EventTone.HOSTILE, stance), cast, 1280, 720
+            )
+            return next(b for _, b, r in placements if r == "player")
+
+        actor = player_box(PlayerStance.ACTOR)
+        spectator = player_box(PlayerStance.SPECTATOR)
+        assert spectator.height < actor.height
+        assert spectator.cx < actor.cx

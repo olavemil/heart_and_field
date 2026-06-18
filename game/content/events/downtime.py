@@ -6,6 +6,7 @@ from engine.events import (
     ChoiceNode,
     EventBlueprint,
     LocationCue,
+    PlayerStance,
     RelationshipEffect,
     RoleSlot,
     SceneBlock,
@@ -83,6 +84,8 @@ BLUEPRINTS = [
         participants=[RoleSlot(role="player", filter=is_player)],
         blocks=[SceneBlock(id="main")],
         base_weight=0.5,
+        # Withdrawn from the team around them, in their own world.
+        player_stance=PlayerStance.ONLOOKER,
         event_id=EventId(
             nature=EventNature.ISOLATION,
             domain=EventDomain.PERSONAL,

@@ -21,6 +21,11 @@ label drama_block(slot_index):
         e "Nothing comes of it."
         return
 
+    # Resolve the player's stance for this event once (Phase 24C). The
+    # figure framing, scene-intro perspective, and the outcome record all
+    # read the cached result so they agree.
+    $ fh.session.resolve_player_stance(fh.bp, cast)
+
     # Resolve the background, if this event has a location cue. The
     # composite stacks the primary background, weather/mood/time
     # grades, and per-scene noise overlays so the scene reads as

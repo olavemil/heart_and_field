@@ -360,3 +360,11 @@ class TestPromptPronounHints:
     def test_system_prompt_mentions_pronouns(self):
         p = build_llm_prompt("x")
         assert "pronoun" in p.system.lower()
+
+    def test_perspective_note_grounding(self):
+        # Phase 24C: player stance surfaces as a perspective grounding line.
+        p = build_llm_prompt(
+            "x", perspective_note="The viewpoint character is watching."
+        )
+        assert "Perspective: The viewpoint character is watching." in p.user
+        assert "Perspective:" not in build_llm_prompt("x").user

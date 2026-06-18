@@ -89,6 +89,7 @@ def build_llm_prompt(
     branch_summary: str | None = None,
     location: str | None = None,
     cast_pronouns: "Mapping[str, str] | None" = None,
+    perspective_note: str | None = None,
 ) -> LLMPrompt:
     """Construct the LLM prompt from a filled template and context.
 
@@ -127,6 +128,8 @@ def build_llm_prompt(
         parts.append(f"Characters in this scene: {', '.join(labelled)}")
     if location:
         parts.append(f"Setting: {location.replace('_', ' ')}")
+    if perspective_note:
+        parts.append(f"Perspective: {perspective_note}")
 
     parts.append(f"Scene text to rephrase:\n{filled_template}")
 
@@ -326,6 +329,7 @@ def enhance_scene_intro(
     cast_pronouns: "Mapping[str, str] | None" = None,
     arc_summary: str | None = None,
     recent_narration: str | None = None,
+    perspective_note: str | None = None,
 ) -> str:
     """Rephrase an assembled scene intro via the LLM, or return it unchanged.
 
@@ -348,6 +352,7 @@ def enhance_scene_intro(
         cast_pronouns=cast_pronouns,
         arc_summary=arc_summary,
         recent_narration=recent_narration,
+        perspective_note=perspective_note,
     )
     prompt.max_tokens = min(prompt.max_tokens, 90)
 

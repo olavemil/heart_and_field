@@ -11,6 +11,7 @@ from engine.events import (
     ChoiceNode,
     EventBlueprint,
     LocationCue,
+    PlayerStance,
     RelationshipEffect,
     RoleSlot,
     SceneBlock,
@@ -55,6 +56,8 @@ BLUEPRINTS = [
         ))],
         base_weight=0.5,
         carries_arc_context=True,
+        # The mentor speaks; the player takes it in or doesn't.
+        player_stance=PlayerStance.REACTOR,
         event_id=EventId(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.RELATIONSHIP,
@@ -125,6 +128,8 @@ BLUEPRINTS = [
         ))],
         base_weight=0.4,
         carries_arc_context=True,
+        # The rival throws down; the player responds.
+        player_stance=PlayerStance.REACTOR,
         event_id=EventId(
             nature=EventNature.COMPETITION,
             domain=EventDomain.RELATIONSHIP,

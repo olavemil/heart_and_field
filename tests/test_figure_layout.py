@@ -8,6 +8,7 @@ from engine.figure_layout import (
     PLAYER_HEIGHT_FRAC,
     FigureDistance,
     FigureSlot,
+    PlayerFraming,
     compute_layout,
 )
 
@@ -43,6 +44,36 @@ class TestVerticalBaseline:
         assert player.height > H               # larger than canvas
         assert player.y + player.height > H    # feet below the frame
         assert player.y >= 0                   # ~10% downscale: top in frame
+
+
+class TestPlayerFraming:
+    """Phase 24C — player stance maps to how present the silhouette is."""
+
+    def _player(self, framing):
+        return compute_layout(
+            W, H, [FigureSlot(role="player")], player_framing=framing
+        )[0]
+
+    def test_foreground_matches_default(self):
+        default = compute_layout(W, H, [FigureSlot(role="player")])[0]
+        fg = self._player(PlayerFraming.FOREGROUND)
+        assert (fg.height, fg.cx) == (default.height, default.cx)
+
+    def test_aside_and_background_shrink_and_shift_left(self):
+        fg = self._player(PlayerFraming.FOREGROUND)
+        aside = self._player(PlayerFraming.ASIDE)
+        bg = self._player(PlayerFraming.BACKGROUND)
+        # Progressively smaller and further to the edge.
+        assert fg.height > aside.height > bg.height
+        assert fg.cx > aside.cx > bg.cx
+
+    def test_framing_does_not_move_npc_baseline(self):
+        # A smaller player must not disturb the NPC's static baseline.
+        boxes = compute_layout(
+            W, H, _player_npc(), player_framing=PlayerFraming.BACKGROUND
+        )
+        npc = boxes[1]
+        assert npc.y + npc.height == NPC_BASELINE_FRAC * H
         assert PLAYER_HEIGHT_FRAC < 1.1        # downscaled from 1.15
 
 

@@ -15,6 +15,9 @@ label postgame_block(slot_index):
         e "Everyone drifts off alone."
         return
 
+    # Resolve the player's stance for this event once (Phase 24C).
+    $ fh.session.resolve_player_stance(fh.bp, cast)
+
     # Resolve the background, if this event has a location cue.
     $ scene_info = fh.session.resolve_scene(fh.bp, cast)
     if scene_info is not None:

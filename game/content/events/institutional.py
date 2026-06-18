@@ -5,6 +5,7 @@ from engine.events import (
     BranchOutcome,
     ChoiceNode,
     EventBlueprint,
+    PlayerStance,
     RelationshipEffect,
     RoleSlot,
     SceneBlock,
@@ -33,6 +34,8 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
+        # The honour is conferred on the player; they receive it.
+        player_stance=PlayerStance.REACTOR,
         event_id=EventId(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.INSTITUTIONAL,

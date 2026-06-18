@@ -50,6 +50,10 @@ class OutcomeRecord:
     # week, so this is what lets the arc-recap beat tell that a thread
     # last advanced on an earlier day. ``None`` on legacy saves.
     day_ordinal: int | None = None
+    # The player stance resolved for this event (``PlayerStance`` value).
+    # Stored so the next event can bias toward continuity ("role in the
+    # prior event"). ``None`` on legacy saves / non-stance flows.
+    player_stance: str | None = None
 
     def to_dict(self) -> dict:
         d: dict = {
@@ -68,6 +72,8 @@ class OutcomeRecord:
             d["taxonomy_id"] = self.taxonomy_id.to_dict()
         if self.day_ordinal is not None:
             d["day_ordinal"] = self.day_ordinal
+        if self.player_stance is not None:
+            d["player_stance"] = self.player_stance
         return d
 
     @classmethod
@@ -89,4 +95,5 @@ class OutcomeRecord:
             flags=set(d.get("flags", [])),
             taxonomy_id=EventId.from_dict(tid) if tid is not None else None,
             day_ordinal=d.get("day_ordinal"),
+            player_stance=d.get("player_stance"),
         )

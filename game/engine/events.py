@@ -24,13 +24,31 @@ from typing import Callable, Mapping, Sequence
 from .characters import Character, TierACharacter, TierBCharacter
 from .clock import Weekday, WorldClock
 from .outcomes import OutcomeRecord, WeekPhase
-from .stats import StatName
+from .stats import StatName, StatTuple
 
 
 def _default_clock() -> "WorldClock":
     """Factory used by ``GameState.clock`` — Monday 08:00 of week 1."""
     return WorldClock(week=1, weekday=Weekday.MON, hour=8, minute=0)
 
+
+class PlayerStance(str, Enum):
+    """How present and how agentive the player is in an event (Phase 24C).
+
+    The player is always implicitly in the scene, but their *role* in it
+    varies. Stance drives figure framing (how prominent the player
+    silhouette is) and narration voice (acting vs reacting vs watching).
+
+    - ``ACTOR`` — the player drives the scene (default; today's behaviour).
+    - ``REACTOR`` — the scene happens to the player; they respond.
+    - ``ONLOOKER`` — the player is part of the scene but on its edge.
+    - ``SPECTATOR`` — the player mostly watches others; minimal agency.
+    """
+
+    ACTOR = "actor"
+    REACTOR = "reactor"
+    ONLOOKER = "onlooker"
+    SPECTATOR = "spectator"
 
 
 # --- Filters & weight rules --------------------------------------------------
@@ -196,6 +214,12 @@ class EventBlueprint:
     # role-scoped pronoun slots like the branch summaries. ``None`` keeps
     # the event's setup to the one-line scene intro only.
     setup: str | None = None
+    # Authored stance *anchor* (Phase 24C). NOT the final stance — it is
+    # the natural framing for this event type, which ``weighted_player_
+    # stance`` biases toward but can deviate from based on player traits,
+    # the prior event's stance (persistence), and chance. Defaults to
+    # ACTOR so unannotated events lean foreground.
+    player_stance: PlayerStance = PlayerStance.ACTOR
 
     # ---- Phase 17 — taxonomy + chaining + secret/quirk gating ---------
     #
@@ -680,6 +704,96 @@ def resolve_outcome(
     _introduce_placeholders(blueprint, state)
 
     return record
+
+
+# --- Player stance resolution (Phase 24C) -----------------------------------
+#
+# The player's role in an event is not fixed by the blueprint. The authored
+# ``player_stance`` is an *anchor*; the actual stance is sampled from
+# weighted odds combining narrative cohesion (the anchor), the player's
+# traits, continuity with the prior event's stance, and chance.
+
+# Weighting knobs.
+_STANCE_ANCHOR_BIAS = 1.0     # base weight for the authored anchor stance
+_STANCE_FLOOR = 0.28          # base weight for the other stances
+_STANCE_PERSISTENCE = 1.6     # boost for repeating the prior event's stance
+
+
+def _stat_value(character: Character, stat: StatName, default: float = 0.5) -> float:
+    """Read a stat as a scalar regardless of Tier (tuple value or flat)."""
+    raw = getattr(character, "stats", {}).get(stat) if character is not None else None
+    if isinstance(raw, StatTuple):
+        return raw.value
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    return default
+
+
+def _stance_trait_tilt(player: Character) -> dict["PlayerStance", float]:
+    """Multiplicative tilt per stance from the player's traits.
+
+    Assertive players (confidence, leadership) lean ACTOR; reflective
+    players lean ONLOOKER; insecure players lean SPECTATOR; REACTOR is the
+    neutral middle.
+    """
+    conf = _stat_value(player, StatName.CONFIDENCE)
+    lead = _stat_value(player, StatName.LEADERSHIP)
+    refl = _stat_value(player, StatName.REFLECTION)
+    insec = _stat_value(player, StatName.INSECURITY, 0.0)
+    return {
+        PlayerStance.ACTOR: 0.6 + 0.8 * conf + 0.4 * lead,
+        PlayerStance.REACTOR: 1.0,
+        PlayerStance.ONLOOKER: 0.6 + 0.8 * refl,
+        PlayerStance.SPECTATOR: 0.5 + 1.0 * insec,
+    }
+
+
+def weighted_player_stance(
+    blueprint: EventBlueprint,
+    player: Character | None,
+    *,
+    rng: "_random.Random",
+    prior_stance: PlayerStance | None = None,
+    has_others: bool = True,
+) -> PlayerStance:
+    """Sample the player's stance for one event instance.
+
+    Biases toward the blueprint's authored anchor, tilts by the player's
+    traits, and boosts continuity with ``prior_stance`` so roles are
+    *relatively persistent* across consecutive events. SPECTATOR (watching
+    others) is dropped when the player is the only person in the scene.
+    Deterministic for a given ``rng`` state. With no player it falls back
+    to the anchor.
+    """
+    anchor = blueprint.player_stance
+    if player is None:
+        return anchor
+
+    candidates = list(PlayerStance)
+    if not has_others:
+        candidates = [s for s in candidates if s is not PlayerStance.SPECTATOR]
+        if anchor is PlayerStance.SPECTATOR:
+            anchor = PlayerStance.ONLOOKER  # can't spectate an empty room
+
+    tilt = _stance_trait_tilt(player)
+    weights: dict[PlayerStance, float] = {}
+    for s in candidates:
+        base = _STANCE_ANCHOR_BIAS if s is anchor else _STANCE_FLOOR
+        w = base * tilt.get(s, 1.0)
+        if prior_stance is not None and s is prior_stance:
+            w *= _STANCE_PERSISTENCE
+        weights[s] = w
+
+    total = sum(weights.values())
+    if total <= 0:
+        return anchor
+    roll = rng.random() * total
+    acc = 0.0
+    for s, w in weights.items():
+        acc += w
+        if roll <= acc:
+            return s
+    return candidates[-1]
 
 
 def _advance_secret_exposure(

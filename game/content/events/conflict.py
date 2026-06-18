@@ -9,6 +9,7 @@ from engine.events import (
     BranchOutcome,
     ChoiceNode,
     EventBlueprint,
+    PlayerStance,
     RelationshipEffect,
     RoleSlot,
     SceneBlock,
@@ -38,6 +39,8 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.4,
+        # The blame lands on the player; they respond to it.
+        player_stance=PlayerStance.REACTOR,
         event_id=EventId(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,

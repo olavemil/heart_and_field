@@ -10,6 +10,7 @@ from engine.events import (
     EventBlueprint,
     GameContext,
     GameState,
+    PlayerStance,
     RelationshipEffect,
     RoleSlot,
     SceneBlock,
@@ -22,6 +23,7 @@ from engine.events import (
     recency_penalty,
     resolve_outcome,
     select_event,
+    weighted_player_stance,
 )
 from engine.outcomes import OutcomeRecord, WeekPhase
 from engine.stats import StatName, StatTuple
@@ -563,3 +565,83 @@ def test_full_week_selects_varied_events():
 
     assert fires >= 5
     assert len(state.outcome_log) == fires
+
+
+# --- Player stance resolution (Phase 24C) -----------------------------------
+
+
+def _player_with(**stat_values) -> TierACharacter:
+    """A Tier A player with specific stat values (rest neutral 0.5)."""
+    p = make_player()
+    for name, v in stat_values.items():
+        p.stats[getattr(StatName, name)] = _tuple(v)
+    return p
+
+
+def _stance_bp(anchor: PlayerStance) -> EventBlueprint:
+    return EventBlueprint(
+        id="t.stance",
+        participants=[RoleSlot(role="player"), RoleSlot(role="target")],
+        blocks=[SceneBlock(id="m")],
+        player_stance=anchor,
+    )
+
+
+def _distribution(bp, player, *, n=3000, **kw):
+    rng = random.Random(99)
+    counts = {s: 0 for s in PlayerStance}
+    for _ in range(n):
+        counts[weighted_player_stance(bp, player, rng=rng, **kw)] += 1
+    return counts
+
+
+class TestPlayerStanceResolution:
+    def test_deterministic_under_fixed_rng(self):
+        bp = _stance_bp(PlayerStance.REACTOR)
+        player = make_player()
+        a = [weighted_player_stance(bp, player, rng=random.Random(7)) for _ in range(5)]
+        b = [weighted_player_stance(bp, player, rng=random.Random(7)) for _ in range(5)]
+        assert a == b
+
+    def test_no_player_returns_anchor(self):
+        bp = _stance_bp(PlayerStance.ONLOOKER)
+        assert weighted_player_stance(bp, None, rng=random.Random(1)) is PlayerStance.ONLOOKER
+
+    def test_anchor_is_modal_for_neutral_player(self):
+        bp = _stance_bp(PlayerStance.REACTOR)
+        counts = _distribution(bp, make_player())
+        assert max(counts, key=counts.get) is PlayerStance.REACTOR
+        # but other stances still occur (it is not deterministic)
+        assert counts[PlayerStance.ACTOR] > 0
+
+    def test_confidence_tilts_toward_actor(self):
+        bp = _stance_bp(PlayerStance.REACTOR)
+        bold = _distribution(bp, _player_with(CONFIDENCE=0.95, LEADERSHIP=0.9))
+        meek = _distribution(bp, _player_with(CONFIDENCE=0.05, LEADERSHIP=0.05))
+        assert bold[PlayerStance.ACTOR] > meek[PlayerStance.ACTOR]
+
+    def test_insecurity_tilts_toward_spectator(self):
+        bp = _stance_bp(PlayerStance.REACTOR)
+        anxious = _distribution(bp, _player_with(INSECURITY=0.95, CONFIDENCE=0.1))
+        steady = _distribution(bp, _player_with(INSECURITY=0.0, CONFIDENCE=0.9))
+        assert anxious[PlayerStance.SPECTATOR] > steady[PlayerStance.SPECTATOR]
+
+    def test_persistence_boosts_prior_stance(self):
+        bp = _stance_bp(PlayerStance.REACTOR)
+        player = make_player()
+        without = _distribution(bp, player)
+        withprior = _distribution(bp, player, prior_stance=PlayerStance.ONLOOKER)
+        assert withprior[PlayerStance.ONLOOKER] > without[PlayerStance.ONLOOKER]
+
+    def test_spectator_excluded_without_others(self):
+        bp = _stance_bp(PlayerStance.REACTOR)
+        counts = _distribution(bp, make_player(), has_others=False)
+        assert counts[PlayerStance.SPECTATOR] == 0
+
+    def test_spectator_anchor_remapped_when_alone(self):
+        # A SPECTATOR-anchored event with no one to watch never returns
+        # SPECTATOR; the anchor bias lands on ONLOOKER instead.
+        bp = _stance_bp(PlayerStance.SPECTATOR)
+        counts = _distribution(bp, make_player(), has_others=False)
+        assert counts[PlayerStance.SPECTATOR] == 0
+        assert max(counts, key=counts.get) is PlayerStance.ONLOOKER

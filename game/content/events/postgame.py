@@ -5,6 +5,7 @@ from engine.events import (
     BranchOutcome,
     ChoiceNode,
     EventBlueprint,
+    PlayerStance,
     RelationshipEffect,
     RoleSlot,
     SceneBlock,
@@ -80,6 +81,8 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.9,
+        # The loss sits on the player; they sit with it or break it.
+        player_stance=PlayerStance.REACTOR,
         event_id=EventId(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.SPORT,

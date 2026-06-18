@@ -579,6 +579,79 @@ class TestArcRecap:
         assert restored.state.outcome_log[-1].day_ordinal == 5
 
 
+class TestPlayerStance:
+    """Phase 24C — player stance on blueprints + framing/perspective maps."""
+
+    def test_default_stance_is_actor(self):
+        from engine.events import EventBlueprint, PlayerStance
+
+        assert EventBlueprint(id="x").player_stance is PlayerStance.ACTOR
+
+    def test_authored_stances_applied(self):
+        from engine.events import PlayerStance
+
+        session = _build_session()
+        by_id = {b.id: b for b in session.blueprints}
+        # Reactive scenes: the player responds rather than drives.
+        assert by_id["conflict.blame_assignment"].player_stance is PlayerStance.REACTOR
+        assert by_id["mentor.quiet_word"].player_stance is PlayerStance.REACTOR
+        assert by_id["postgame.loss_silence"].player_stance is PlayerStance.REACTOR
+        # Onlooker: present but on the edge.
+        assert by_id["downtime.travel_reading"].player_stance is PlayerStance.ONLOOKER
+
+    def test_stance_maps_to_framing_and_perspective(self):
+        from engine.events import PlayerStance
+        from engine.figure_layout import PlayerFraming
+        from engine.session import _STANCE_PERSPECTIVE, _STANCE_TO_FRAMING
+
+        # Every stance resolves to a framing; only ACTOR has no note.
+        for stance in PlayerStance:
+            assert stance in _STANCE_TO_FRAMING
+        assert _STANCE_TO_FRAMING[PlayerStance.ACTOR] is PlayerFraming.FOREGROUND
+        assert _STANCE_TO_FRAMING[PlayerStance.SPECTATOR] is PlayerFraming.BACKGROUND
+        assert PlayerStance.ACTOR not in _STANCE_PERSPECTIVE
+        assert PlayerStance.SPECTATOR in _STANCE_PERSPECTIVE
+
+    def test_resolve_event_stamps_resolved_stance(self):
+        from engine.events import PlayerStance
+
+        session = _build_session()
+        session.start_week()
+        for idx, slot in session.pending_slots():
+            if slot.block_type not in (BlockType.DRAMA, BlockType.TRAINING):
+                continue
+            bp = session.select_event_for_slot(idx)
+            if bp is None:
+                continue
+            cast = session.cast_event(bp)
+            if cast is None:
+                continue
+            resolved = session.resolve_player_stance(bp, cast)
+            assert session._current_player_stance is resolved
+            record = session.resolve_event(bp, list(bp.outcomes)[0], cast, idx)
+            # The record carries a valid stance; the per-event cache clears.
+            assert record.player_stance == resolved.value
+            assert PlayerStance(record.player_stance) is resolved
+            assert session._current_player_stance is None
+            break
+
+    def test_resolved_stance_persists_as_prior(self):
+        # The most recent recorded stance feeds the next resolution as the
+        # continuity anchor.
+        from engine.events import PlayerStance
+        from engine.outcomes import OutcomeRecord, WeekPhase
+
+        session = _build_session()
+        session.state.outcome_log.append(
+            OutcomeRecord(
+                event_id="x", timestamp=WeekPhase(1, 1), participants={},
+                branch_taken="b", summary="s",
+                player_stance=PlayerStance.SPECTATOR.value,
+            )
+        )
+        assert session._last_player_stance() is PlayerStance.SPECTATOR
+
+
 class TestFullWeekHeadless:
     """The Phase 6 exit criterion: a complete week runs headlessly."""
 

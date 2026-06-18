@@ -73,9 +73,11 @@ from .events import (
     GameContext,
     GameState,
     LocationCue,
+    PlayerStance,
     cast_event,
     resolve_outcome,
     select_event,
+    weighted_player_stance,
 )
 from .event_taxonomy import EventTone
 from .figures import (
@@ -87,7 +89,13 @@ from .figures import (
     select_figure,
     select_for_character,
 )
-from .figure_layout import FigureBox, FigureDistance, FigureSlot, compute_layout
+from .figure_layout import (
+    FigureBox,
+    FigureDistance,
+    FigureSlot,
+    PlayerFraming,
+    compute_layout,
+)
 from .sprite_pool import CharacterDescriptor
 from .motivators import Motivator
 from .narrative import (
@@ -284,6 +292,36 @@ def _recap_distance_phrase(gap_days: int) -> str:
     return "Some time before"
 
 
+# Player stance → figure framing (Phase 24C). An actor or reactor holds
+# the foreground; an onlooker sits aside; a spectator is pushed small and
+# to the edge. Bridges the authored ``EventBlueprint.player_stance`` to
+# the geometry knob in ``figure_layout``.
+_STANCE_TO_FRAMING: dict[PlayerStance, PlayerFraming] = {
+    PlayerStance.ACTOR: PlayerFraming.FOREGROUND,
+    PlayerStance.REACTOR: PlayerFraming.FOREGROUND,
+    PlayerStance.ONLOOKER: PlayerFraming.ASIDE,
+    PlayerStance.SPECTATOR: PlayerFraming.BACKGROUND,
+}
+
+# Player stance → a short LLM grounding note so narration reflects how
+# present the viewpoint character is (Phase 24C). ACTOR is the unmarked
+# default and gets no note.
+_STANCE_PERSPECTIVE: dict[PlayerStance, str] = {
+    PlayerStance.REACTOR: (
+        "The viewpoint character is responding to this scene rather than "
+        "driving it."
+    ),
+    PlayerStance.ONLOOKER: (
+        "The viewpoint character is on the edge of this scene, half an "
+        "observer."
+    ),
+    PlayerStance.SPECTATOR: (
+        "The viewpoint character is mostly watching the others here, not "
+        "acting."
+    ),
+}
+
+
 # Role names checked, in order, when picking which cast member a scene
 # puts on screen (Phase 22D sprite wiring).
 _FOCAL_ROLE_PRIORITY: tuple[str, ...] = (
@@ -349,6 +387,12 @@ class GameSession:
     # cleared after the match block ends.
     _active_match_label: str | None = None
     _opponent_name: str = "the opposition"
+
+    # Player stance resolved for the current event (Phase 24C). Set by
+    # ``resolve_player_stance`` at event start and read by the figure /
+    # intro paths + stamped onto the outcome record. Transient — the
+    # persistent record lives on ``OutcomeRecord.player_stance``.
+    _current_player_stance: PlayerStance | None = None
 
     # Set by ``enter_slot`` and consumed by the next ``resolve_scene``
     # that resolves a real ``LocationCue``. Implements the auto-teleport
@@ -714,6 +758,11 @@ class GameSession:
             blueprint.id, self.arc_graph, self.state.outcome_log
         )
         record = resolve_outcome(blueprint, branch, cast, self.state, prior)
+        # Stamp the resolved stance (or the anchor when unresolved) so the
+        # next event can bias toward continuity (Phase 24C), then clear the
+        # per-event cache so it can't leak into the next event.
+        record.player_stance = self._active_player_stance(blueprint).value
+        self._current_player_stance = None
 
         if self.schedule is not None:
             slot = self.schedule.slots[slot_index]
@@ -1405,6 +1454,9 @@ class GameSession:
                 cast_pronouns=self._cast_pronouns(cast),
                 arc_summary=self._latest_arc_summary(),
                 recent_narration=self.journal.recent_context(),
+                perspective_note=_STANCE_PERSPECTIVE.get(
+                    self._active_player_stance(blueprint)
+                ),
             )
         # The intro opens the scene — record it as the first beat so the
         # outcome narration continues from it (temporal track).
@@ -1474,6 +1526,47 @@ class GameSession:
                 parts.append(self.rng.choice(lines))
         return " ".join(parts), others
 
+    def resolve_player_stance(
+        self,
+        blueprint: EventBlueprint,
+        cast: Mapping[str, Character],
+    ) -> PlayerStance:
+        """Resolve and cache the player's stance for this event (24C).
+
+        Sampled (RNG-injected) from the blueprint's anchor stance, the
+        player's traits, and the prior event's stance (continuity). Called
+        once at event start; the figure framing, scene-intro perspective,
+        and the stamped outcome record all read the cached result, so they
+        agree within an event. Returns the resolved stance.
+        """
+        player = cast.get("player")
+        has_others = any(role != "player" for role in cast)
+        stance = weighted_player_stance(
+            blueprint,
+            player,
+            rng=self.rng,
+            prior_stance=self._last_player_stance(),
+            has_others=has_others,
+        )
+        self._current_player_stance = stance
+        return stance
+
+    def _last_player_stance(self) -> PlayerStance | None:
+        """The player's stance in the most recent event that recorded one
+        — the continuity anchor for ``resolve_player_stance``."""
+        for record in reversed(self.state.outcome_log):
+            if record.player_stance:
+                try:
+                    return PlayerStance(record.player_stance)
+                except ValueError:
+                    return None
+        return None
+
+    def _active_player_stance(self, blueprint: EventBlueprint) -> PlayerStance:
+        """The resolved stance for the current event, or the blueprint
+        anchor when none was resolved (tests / non-stance flows)."""
+        return self._current_player_stance or blueprint.player_stance
+
     _DEFAULT_DESCRIPTOR = CharacterDescriptor()
 
     def figure_layout_for(
@@ -1538,9 +1631,13 @@ class GameSession:
 
         if not resolved:
             return []
+        framing = _STANCE_TO_FRAMING.get(
+            self._active_player_stance(blueprint), PlayerFraming.FOREGROUND
+        )
         boxes = compute_layout(
             canvas_w, canvas_h, [s for s, _, _ in resolved],
             distance=distance,
+            player_framing=framing,
         )
         return [
             (str(self.figure_manifest.resolve(path)), box, role)

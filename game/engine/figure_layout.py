@@ -60,6 +60,28 @@ class FigureDistance(str, Enum):
     DISTANT = "distant"
 
 
+class PlayerFraming(str, Enum):
+    """How present the player silhouette is in the frame (Phase 24C).
+
+    Driven by the event's player stance: an actor/reactor owns the
+    foreground; an onlooker sits aside; a spectator is pushed small and
+    to the edge — the player is in the scene without dominating it.
+    """
+
+    FOREGROUND = "foreground"   # actor / reactor — large foreground anchor
+    ASIDE = "aside"             # onlooker — present but to the edge, smaller
+    BACKGROUND = "background"   # spectator — small, far aside, watching
+
+
+# Per-framing: player height multiplier (vs PLAYER_HEIGHT_FRAC) and the
+# center-x fraction. FOREGROUND reproduces the original anchor exactly.
+_PLAYER_FRAMING_PARAMS: dict[PlayerFraming, tuple[float, float]] = {
+    PlayerFraming.FOREGROUND: (1.00, PLAYER_CX_FRAC),
+    PlayerFraming.ASIDE:      (0.82, 0.12),
+    PlayerFraming.BACKGROUND: (0.66, 0.07),
+}
+
+
 # Per-distance: NPC height multiplier (vs NPC_HEIGHT_FRAC), horizontal
 # closeness [0,1], and overlap cap (intersection / narrower width).
 _DISTANCE_PARAMS: dict[FigureDistance, tuple[float, float, float]] = {
@@ -118,25 +140,32 @@ def compute_layout(
     slots: list[FigureSlot],
     *,
     distance: FigureDistance = FigureDistance.NORMAL,
+    player_framing: PlayerFraming = PlayerFraming.FOREGROUND,
 ) -> list[FigureBox]:
     """Lay out the scene's figures. Returns one box per slot, in order.
 
     ``distance`` (INTIMATE / CLOSE / NORMAL / DISTANT) sets NPC scale,
     horizontal closeness, and the overlap cap together.
+
+    ``player_framing`` sets how present the player silhouette is —
+    FOREGROUND (default, the original anchor) for an actor; ASIDE /
+    BACKGROUND shrink it and push it toward the edge for an onlooker /
+    spectator (Phase 24C).
     """
     npc_scale, closeness, cap = _DISTANCE_PARAMS[distance]
     npc_height_frac = NPC_HEIGHT_FRAC * npc_scale
+    player_h_mult, player_cx_frac = _PLAYER_FRAMING_PARAMS[player_framing]
     W, H = canvas_w, canvas_h
 
     boxes: list[FigureBox | None] = [None] * len(slots)
 
-    # Player anchor first (fixed foreground slot).
+    # Player anchor first (foreground slot; framing sets size + position).
     player_box: FigureBox | None = None
     for i, s in enumerate(slots):
         if s.role == "player":
             player_box = _box(
-                PLAYER_CX_FRAC * W, PLAYER_BASELINE_FRAC * H,
-                PLAYER_HEIGHT_FRAC * H, 1.0, s.aspect,
+                player_cx_frac * W, PLAYER_BASELINE_FRAC * H,
+                PLAYER_HEIGHT_FRAC * player_h_mult * H, 1.0, s.aspect,
             )
             boxes[i] = player_box
             break
