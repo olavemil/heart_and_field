@@ -51,6 +51,10 @@ class NarrativeJournal:
     week_summaries: list[str] = field(default_factory=list)
     max_recent_beats: int = DEFAULT_MAX_RECENT_BEATS
     max_scene_summaries: int = DEFAULT_MAX_SCENE_SUMMARIES
+    # Absolute day ordinal the journal is currently accumulating scenes
+    # for (``WorldClock.day_ordinal``). Lets the session detect a day
+    # rollover and compress the finished day into a day summary (24E).
+    current_day: int | None = None
 
     # ------------------------------------------------------------------
     # Recording
@@ -92,6 +96,19 @@ class NarrativeJournal:
         if summary:
             self.week_summaries.append(summary)
 
+    def roll_day(self, summary: str) -> None:
+        """Fold the finished day's scene summaries into a day summary and
+        clear them — the day summary is the compression layer above
+        scenes (24E)."""
+        self.record_day_summary(summary)
+        self.scene_summaries.clear()
+
+    def roll_week(self, summary: str) -> None:
+        """Fold the finished week's day summaries into a week summary and
+        clear them."""
+        self.record_week_summary(summary)
+        self.day_summaries.clear()
+
     # ------------------------------------------------------------------
     # Grounding
     # ------------------------------------------------------------------
@@ -106,11 +123,20 @@ class NarrativeJournal:
 
         The result is clamped to ``max_chars`` from the *end* (most
         recent text is the most load-bearing for continuity).
+
+        The fallback chain bridges boundaries: once a scene's beats roll
+        off it grounds on the last scene summary, and once a day/week
+        rolls up it grounds on the last day then week summary — so the
+        first scene after a gap still connects to what came before.
         """
         if self.recent_beats:
             joined = " ".join(self.recent_beats)
         elif self.scene_summaries:
             joined = self.scene_summaries[-1]
+        elif self.day_summaries:
+            joined = self.day_summaries[-1]
+        elif self.week_summaries:
+            joined = self.week_summaries[-1]
         else:
             return None
         joined = joined.strip()
@@ -140,6 +166,7 @@ class NarrativeJournal:
             "week_summaries": list(self.week_summaries),
             "max_recent_beats": self.max_recent_beats,
             "max_scene_summaries": self.max_scene_summaries,
+            "current_day": self.current_day,
         }
 
     @classmethod
@@ -155,4 +182,5 @@ class NarrativeJournal:
             max_scene_summaries=int(
                 d.get("max_scene_summaries", DEFAULT_MAX_SCENE_SUMMARIES)
             ),
+            current_day=d.get("current_day"),
         )

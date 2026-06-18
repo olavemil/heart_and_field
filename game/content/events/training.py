@@ -95,6 +95,9 @@ BLUEPRINTS = [
         event_id=EventId(
             nature=EventNature.OBSERVATION,
             domain=EventDomain.SPORT,
+            # NOTE (24E tone audit): showing off reads as PLAYFUL, but tone
+            # is part of the EventId triple + VALID_EVENT_COMBINATIONS, so
+            # retoning is a taxonomy change — deferred.
             tone=EventTone.NEUTRAL,
         ),
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],

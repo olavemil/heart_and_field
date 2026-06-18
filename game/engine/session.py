@@ -1541,20 +1541,73 @@ class GameSession:
         self._current_player_stance = None
         if not self.journal.has_open_scene():
             return ""
-        cast_pronouns: dict[str, str] = {}
-        cast_names: list[str] = []
-        if cast:
-            cast_pronouns = self._cast_pronouns(cast)
-            cast_names = list(cast_pronouns)
+        summary = self._summarise(self.journal.recent_beats, kind="scene", cast=cast)
+        self.journal.record_scene_summary(summary)
+        return summary
+
+    def _summarise(
+        self,
+        texts: Sequence[str],
+        *,
+        kind: str,
+        cast: Mapping[str, Character] | None = None,
+    ) -> str:
+        """Run the journal compression summariser over *texts* (24A/24E).
+
+        Shared by the scene / day / week layers. Uses the LLM when enabled
+        with deterministic fallback; never blocks. ``cast`` only adds
+        pronoun grounding when available."""
+        cast_pronouns = self._cast_pronouns(cast) if cast else {}
+        cast_names = list(cast_pronouns)
         client = self.llm_client if (self.use_llm and self.llm_client) else None
-        summary = summarise_narration(
+        return summarise_narration(
             client or LLMClient(enabled=False),
-            list(self.journal.recent_beats),
+            list(texts),
             cast_names=cast_names,
             cast_pronouns=cast_pronouns,
-            kind="scene",
+            kind=kind,
         )
-        self.journal.record_scene_summary(summary)
+
+    def update_journal_period(self) -> None:
+        """Compress the journal at day boundaries (Phase 24E).
+
+        Call when entering a schedule slot. When the world clock has
+        rolled into a new day since the journal last accumulated, the
+        finished day's scene summaries are folded into a day summary so
+        long-horizon grounding stays bounded. The first call of a game
+        just records the starting day.
+        """
+        today = self.state.clock.day_ordinal()
+        if self.journal.current_day is None:
+            self.journal.current_day = today
+            return
+        if today > self.journal.current_day:
+            self.summarise_day()
+            self.journal.current_day = today
+
+    def summarise_day(self, cast: Mapping[str, Character] | None = None) -> str:
+        """Compress the finished day's scene summaries into one day summary
+        (Phase 24E). No-op (``""``) when no scenes accumulated."""
+        if not self.journal.scene_summaries:
+            return ""
+        summary = self._summarise(self.journal.scene_summaries, kind="day", cast=cast)
+        self.journal.roll_day(summary)
+        return summary
+
+    def summarise_week(self, cast: Mapping[str, Character] | None = None) -> str:
+        """Compress the week into a week summary (Phase 24E).
+
+        Flushes the final day first (so the week's last scenes are
+        captured), then folds the week's day summaries into one week
+        summary and resets the day tracker. Called at week end before
+        ``advance_week``. No-op (``""``) when nothing accumulated.
+        """
+        self.summarise_day(cast=cast)
+        self.journal.current_day = None
+        if not self.journal.day_summaries:
+            return ""
+        summary = self._summarise(self.journal.day_summaries, kind="week", cast=cast)
+        self.journal.roll_week(summary)
         return summary
 
     def _assemble_scene_intro(

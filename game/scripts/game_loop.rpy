@@ -188,6 +188,10 @@ label week_loop:
         if slot.block_type != BlockType.GAME_PHASE or slot.phase_index == 0:
             $ fh.session.enter_slot(slot_idx)
 
+        # At a day rollover, compress the finished day's scenes into a
+        # journal day-summary so long-horizon grounding stays bounded (24E).
+        $ fh.session.update_journal_period()
+
         # Route by block type.
         if slot.block_type == BlockType.DRAMA:
             call drama_block(slot_idx) from _call_drama
@@ -230,6 +234,8 @@ label week_resume:
 # --- End of week -------------------------------------------------------------
 
 label week_end:
+    # Compress the week into a journal week-summary (24E) before advancing.
+    $ fh.session.summarise_week()
     e "End of week [fh.session.state.week_phase.week]."
 
     menu:

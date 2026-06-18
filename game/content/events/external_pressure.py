@@ -40,6 +40,9 @@ BLUEPRINTS = [
         event_id=EventId(
             nature=EventNature.OBSERVATION,
             domain=EventDomain.INSTITUTIONAL,
+            # NOTE (24E tone audit): a press scrum reads as TENSE, but tone
+            # is part of the EventId triple + VALID_EVENT_COMBINATIONS, so
+            # retoning is a taxonomy change — deferred.
             tone=EventTone.NEUTRAL,
         ),
         valid_scene_types=[SceneType.PRESS_ROOM, SceneType.STUDIO],

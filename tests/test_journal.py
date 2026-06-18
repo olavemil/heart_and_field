@@ -62,6 +62,29 @@ class TestSceneSummary:
         assert j.scene_summaries == ["summary 2", "summary 3"]
 
 
+class TestPeriodicRollup:
+    def test_roll_day_folds_scenes(self):
+        j = NarrativeJournal()
+        j.scene_summaries.extend(["scene a", "scene b"])
+        j.roll_day("the day in one line")
+        assert j.scene_summaries == []
+        assert j.day_summaries == ["the day in one line"]
+
+    def test_roll_week_folds_days(self):
+        j = NarrativeJournal()
+        j.day_summaries.extend(["mon", "tue"])
+        j.roll_week("the week in one line")
+        assert j.day_summaries == []
+        assert j.week_summaries == ["the week in one line"]
+
+    def test_roll_day_blank_still_clears(self):
+        j = NarrativeJournal()
+        j.scene_summaries.append("x")
+        j.roll_day("")
+        assert j.scene_summaries == []
+        assert j.day_summaries == []
+
+
 class TestRecentContext:
     def test_none_when_empty(self):
         assert NarrativeJournal().recent_context() is None
@@ -78,6 +101,15 @@ class TestRecentContext:
         j.record_scene_summary("the scene summary")
         # window cleared → grounding uses the summary
         assert j.recent_context() == "the scene summary"
+
+    def test_falls_back_through_day_then_week(self):
+        j = NarrativeJournal()
+        j.week_summaries.append("the week")
+        assert j.recent_context() == "the week"  # nothing fresher
+        j.day_summaries.append("the day")
+        assert j.recent_context() == "the day"   # day beats week
+        j.scene_summaries.append("the scene")
+        assert j.recent_context() == "the scene"  # scene beats day
 
     def test_clamps_to_max_chars_without_splitting_word(self):
         j = NarrativeJournal()
@@ -99,6 +131,7 @@ class TestSerialisation:
         j.record_beat("b3")
         j.record_day_summary("day one")
         j.record_week_summary("week one")
+        j.current_day = 12
 
         restored = NarrativeJournal.from_dict(j.to_dict())
         assert restored.recent_beats == j.recent_beats
@@ -106,6 +139,7 @@ class TestSerialisation:
         assert restored.day_summaries == j.day_summaries
         assert restored.week_summaries == j.week_summaries
         assert restored.max_recent_beats == 4
+        assert restored.current_day == 12
 
     def test_from_empty_dict(self):
         j = NarrativeJournal.from_dict(None)

@@ -739,6 +739,63 @@ class TestToneAndCast:
         assert session.cast_chained_event(chained, {"player": player}) is None
 
 
+class TestJournalPeriods:
+    """Phase 24E — day/week journal compression (bounds long-horizon
+    grounding). LLM off → deterministic fallback summaries."""
+
+    def test_update_period_records_starting_day(self):
+        from engine.clock import Weekday, WorldClock
+
+        session = _build_session()
+        session.use_llm = False
+        session.state.clock = WorldClock(week=1, weekday=Weekday.MON)
+        session.update_journal_period()
+        assert session.journal.current_day == 0  # week1 Mon
+        assert session.journal.day_summaries == []
+
+    def test_day_rollover_compresses_scenes(self):
+        from engine.clock import Weekday, WorldClock
+
+        session = _build_session()
+        session.use_llm = False
+        session.journal.current_day = 0
+        session.journal.scene_summaries.extend(["scene one", "scene two"])
+        # Clock has rolled to Tuesday (ordinal 1).
+        session.state.clock = WorldClock(week=1, weekday=Weekday.TUE)
+        session.update_journal_period()
+        assert session.journal.current_day == 1
+        assert session.journal.scene_summaries == []  # folded
+        assert len(session.journal.day_summaries) == 1
+
+    def test_summarise_day_noop_without_scenes(self):
+        session = _build_session()
+        session.use_llm = False
+        assert session.summarise_day() == ""
+        assert session.journal.day_summaries == []
+
+    def test_summarise_week_flushes_day_and_resets(self):
+        session = _build_session()
+        session.use_llm = False
+        session.journal.current_day = 3
+        session.journal.day_summaries.append("monday happened")
+        session.journal.scene_summaries.append("a final-day scene")
+        summary = session.summarise_week()
+        assert summary  # deterministic compression of the day summaries
+        # Final day flushed in, days folded into the week, tracker reset.
+        assert session.journal.scene_summaries == []
+        assert session.journal.day_summaries == []
+        assert len(session.journal.week_summaries) == 1
+        assert session.journal.current_day is None
+
+    def test_period_state_round_trips(self):
+        session = _build_session()
+        session.journal.current_day = 4
+        session.journal.day_summaries.append("a day")
+        restored = GameSession.deserialise(json.loads(json.dumps(session.serialise())))
+        assert restored.journal.current_day == 4
+        assert restored.journal.day_summaries == ["a day"]
+
+
 class TestFullWeekHeadless:
     """The Phase 6 exit criterion: a complete week runs headlessly."""
 
