@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Mapping
 
 if TYPE_CHECKING:
-    from .event_taxonomy import EventId
+    from .event_taxonomy import EventType
 
 
 @dataclass(frozen=True)
@@ -42,9 +42,9 @@ class OutcomeRecord:
     arc_summary: str | None = None  # accumulated digest if carries_arc_context
     stat_deltas: dict[str, dict[str, float]] = field(default_factory=dict)
     flags: set[str] = field(default_factory=set)
-    # Canonical EventId triple from the blueprint, when set. Used by
+    # Canonical EventType triple from the blueprint, when set. Used by
     # chain bias logic to look up outgoing edges.
-    taxonomy_id: "EventId | None" = None
+    taxonomy_id: "EventType | None" = None
     # Absolute calendar day this outcome resolved on (``WorldClock
     # .day_ordinal``; week 1 Monday == 0). ``WeekPhase`` only tracks the
     # week, so this is what lets the arc-recap beat tell that a thread
@@ -78,7 +78,7 @@ class OutcomeRecord:
 
     @classmethod
     def from_dict(cls, d: Mapping) -> "OutcomeRecord":
-        from .event_taxonomy import EventId
+        from .event_taxonomy import EventType
 
         tid = d.get("taxonomy_id")
         return cls(
@@ -93,7 +93,7 @@ class OutcomeRecord:
                 for cid, deltas in d.get("stat_deltas", {}).items()
             },
             flags=set(d.get("flags", [])),
-            taxonomy_id=EventId.from_dict(tid) if tid is not None else None,
+            taxonomy_id=EventType.from_dict(tid) if tid is not None else None,
             day_ordinal=d.get("day_ordinal"),
             player_stance=d.get("player_stance"),
         )

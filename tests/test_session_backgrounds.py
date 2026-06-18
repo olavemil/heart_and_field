@@ -408,7 +408,7 @@ class TestFigureLayoutFor:
 
     def _blueprint(self, tone, stance=None):
         from engine.event_taxonomy import (
-            EventDomain, EventId, EventNature, EventTone,
+            EventDomain, EventType, EventNature, EventTone,
         )
         from engine.events import EventBlueprint, PlayerStance, RoleSlot, SceneBlock
 
@@ -422,7 +422,7 @@ class TestFigureLayoutFor:
             blocks=[SceneBlock(id="main")],
             outcomes={},
             player_stance=stance or PlayerStance.ACTOR,
-            event_id=EventId(
+            event_id=EventType(
                 nature=EventNature.CONFRONTATION,
                 domain=EventDomain.RELATIONSHIP,
                 tone=tone,

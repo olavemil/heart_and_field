@@ -55,7 +55,7 @@ class CharacterPlaceholder:
     to a relationship aspect (some are history co-participants, agenda
     targets, etc.). Authors can still set it to nudge introduction
     flavour. ``introduction_event_tags`` are stringly-typed for now;
-    when the addendum's ``EventId`` enum lands in Phase 17 this can
+    when the addendum's ``EventType`` enum lands in Phase 17 this can
     accept either.
     """
 

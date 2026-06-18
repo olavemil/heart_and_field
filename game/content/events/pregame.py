@@ -1,6 +1,6 @@
 """Pregame events (design §8.1) — the dressing room, rituals, nerves."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -34,7 +34,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=1.0,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.COLLABORATION,
             domain=EventDomain.SPORT,
             tone=EventTone.WARM,
@@ -72,7 +72,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.7,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.MELANCHOLY,

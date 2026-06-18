@@ -8,7 +8,7 @@ from engine.event_taxonomy import (
     ChainDimension,
     EventChainEdge,
     EventDomain,
-    EventId,
+    EventType,
     EventNature,
     EventTone,
     chains_from,
@@ -16,12 +16,12 @@ from engine.event_taxonomy import (
 )
 
 
-# --- EventId --------------------------------------------------------------
+# --- EventType --------------------------------------------------------------
 
 
-class TestEventId:
+class TestEventType:
     def test_key_format_matches_addendum(self):
-        eid = EventId(
+        eid = EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.HOSTILE,
@@ -29,28 +29,28 @@ class TestEventId:
         assert eid.key() == "relationship_confrontation_hostile"
 
     def test_round_trip_via_dict(self):
-        eid = EventId(
+        eid = EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.MELANCHOLY,
         )
-        assert EventId.from_dict(eid.to_dict()) == eid
+        assert EventType.from_dict(eid.to_dict()) == eid
 
     def test_round_trip_via_key_string(self):
-        eid = EventId(
+        eid = EventType(
             nature=EventNature.OBSERVATION,
             domain=EventDomain.SECRET,
             tone=EventTone.NEUTRAL,
         )
-        assert EventId.from_key(eid.key()) == eid
+        assert EventType.from_key(eid.key()) == eid
 
     def test_invalid_key_rejected(self):
         with pytest.raises(ValueError):
-            EventId.from_key("only_two")
+            EventType.from_key("only_two")
 
     def test_frozen_hashable(self):
-        a = EventId(EventNature.OBSERVATION, EventDomain.SECRET, EventTone.NEUTRAL)
-        b = EventId(EventNature.OBSERVATION, EventDomain.SECRET, EventTone.NEUTRAL)
+        a = EventType(EventNature.OBSERVATION, EventDomain.SECRET, EventTone.NEUTRAL)
+        b = EventType(EventNature.OBSERVATION, EventDomain.SECRET, EventTone.NEUTRAL)
         assert hash(a) == hash(b)
         assert {a, b} == {a}
 
@@ -60,14 +60,14 @@ class TestEventId:
 
 class TestValidCombinations:
     def test_authored_combo_is_valid(self):
-        eid = EventId(
+        eid = EventType(
             EventNature.CONFRONTATION, EventDomain.RELATIONSHIP, EventTone.HOSTILE,
         )
         assert is_valid_event_id(eid)
 
     def test_unauthored_combo_is_invalid(self):
         # SPORT + ADMISSION + ROMANTIC isn't on the addendum's curated list.
-        eid = EventId(
+        eid = EventType(
             EventNature.ADMISSION, EventDomain.SPORT, EventTone.ROMANTIC,
         )
         assert not is_valid_event_id(eid)
@@ -100,7 +100,7 @@ class TestChainEdges:
         assert EventChainEdge.from_dict(d) == edge
 
     def test_chains_from_filters_by_origin(self):
-        origin = EventId(
+        origin = EventType(
             EventNature.CONFRONTATION, EventDomain.RELATIONSHIP, EventTone.HOSTILE,
         )
         edges = chains_from(origin)
@@ -108,7 +108,7 @@ class TestChainEdges:
         assert len(edges) >= 2  # at least the two SCENE edges authored
 
     def test_chains_from_dimension_filter(self):
-        origin = EventId(
+        origin = EventType(
             EventNature.CONFRONTATION, EventDomain.RELATIONSHIP, EventTone.HOSTILE,
         )
         only_scene = chains_from(origin, dimensions=frozenset({ChainDimension.SCENE}))

@@ -1,6 +1,6 @@
 """Secret-domain events — require secret membership to trigger."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -34,7 +34,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.4,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.OBSERVATION,
             domain=EventDomain.SECRET,
             tone=EventTone.NEUTRAL,
@@ -71,7 +71,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.SECRET,
             tone=EventTone.TENSE,
@@ -116,7 +116,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.2,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.SECRET,
             tone=EventTone.HOSTILE,
@@ -164,7 +164,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.SECRET,
             tone=EventTone.MELANCHOLY,
@@ -211,7 +211,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.2,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.SECRET,
             tone=EventTone.ROMANTIC,
@@ -263,7 +263,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.2,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.REVELATION,
             domain=EventDomain.SECRET,
             tone=EventTone.HOSTILE,
@@ -305,7 +305,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.REVELATION,
             domain=EventDomain.SECRET,
             tone=EventTone.TENSE,
@@ -350,7 +350,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.2,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.NEGOTIATION,
             domain=EventDomain.SECRET,
             tone=EventTone.TENSE,
@@ -392,7 +392,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.SECRET,
             tone=EventTone.MELANCHOLY,

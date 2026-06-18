@@ -1,6 +1,6 @@
 """Institutional-domain events — front office, media, board politics."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -36,7 +36,7 @@ BLUEPRINTS = [
         base_weight=0.3,
         # The honour is conferred on the player; they receive it.
         player_stance=PlayerStance.REACTOR,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.INSTITUTIONAL,
             tone=EventTone.TRIUMPHANT,
@@ -76,7 +76,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.INSTITUTIONAL,
             tone=EventTone.HOSTILE,
@@ -113,7 +113,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.2,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.INSTITUTIONAL,
             tone=EventTone.TENSE,
@@ -152,7 +152,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.2,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.NEGOTIATION,
             domain=EventDomain.INSTITUTIONAL,
             tone=EventTone.HOSTILE,
@@ -189,7 +189,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.REVELATION,
             domain=EventDomain.INSTITUTIONAL,
             tone=EventTone.TENSE,

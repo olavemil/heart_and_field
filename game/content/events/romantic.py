@@ -5,7 +5,7 @@ only passes characters with matching disposition or flag.
 """
 
 from engine.characters import CharacterRole, TierACharacter, TierBCharacter
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -54,7 +54,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.6,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.INVITATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.ROMANTIC,

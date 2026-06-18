@@ -233,7 +233,7 @@ class EventBlueprint:
     # them in incrementally.
 
     # Canonical addendum §4.3 event id, when applicable.
-    event_id: "EventId | None" = None
+    event_id: "EventType | None" = None
 
     # Outgoing chain edges from this blueprint.
     chain_edges: list = field(default_factory=list)

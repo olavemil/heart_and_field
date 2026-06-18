@@ -1,6 +1,6 @@
 """Celebration events (design §8.2) — moments where joy gets expressed."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -33,7 +33,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.7,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.SPORT,
             tone=EventTone.TRIUMPHANT,

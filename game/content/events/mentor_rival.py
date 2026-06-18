@@ -5,7 +5,7 @@ Mentor and rival arcs run on long cadence — low base weight plus
 """
 
 from engine.characters import CharacterRole
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -58,7 +58,7 @@ BLUEPRINTS = [
         carries_arc_context=True,
         # The mentor speaks; the player takes it in or doesn't.
         player_stance=PlayerStance.REACTOR,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.WARM,
@@ -130,7 +130,7 @@ BLUEPRINTS = [
         carries_arc_context=True,
         # The rival throws down; the player responds.
         player_stance=PlayerStance.REACTOR,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.COMPETITION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.TENSE,

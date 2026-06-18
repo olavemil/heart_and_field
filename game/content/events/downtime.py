@@ -1,6 +1,6 @@
 """Downtime events (design §8.2) — shared meals, travel, waiting."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -35,7 +35,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.9,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.INVITATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.WARM,
@@ -86,7 +86,7 @@ BLUEPRINTS = [
         base_weight=0.5,
         # Withdrawn from the team around them, in their own world.
         player_stance=PlayerStance.ONLOOKER,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.MELANCHOLY,

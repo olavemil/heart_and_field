@@ -4,7 +4,7 @@ Includes a simple arc (blame → apology) to exercise prereqs and
 `carries_arc_context` in Phase 3's tests.
 """
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -41,7 +41,7 @@ BLUEPRINTS = [
         base_weight=0.4,
         # The blame lands on the player; they respond to it.
         player_stance=PlayerStance.REACTOR,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.HOSTILE,
@@ -125,7 +125,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.7,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.MELANCHOLY,

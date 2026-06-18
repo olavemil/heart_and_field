@@ -1,4 +1,4 @@
-"""Tests for Phase 19 — chain bias, EventId migration, scene-type wiring."""
+"""Tests for Phase 19 — chain bias, EventType migration, scene-type wiring."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from game.engine.event_taxonomy import (
     VALID_EVENT_COMBINATIONS,
     ChainDimension,
     EventDomain,
-    EventId,
+    EventType,
     EventNature,
     EventTone,
     chains_from,
@@ -84,7 +84,7 @@ class TestChainBias:
     def test_empty_log_returns_1(self):
         bp = EventBlueprint(
             id="test",
-            event_id=EventId(
+            event_id=EventType(
                 nature=EventNature.ADMISSION,
                 domain=EventDomain.RELATIONSHIP,
                 tone=EventTone.MELANCHOLY,
@@ -96,7 +96,7 @@ class TestChainBias:
     def test_last_outcome_no_taxonomy_id_returns_1(self):
         bp = EventBlueprint(
             id="test",
-            event_id=EventId(
+            event_id=EventType(
                 nature=EventNature.ADMISSION,
                 domain=EventDomain.RELATIONSHIP,
                 tone=EventTone.MELANCHOLY,
@@ -119,12 +119,12 @@ class TestChainBias:
         """CONFRONTATION(rel,hostile) → ADMISSION(rel,melancholy) is an
         authored chain edge. Blueprint targeting the to_id should get a
         boost."""
-        from_id = EventId(
+        from_id = EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.HOSTILE,
         )
-        to_id = EventId(
+        to_id = EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.MELANCHOLY,
@@ -148,13 +148,13 @@ class TestChainBias:
         assert _chain_bias(bp, state) == CHAIN_BIAS_BOOST
 
     def test_non_matching_edge_returns_1(self):
-        from_id = EventId(
+        from_id = EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.SPORT,
             tone=EventTone.TRIUMPHANT,
         )
         # Target something that is NOT linked from celebration
-        unlinked_id = EventId(
+        unlinked_id = EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.MELANCHOLY,
@@ -175,12 +175,12 @@ class TestChainBias:
 
     def test_chain_bias_affects_compute_weight(self):
         """compute_weight should apply chain bias multiplier."""
-        from_id = EventId(
+        from_id = EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.HOSTILE,
         )
-        to_id = EventId(
+        to_id = EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.MELANCHOLY,
@@ -220,7 +220,7 @@ class TestChainBias:
 
 class TestOutcomeRecordTaxonomyId:
     def test_taxonomy_id_serialises(self):
-        eid = EventId(
+        eid = EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.SPORT,
             tone=EventTone.TRIUMPHANT,
@@ -259,7 +259,7 @@ class TestOutcomeRecordTaxonomyId:
 
 class TestResolveOutcomeTaxonomyId:
     def test_taxonomy_id_set_on_record(self):
-        eid = EventId(
+        eid = EventType(
             nature=EventNature.COLLABORATION,
             domain=EventDomain.SPORT,
             tone=EventTone.NEUTRAL,
@@ -286,11 +286,11 @@ class TestResolveOutcomeTaxonomyId:
 
 
 # ---------------------------------------------------------------------------
-# EventId coverage
+# EventType coverage
 # ---------------------------------------------------------------------------
 
 
-class TestEventIdCoverage:
+class TestEventTypeCoverage:
     def test_all_valid_combinations_have_blueprints(self):
         """Every VALID_EVENT_COMBINATIONS entry is covered by at
         least one blueprint."""
@@ -305,7 +305,7 @@ class TestEventIdCoverage:
         assert not missing, f"Missing blueprints for: {sorted(missing)}"
 
     def test_all_blueprint_event_ids_are_valid(self):
-        """No blueprint uses an EventId outside the valid set."""
+        """No blueprint uses an EventType outside the valid set."""
         from pathlib import Path
         from engine.content_loader import load_blueprints_from_path
 
@@ -315,7 +315,7 @@ class TestEventIdCoverage:
         for bp in bps:
             if bp.event_id is not None:
                 assert bp.event_id.key() in valid_keys, (
-                    f"{bp.id} has invalid EventId {bp.event_id.key()}"
+                    f"{bp.id} has invalid EventType {bp.event_id.key()}"
                 )
 
 
@@ -326,7 +326,7 @@ class TestEventIdCoverage:
 
 class TestChainsFrom:
     def test_returns_correct_edges(self):
-        from_id = EventId(
+        from_id = EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.HOSTILE,
@@ -334,14 +334,14 @@ class TestChainsFrom:
         edges = chains_from(from_id)
         assert len(edges) >= 2  # at least hostile→melancholy and hostile→romantic
         to_ids = {e.to_id for e in edges}
-        assert EventId(
+        assert EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.MELANCHOLY,
         ) in to_ids
 
     def test_dimension_filter(self):
-        from_id = EventId(
+        from_id = EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.HOSTILE,
@@ -351,8 +351,8 @@ class TestChainsFrom:
             assert e.dimension == ChainDimension.SCENE
 
     def test_no_edges_returns_empty(self):
-        # A valid EventId with no outgoing edges
-        eid = EventId(
+        # A valid EventType with no outgoing edges
+        eid = EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.MELANCHOLY,

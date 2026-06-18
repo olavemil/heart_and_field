@@ -59,12 +59,12 @@ class EventTone(str, Enum):
 
 
 # ===========================================================================
-# EventId
+# EventType
 # ===========================================================================
 
 
 @dataclass(frozen=True)
-class EventId:
+class EventType:
     """Three-dimensional event key.
 
     Frozen + hashable so it can index dicts / sets directly. ``key()``
@@ -87,7 +87,7 @@ class EventId:
         }
 
     @classmethod
-    def from_dict(cls, d: Mapping) -> "EventId":
+    def from_dict(cls, d: Mapping) -> "EventType":
         return cls(
             nature=EventNature(d["nature"]),
             domain=EventDomain(d["domain"]),
@@ -95,8 +95,8 @@ class EventId:
         )
 
     @classmethod
-    def from_key(cls, key: str) -> "EventId":
-        """Parse a canonical key string back into an ``EventId``."""
+    def from_key(cls, key: str) -> "EventType":
+        """Parse a canonical key string back into an ``EventType``."""
         parts = key.split("_", 2)
         if len(parts) != 3:
             raise ValueError(f"invalid event key: {key!r}")
@@ -116,11 +116,11 @@ class EventId:
 # can extend the table as the event library grows.
 
 
-def _valid(domain: EventDomain, nature: EventNature, tone: EventTone) -> EventId:
-    return EventId(nature=nature, domain=domain, tone=tone)
+def _valid(domain: EventDomain, nature: EventNature, tone: EventTone) -> EventType:
+    return EventType(nature=nature, domain=domain, tone=tone)
 
 
-VALID_EVENT_COMBINATIONS: frozenset[EventId] = frozenset({
+VALID_EVENT_COMBINATIONS: frozenset[EventType] = frozenset({
     # SPORT
     _valid(EventDomain.SPORT, EventNature.CONFRONTATION, EventTone.HOSTILE),
     _valid(EventDomain.SPORT, EventNature.CONFRONTATION, EventTone.TENSE),
@@ -180,7 +180,7 @@ VALID_EVENT_COMBINATIONS: frozenset[EventId] = frozenset({
 })
 
 
-def is_valid_event_id(event_id: EventId) -> bool:
+def is_valid_event_id(event_id: EventType) -> bool:
     """``True`` when the (domain, nature, tone) triple is in the
     authored event list. Content tooling can call this to surface
     blueprint ids that no longer match the curated list."""
@@ -211,8 +211,8 @@ class EventChainEdge:
     actual evaluation lives at the call site.
     """
 
-    from_id: EventId
-    to_id: EventId
+    from_id: EventType
+    to_id: EventType
     dimension: ChainDimension
     condition: str | None = None
 
@@ -227,8 +227,8 @@ class EventChainEdge:
     @classmethod
     def from_dict(cls, d: Mapping) -> "EventChainEdge":
         return cls(
-            from_id=EventId.from_dict(d["from_id"]),
-            to_id=EventId.from_dict(d["to_id"]),
+            from_id=EventType.from_dict(d["from_id"]),
+            to_id=EventType.from_dict(d["to_id"]),
             dimension=ChainDimension(d["dimension"]),
             condition=d.get("condition"),
         )
@@ -236,7 +236,7 @@ class EventChainEdge:
 
 # Representative chain table from addendum §4.5. Authors extend.
 def _chain(
-    from_id: EventId, to_id: EventId,
+    from_id: EventType, to_id: EventType,
     dimension: ChainDimension, condition: str | None = None,
 ) -> EventChainEdge:
     return EventChainEdge(from_id, to_id, dimension, condition)
@@ -295,7 +295,7 @@ CHAIN_EDGES: list[EventChainEdge] = [
 
 
 def chains_from(
-    event_id: EventId,
+    event_id: EventType,
     *,
     dimensions: frozenset[ChainDimension] | None = None,
 ) -> list[EventChainEdge]:

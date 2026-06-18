@@ -1,6 +1,6 @@
 """Postgame events (design §8.1) — the dressing room after the whistle."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -34,7 +34,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.8,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.SPORT,
             tone=EventTone.TRIUMPHANT,
@@ -83,7 +83,7 @@ BLUEPRINTS = [
         base_weight=0.9,
         # The loss sits on the player; they sit with it or break it.
         player_stance=PlayerStance.REACTOR,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.SPORT,
             tone=EventTone.MELANCHOLY,

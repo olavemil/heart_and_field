@@ -941,7 +941,7 @@ class TestSceneIntro:
     def _blueprint(self, **kwargs):
         from engine.event_taxonomy import (
             EventDomain,
-            EventId,
+            EventType,
             EventNature,
             EventTone,
         )
@@ -953,7 +953,7 @@ class TestSceneIntro:
             participants=[RoleSlot(role="player", filter=lambda c: True)],
             outcomes={},
             location=LocationCue(spec_id="school", node_name="locker_bay"),
-            event_id=EventId(
+            event_id=EventType(
                 nature=EventNature.CONFRONTATION,
                 domain=EventDomain.RELATIONSHIP,
                 tone=EventTone.HOSTILE,
@@ -989,7 +989,7 @@ class TestSceneIntro:
         solo scenes aren't blank (Phase 22D variety pass)."""
         from engine.event_taxonomy import (
             EventDomain,
-            EventId,
+            EventType,
             EventNature,
             EventTone,
         )
@@ -997,7 +997,7 @@ class TestSceneIntro:
         session = _build_session()
         bp = self._blueprint(
             location=None,
-            event_id=EventId(
+            event_id=EventType(
                 nature=EventNature.ISOLATION,
                 domain=EventDomain.PERSONAL,
                 tone=EventTone.NEUTRAL,

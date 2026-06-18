@@ -1,6 +1,6 @@
 """Training-block events (design §8.2). Low-stakes, high-frequency."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -33,7 +33,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=1.0,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.COLLABORATION,
             domain=EventDomain.SPORT,
             tone=EventTone.NEUTRAL,
@@ -92,11 +92,11 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.6,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.OBSERVATION,
             domain=EventDomain.SPORT,
             # NOTE (24E tone audit): showing off reads as PLAYFUL, but tone
-            # is part of the EventId triple + VALID_EVENT_COMBINATIONS, so
+            # is part of the EventType triple + VALID_EVENT_COMBINATIONS, so
             # retoning is a taxonomy change — deferred.
             tone=EventTone.NEUTRAL,
         ),
@@ -143,7 +143,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.8,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.COLLABORATION,
             domain=EventDomain.SPORT,
             tone=EventTone.WARM,

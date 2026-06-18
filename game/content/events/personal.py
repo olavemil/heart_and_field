@@ -1,6 +1,6 @@
 """Personal-domain events — private moments of growth or difficulty."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -29,7 +29,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.4,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.WARM,
@@ -67,7 +67,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.3,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.WARM,

@@ -1,6 +1,6 @@
 """Sport-domain events not covered by existing category files."""
 
-from engine.event_taxonomy import EventDomain, EventId, EventNature, EventTone
+from engine.event_taxonomy import EventDomain, EventType, EventNature, EventTone
 from engine.events import (
     BranchOutcome,
     ChoiceNode,
@@ -34,7 +34,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.5,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.COMPETITION,
             domain=EventDomain.SPORT,
             tone=EventTone.HOSTILE,
@@ -84,7 +84,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.4,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.SPORT,
             tone=EventTone.HOSTILE,
@@ -126,7 +126,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.5,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.SPORT,
             tone=EventTone.TENSE,
@@ -167,7 +167,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.5,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.SPORT,
             tone=EventTone.MELANCHOLY,
@@ -207,7 +207,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.4,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.NEGOTIATION,
             domain=EventDomain.SPORT,
             tone=EventTone.TENSE,
@@ -246,7 +246,7 @@ BLUEPRINTS = [
             },
         ))],
         base_weight=0.4,
-        event_id=EventId(
+        event_id=EventType(
             nature=EventNature.REVELATION,
             domain=EventDomain.SPORT,
             tone=EventTone.TENSE,
