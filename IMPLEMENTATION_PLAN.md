@@ -959,6 +959,103 @@ signal so it guessed from names.
 Also fixed with 22A–C: stale `test_visual.py` placeholder-face size
 assertion (256 → 512, left behind by the Phase 21 face-size bump).
 
+## Phase 23 — Pre-baked rendering ✅ (largely shipped)
+
+Build-time background pre-bake replaces runtime on-demand SD. Alternates
+model (`SceneGraphSpec.alternates`, distinct shots per visit);
+`PrebakedImageProducer` + `init_backgrounds(prebaked=True)` +
+`NoOpPrefetchScheduler`; `scripts/prebake_assets.py` idempotent driver;
+hot-tier + gap specs baked (74 shots). Runtime wired (prebaked
+`resolve_scene` redirects every cue to the canonical `spec_id` graph).
+New `LocationKind`s: TEAM_HQ, TRAINING_GROUND, BAR, MEDIA, TRANSIT. Locked
+painterly recipe in `ComfyUIImageProducer`. Design:
+`field_and_heart_prebake_rendering.md`. Figure assets
+(`field_and_heart_figure_assets.md`) follow.
+
+## Phase 24 — Narrative flow ✅
+
+The pass that makes the LLM's individually-good fragments read as a
+flowing scene with meaningful choices. Source: `narrative_adjustments.md`.
+Landed branch `claude/crazy-proskuriakova-b6a142`, commits a8544ef→c8aa62f.
+
+**Guiding distinction — two continuity tracks, tracked + stored
+separately, never conflated:**
+
+- **Journal** = *temporal* continuity ("what just happened / earlier
+  today").
+- **Arc** = *thread / quest-log* continuity ("last week Mara said X").
+
+### 24A — Continuity spine + runtime ComfyUI removal ✅
+
+- New `engine/journal.py` `NarrativeJournal`: rolling rendered prose
+  (`recent_beats`) + scene/day/week summary layers. `recent_context()`
+  grounds the LLM with immediate continuity, distinct from the arc digest.
+- `llm.build_llm_prompt` grounds the two tracks as separate labelled
+  sections ("Moments before" vs "Story so far"); `summarise_narration`
+  compresses beats (LLM + deterministic fallback). `session.close_scene`
+  compresses a scene's beats at the event boundary.
+- **Runtime ComfyUI generation removed** — image generation is build-time
+  only now. `visual.py` faces fall back to stock/placeholder; the session
+  no longer holds a `comfyui_client`. `comfyui.py` stays for the bake
+  scripts. (Also fixed a long-standing test hang where `new_game` warmed
+  faces against a live server.)
+
+### 24B — Multi-beat events ✅
+
+- `EventBlueprint.setup` (pre-choice premise) + `BranchOutcome
+  .action_summary` / `reaction_summary` (optional; `summary` is the
+  result beat + single-beat fallback). `NarratedBeat` carrier.
+- `session.narrate_setup` / `narrate_event` produce ordered
+  `action → reaction → result` beats, each recorded into the journal
+  before the next. `drama_block` / `postgame_block` iterate them.
+- Arc-recap beat: `narrate_arc_recap` surfaces the thread track when an
+  arc resumes after a day gap — needs `OutcomeRecord.day_ordinal` +
+  `WorldClock.day_ordinal`.
+- Authored full beats on 5 marquee events (conflict blame→apology arc,
+  vuln.post_loss_confession, romantic.quiet_evening, mentor.quiet_word).
+
+### 24C — Player presence / dynamic stance ✅
+
+- `PlayerStance` (actor / reactor / onlooker / spectator). The
+  blueprint's `player_stance` is an **anchor**, not the final value;
+  `events.weighted_player_stance` samples the actual stance per instance
+  (anchor bias × trait tilt × prior-stance persistence × chance, RNG-
+  injected). Stamped on `OutcomeRecord.player_stance`; resolved once per
+  event via `session.resolve_player_stance`.
+- Drives figure framing (`figure_layout.PlayerFraming` FOREGROUND / ASIDE
+  / BACKGROUND) + a scene-intro perspective note (`perspective_note`).
+
+### 24D — Tone proximity + mid-event shift + cast escalation ✅
+
+- `EventTone → FigureDistance` (`session._TONE_TO_DISTANCE`) for figure
+  proximity; posture already followed tone (`figures.posture_for`).
+- `BranchOutcome.result_tone` re-frames figures (proximity + posture) for
+  the reaction/result beats (`figure_layout_for(tone_override=...)`,
+  `session.result_tone_for`).
+- `session.cast_chained_event` carries a prior cast forward (pins shared
+  roles, casts new ones fresh) for 2→3→4 cast growth.
+
+### 24E — Periodic journal summaries + tone audit ✅
+
+- `NarrativeJournal.current_day` + `roll_day` / `roll_week`;
+  `session.update_journal_period` (day rollover) + `summarise_week` (week
+  end) compress the journal so long-horizon grounding stays bounded.
+  `recent_context()` fallback descends beats → scene → day → week.
+- Tone audit across all 55 blueprints — catalogue largely consistent.
+
+**Deferred from Phase 24:**
+
+- **General dynamic role assignment** — extend the weighted stance
+  resolver to *all* participants (not just the player), with persistence
+  + trait weighting on casting.
+- **Escalating-cast content** — author a chained event that adds a role
+  mid-scene, actually exercising `session.cast_chained_event` (the helper
+  exists and is tested; no content uses it yet).
+- **Two tone retones** — `external.media_scrum` → TENSE and
+  `training.showing_off` → PLAYFUL read better, but tone is part of the
+  `EventId` triple + `VALID_EVENT_COMBINATIONS`, so retoning is a taxonomy
+  change. Flagged with in-place `NOTE` comments; do it as a taxonomy pass.
+
 ## Cross-cutting concerns (maintained throughout)
 
 - **Testing**: every engine module has a unit test file. Notebooks are for exploration; `pytest` is the regression gate.
