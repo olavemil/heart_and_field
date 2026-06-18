@@ -1,15 +1,16 @@
-"""Event dimensions and chain edges (addendum §4.3–§4.5) — Phase 17.
+"""Event dimensions and chain edges (addendum §4.3–§4.5; reshaped ADR-001).
 
-Three independent enums compose every event id. The triple
-``(domain, nature, tone)`` is the canonical key, paired with an
-authored "valid combinations" registry so blueprints stay grounded in
-the addendum's curated event list — no surprise combos.
+``EventType`` composes the three dimensions, but its **identity is the
+essence ``(domain, nature)``** — the categorical kind of event, used for
+chaining and the "valid combinations" registry. Tone is *not* part of
+identity: an ``EventType`` carries the ``possible_tones`` it can serve,
+and only the *resolved* tone matters at a continuation boundary. Many
+blueprints may share one ``EventType`` (``blueprint.id`` is the real key).
 
-Chain edges (``EventChainEdge``) declare how one event id leads to
-another along a shared dimension (scene continuity, same nature,
-same domain, or scene-graph adjacency). The chain table is small at
-this phase; content authors extend it as they build out the event
-library.
+Chain edges (``EventChainEdge``) declare how one essence leads to another
+along a shared dimension (scene continuity, same nature, same domain, or
+scene-graph adjacency). The chain table is small; content authors extend
+it as they build out the event library.
 """
 
 from __future__ import annotations
