@@ -1100,6 +1100,37 @@ scaffolding the contextual engine supersedes.
   lands only after the continuation engine replaces exact-match chains.
 - Player-driven movement (future ambition).
 
+### Target behaviour — worked example (not yet implemented)
+
+The contextual-continuation engine should generate a drifting sequence
+where **each step perturbs exactly one axis** of `(nature, tone, domain)`
+— the rest hold (continuity) while one moves (variation):
+
+```
+(Confrontation, Tense,    Sports)
+  → (Confrontation, Romantic, Sports)        tone:   Tense → Romantic
+  → (Invitation,    Romantic, Sports)        nature: Confrontation → Invitation
+  → (Invitation,    Romantic, Relationship)  domain: Sports → Relationship
+```
+
+reading as: a tense on-pitch clash softens into charged tension, becomes
+an invitation, then moves off the pitch into the relationship. Time and
+location drift alongside (a domain shift may pull a location change, which
+costs time).
+
+Outcomes along the way **enqueue conditional future events** (the
+outcome-scheduled arc mechanism) that *may* fire later under the right
+circumstances — e.g. this thread might queue:
+
+```
+(Admission,   Romantic, Relationship)   a later confession
+(Competition, Romantic, Sports)         rivalry recharged with romantic stakes
+```
+
+These sit in a pending-event pool with trigger conditions (cast present,
+relationship state, time/location reachable) and are surfaced by the arc /
+movement mechanisms when eligible — not fired immediately.
+
 ## Cross-cutting concerns (maintained throughout)
 
 - **Testing**: every engine module has a unit test file. Notebooks are for exploration; `pytest` is the regression gate.
