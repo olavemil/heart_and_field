@@ -63,48 +63,92 @@ class EventTone(str, Enum):
 # ===========================================================================
 
 
+# EventTone declaration order — the deterministic tiebreak for picking a
+# representative tone from a set (see ``EventType.tone``).
+def _representative_tone(tones: "frozenset[EventTone]") -> "EventTone | None":
+    for t in EventTone:
+        if t in tones:
+            return t
+    return None
+
+
 @dataclass(frozen=True)
 class EventType:
-    """Three-dimensional event key.
+    """Categorical event *essence* plus the tones it can carry (ADR-001).
 
-    Frozen + hashable so it can index dicts / sets directly. ``key()``
-    formats the canonical string used for blueprint ids (the format
-    matches addendum §4.3: ``{domain}_{nature}_{tone}``).
+    **Identity is ``(domain, nature)`` only** — that essence is what chains
+    and the valid-combinations registry key on. ``possible_tones`` is
+    carried data, *excluded from equality/hash* (``compare=False``),
+    because only the *resolved* tone matters at a continuation boundary,
+    not which tones an event could have taken. So two ``EventType``s with
+    the same domain/nature are equal regardless of their tone sets.
+
+    Not a primary key: ``blueprint.id`` identifies a blueprint; many
+    blueprints may share one ``EventType`` (→ weighted selection).
+
+    ``tone`` is a transition-era convenience. Authors may still pass a
+    single ``tone=`` (it populates ``possible_tones``); ``.tone`` then
+    exposes a representative tone for code that still reads a single value
+    (figure posture/proximity, scene intro) until the tone resolver lands
+    in 25.x. Passing ``possible_tones=`` directly is the forward form.
     """
 
+    # Field order preserves back-compat positional/keyword use
+    # (``EventType(nature, domain, tone)``). Identity = (nature, domain);
+    # tone + possible_tones are excluded from eq/hash.
     nature: EventNature
     domain: EventDomain
-    tone: EventTone
+    tone: EventTone | None = field(default=None, compare=False)
+    possible_tones: frozenset[EventTone] = field(
+        default_factory=frozenset, compare=False
+    )
+
+    def __post_init__(self) -> None:
+        tones = self.possible_tones
+        if not isinstance(tones, frozenset):
+            tones = frozenset(tones)
+        if not tones and self.tone is not None:
+            tones = frozenset({self.tone})
+        object.__setattr__(self, "possible_tones", tones)
+        # Representative single tone (deterministic; the authored one in the
+        # single-tone case). Bridges code still reading a scalar tone.
+        if self.tone is None:
+            object.__setattr__(self, "tone", _representative_tone(tones))
 
     def key(self) -> str:
-        return f"{self.domain.value}_{self.nature.value}_{self.tone.value}"
+        """Canonical *essence* string — ``{domain}_{nature}`` (tone is no
+        longer part of identity)."""
+        return f"{self.domain.value}_{self.nature.value}"
 
     def to_dict(self) -> dict:
         return {
-            "nature": self.nature.value,
             "domain": self.domain.value,
-            "tone": self.tone.value,
+            "nature": self.nature.value,
+            "possible_tones": sorted(t.value for t in self.possible_tones),
         }
 
     @classmethod
     def from_dict(cls, d: Mapping) -> "EventType":
+        if d.get("possible_tones") is not None:
+            tones = frozenset(EventTone(t) for t in d["possible_tones"])
+        elif d.get("tone") is not None:  # legacy single-tone saves
+            tones = frozenset({EventTone(d["tone"])})
+        else:
+            tones = frozenset()
         return cls(
-            nature=EventNature(d["nature"]),
             domain=EventDomain(d["domain"]),
-            tone=EventTone(d["tone"]),
+            nature=EventNature(d["nature"]),
+            possible_tones=tones,
         )
 
     @classmethod
     def from_key(cls, key: str) -> "EventType":
-        """Parse a canonical key string back into an ``EventType``."""
-        parts = key.split("_", 2)
-        if len(parts) != 3:
+        """Parse an essence key (``{domain}_{nature}``) back into an
+        ``EventType`` with an empty tone set."""
+        parts = key.split("_", 1)
+        if len(parts) != 2:
             raise ValueError(f"invalid event key: {key!r}")
-        return cls(
-            domain=EventDomain(parts[0]),
-            nature=EventNature(parts[1]),
-            tone=EventTone(parts[2]),
-        )
+        return cls(domain=EventDomain(parts[0]), nature=EventNature(parts[1]))
 
 
 # ===========================================================================

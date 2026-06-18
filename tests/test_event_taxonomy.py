@@ -20,39 +20,57 @@ from engine.event_taxonomy import (
 
 
 class TestEventType:
-    def test_key_format_matches_addendum(self):
+    def test_key_is_essence_domain_nature(self):
+        # ADR-001: tone is no longer part of the identity key.
         eid = EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
             tone=EventTone.HOSTILE,
         )
-        assert eid.key() == "relationship_confrontation_hostile"
+        assert eid.key() == "relationship_confrontation"
 
-    def test_round_trip_via_dict(self):
+    def test_single_tone_populates_possible_tones(self):
         eid = EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.PERSONAL,
             tone=EventTone.MELANCHOLY,
         )
-        assert EventType.from_dict(eid.to_dict()) == eid
+        assert eid.possible_tones == frozenset({EventTone.MELANCHOLY})
+        assert eid.tone is EventTone.MELANCHOLY  # representative bridge
 
-    def test_round_trip_via_key_string(self):
+    def test_round_trip_via_dict_preserves_tone_set(self):
         eid = EventType(
-            nature=EventNature.OBSERVATION,
-            domain=EventDomain.SECRET,
-            tone=EventTone.NEUTRAL,
+            nature=EventNature.ADMISSION,
+            domain=EventDomain.PERSONAL,
+            possible_tones=frozenset({EventTone.MELANCHOLY, EventTone.WARM}),
         )
+        restored = EventType.from_dict(eid.to_dict())
+        assert restored == eid  # essence equality
+        assert restored.possible_tones == eid.possible_tones
+
+    def test_from_dict_accepts_legacy_single_tone(self):
+        restored = EventType.from_dict(
+            {"domain": "personal", "nature": "admission", "tone": "melancholy"}
+        )
+        assert restored.possible_tones == frozenset({EventTone.MELANCHOLY})
+
+    def test_identity_ignores_tone(self):
+        # Same essence, different tone sets → equal and hash-equal.
+        a = EventType(EventNature.CONFRONTATION, EventDomain.RELATIONSHIP,
+                      tone=EventTone.HOSTILE)
+        b = EventType(EventNature.CONFRONTATION, EventDomain.RELATIONSHIP,
+                      tone=EventTone.TENSE)
+        assert a == b
+        assert hash(a) == hash(b)
+        assert {a, b} == {a}
+
+    def test_from_key_round_trips_essence(self):
+        eid = EventType(nature=EventNature.OBSERVATION, domain=EventDomain.SECRET)
         assert EventType.from_key(eid.key()) == eid
 
     def test_invalid_key_rejected(self):
         with pytest.raises(ValueError):
-            EventType.from_key("only_two")
-
-    def test_frozen_hashable(self):
-        a = EventType(EventNature.OBSERVATION, EventDomain.SECRET, EventTone.NEUTRAL)
-        b = EventType(EventNature.OBSERVATION, EventDomain.SECRET, EventTone.NEUTRAL)
-        assert hash(a) == hash(b)
-        assert {a, b} == {a}
+            EventType.from_key("onlyone")
 
 
 # --- VALID_EVENT_COMBINATIONS --------------------------------------------
