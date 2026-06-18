@@ -456,6 +456,44 @@ class TestFigureLayoutFor:
         assert s.figure_layout_for(self._blueprint(EventTone.WARM),
                                    cast, 1280, 720) == []
 
+    def test_tone_drives_proximity(self, tmp_path):
+        # Phase 24D: an intimate tone sits the NPC closer/larger than a
+        # hostile (distant) one — derived from tone, no explicit distance.
+        from engine.event_taxonomy import EventTone
+
+        s = self._session(tmp_path)
+        player = s.state.characters["player"]
+        other = next(c for c in s.state.characters.values() if c.id != "player")
+        cast = {"player": player, "target": other}
+
+        def npc_box(tone):
+            placements = s.figure_layout_for(self._blueprint(tone), cast, 1280, 720)
+            return next(b for _, b, r in placements if r == "npc")
+
+        intimate = npc_box(EventTone.ROMANTIC)
+        distant = npc_box(EventTone.HOSTILE)
+        assert intimate.height > distant.height  # closer reads larger
+
+    def test_tone_override_reframes(self, tmp_path):
+        # A result-tone override changes proximity without changing the bp.
+        from engine.event_taxonomy import EventTone
+
+        s = self._session(tmp_path)
+        player = s.state.characters["player"]
+        other = next(c for c in s.state.characters.values() if c.id != "player")
+        cast = {"player": player, "target": other}
+        bp = self._blueprint(EventTone.ROMANTIC)  # opens intimate
+
+        opening = next(
+            b for _, b, r in s.figure_layout_for(bp, cast, 1280, 720) if r == "npc"
+        )
+        shifted = next(
+            b for _, b, r in s.figure_layout_for(
+                bp, cast, 1280, 720, tone_override=EventTone.HOSTILE
+            ) if r == "npc"
+        )
+        assert shifted.height < opening.height
+
     def test_player_stance_shrinks_silhouette(self, tmp_path):
         # Phase 24C: a spectator's player figure is smaller and further
         # aside than an actor's foreground anchor.

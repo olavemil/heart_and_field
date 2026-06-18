@@ -139,17 +139,20 @@ init python:
             renpy.hide(stale)
         _scene_live_overlay_tags = new_tags
 
-    def show_figures(session, blueprint, cast):
+    def show_figures(session, blueprint, cast, tone=None):
         """Composite the event's figures over the current background.
 
         The engine resolves which figures and where (figure_layout_for);
         this only places the matted images. Player draws on top (zorder),
         NPCs behind. Idempotent — stale figure tags are hidden. Proximity
-        (FigureDistance) defaults to NORMAL until events cue it.
+        (FigureDistance) is derived from the event tone; pass ``tone`` to
+        re-frame mid-event when a resolved branch shifts the mood.
         """
         global _fh_figure_tags
         w, h = _scene_canvas()
-        placements = session.figure_layout_for(blueprint, cast, w, h)
+        placements = session.figure_layout_for(
+            blueprint, cast, w, h, tone_override=tone
+        )
         new_tags = set()
         for i, (path, box, role) in enumerate(placements):
             tag = "fh_fig_%d" % i

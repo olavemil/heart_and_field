@@ -629,9 +629,13 @@ class TestPlayerStance:
             resolved = session.resolve_player_stance(bp, cast)
             assert session._current_player_stance is resolved
             record = session.resolve_event(bp, list(bp.outcomes)[0], cast, idx)
-            # The record carries a valid stance; the per-event cache clears.
+            # The record carries the resolved stance; the per-event cache
+            # survives resolution (for a post-resolve re-frame) and is
+            # cleared at the scene boundary.
             assert record.player_stance == resolved.value
             assert PlayerStance(record.player_stance) is resolved
+            assert session._current_player_stance is resolved
+            session.close_scene(cast)
             assert session._current_player_stance is None
             break
 
@@ -650,6 +654,89 @@ class TestPlayerStance:
             )
         )
         assert session._last_player_stance() is PlayerStance.SPECTATOR
+
+
+class TestToneAndCast:
+    """Phase 24D — result-tone shifts + escalating-cast helper."""
+
+    def test_tone_to_distance_covers_all_tones(self):
+        from engine.event_taxonomy import EventTone
+        from engine.figure_layout import FigureDistance
+        from engine.session import _TONE_TO_DISTANCE
+
+        for tone in EventTone:
+            assert tone in _TONE_TO_DISTANCE
+        assert _TONE_TO_DISTANCE[EventTone.ROMANTIC] is FigureDistance.INTIMATE
+        assert _TONE_TO_DISTANCE[EventTone.HOSTILE] is FigureDistance.DISTANT
+
+    def test_result_tone_for_reads_branch(self):
+        from engine.event_taxonomy import EventTone
+        from engine.events import BranchOutcome, EventBlueprint, RoleSlot
+        from engine.outcomes import OutcomeRecord, WeekPhase
+
+        bp = EventBlueprint(
+            id="t.rt",
+            participants=[RoleSlot(role="player")],
+            outcomes={
+                "warm": BranchOutcome(summary="s", result_tone=EventTone.WARM),
+                "flat": BranchOutcome(summary="s"),
+            },
+        )
+        session = _build_session()
+
+        def rec(branch):
+            return OutcomeRecord(
+                event_id="t.rt", timestamp=WeekPhase(1, 1), participants={},
+                branch_taken=branch, summary="s",
+            )
+
+        assert session.result_tone_for(bp, rec("warm")) is EventTone.WARM
+        assert session.result_tone_for(bp, rec("flat")) is None
+
+    def test_apology_branches_shift_tone(self):
+        from engine.event_taxonomy import EventTone
+
+        session = _build_session()
+        bp = next(b for b in session.blueprints if b.id == "conflict.apology")
+        assert bp.outcomes["sincere"].result_tone is EventTone.WARM
+        assert bp.outcomes["deflect"].result_tone is EventTone.HOSTILE
+
+    def test_cast_chained_carries_prior_and_casts_new(self):
+        from engine.events import EventBlueprint, RoleSlot, SceneBlock
+
+        session = _build_session()
+        player = session.state.characters["player"]
+        target = session.state.characters["tm_jordan"]
+        prior_cast = {"player": player, "target": target}
+
+        chained = EventBlueprint(
+            id="t.chain",
+            participants=[
+                RoleSlot(role="player", filter=lambda c: c.id == "player"),
+                RoleSlot(role="target", filter=lambda c: c.id != "player"),
+                RoleSlot(role="mate", filter=lambda c: c.id != "player"),
+            ],
+            blocks=[SceneBlock(id="m")],
+        )
+        cast = session.cast_chained_event(chained, prior_cast)
+        assert cast is not None
+        # Prior roles carried forward verbatim; new role filled fresh.
+        assert cast["player"] is player
+        assert cast["target"] is target
+        assert cast["mate"].id not in {"player", "tm_jordan"}
+
+    def test_cast_chained_fails_when_pinned_breaks_filter(self):
+        from engine.events import EventBlueprint, RoleSlot, SceneBlock
+
+        session = _build_session()
+        player = session.state.characters["player"]
+        # Pin the player into a role whose filter excludes them.
+        chained = EventBlueprint(
+            id="t.chain2",
+            participants=[RoleSlot(role="player", filter=lambda c: c.id != "player")],
+            blocks=[SceneBlock(id="m")],
+        )
+        assert session.cast_chained_event(chained, {"player": player}) is None
 
 
 class TestFullWeekHeadless:

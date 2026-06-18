@@ -64,6 +64,12 @@ label drama_block(slot_index):
     $ record = fh.session.resolve_event(fh.bp, branch, cast, slot_index)
     $ fh_checkpoint()
 
+    # If the chosen branch shifts the mood, re-frame the figures (proximity
+    # + posture) before the reaction/result beats (Phase 24D).
+    $ result_tone = fh.session.result_tone_for(fh.bp, record)
+    if result_tone is not None:
+        $ show_figures(fh.session, fh.bp, cast, tone=result_tone)
+
     # Narrate the resolution as ordered beats: action -> reaction ->
     # result, each on its own screen(s) (Phase 24B). Unauthored optional
     # beats are simply absent; the result beat always plays.

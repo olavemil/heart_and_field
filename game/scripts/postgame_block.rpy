@@ -49,6 +49,11 @@ label postgame_block(slot_index):
     $ record = fh.session.resolve_event(fh.bp, branch, cast, slot_index)
     $ fh_checkpoint()
 
+    # Re-frame the figures if the chosen branch shifts the mood (24D).
+    $ result_tone = fh.session.result_tone_for(fh.bp, record)
+    if result_tone is not None:
+        $ show_figures(fh.session, fh.bp, cast, tone=result_tone)
+
     # Resolution as ordered beats: action -> reaction -> result (24B).
     $ beats = fh.session.narrate_event(fh.bp, cast, record)
     python:

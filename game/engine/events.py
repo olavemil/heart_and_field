@@ -177,6 +177,11 @@ class BranchOutcome:
     duration_minutes: int | None = None
     action_summary: str | None = None
     reaction_summary: str | None = None
+    # Tone the scene shifts to once this branch lands (Phase 24D). When
+    # set, the figures re-frame for the reaction/result beats — a
+    # sceptical coach turns angry, a tense room warms. ``None`` keeps the
+    # event's opening tone throughout.
+    result_tone: "EventTone | None" = None
 
 
 @dataclass

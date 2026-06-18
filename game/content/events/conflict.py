@@ -140,6 +140,8 @@ BLUEPRINTS = [
         ),
         outcomes={
             "sincere": BranchOutcome(
+                # A real apology thaws the room.
+                result_tone=EventTone.WARM,
                 action_summary=(
                     "{name:player} said the words without dressing them up. No "
                     "'but', no ledger of who had done what to whom."
@@ -162,6 +164,8 @@ BLUEPRINTS = [
                 ],
             ),
             "deflect": BranchOutcome(
+                # The non-apology curdles into fresh hostility.
+                result_tone=EventTone.HOSTILE,
                 action_summary=(
                     "{name:player} started with the apology and arrived, somehow, "
                     "at a list of reasons it had never really been {their:player} "

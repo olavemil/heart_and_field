@@ -292,6 +292,21 @@ def _recap_distance_phrase(gap_days: int) -> str:
     return "Some time before"
 
 
+# Event tone → figure proximity (Phase 24D). Intimate confessions sit
+# close; formal confrontations sit distant. Used by ``figure_layout_for``
+# when the caller doesn't pin an explicit distance.
+_TONE_TO_DISTANCE: dict[EventTone, FigureDistance] = {
+    EventTone.ROMANTIC: FigureDistance.INTIMATE,
+    EventTone.WARM: FigureDistance.CLOSE,
+    EventTone.MELANCHOLY: FigureDistance.CLOSE,
+    EventTone.PLAYFUL: FigureDistance.CLOSE,
+    EventTone.TENSE: FigureDistance.NORMAL,
+    EventTone.TRIUMPHANT: FigureDistance.NORMAL,
+    EventTone.NEUTRAL: FigureDistance.NORMAL,
+    EventTone.HOSTILE: FigureDistance.DISTANT,
+}
+
+
 # Player stance → figure framing (Phase 24C). An actor or reactor holds
 # the foreground; an onlooker sits aside; a spectator is pushed small and
 # to the edge. Bridges the authored ``EventBlueprint.player_stance`` to
@@ -735,9 +750,36 @@ class GameSession:
         ctx = self._game_context()
         return select_event(candidates, ctx, self.state, self.rng)
 
-    def cast_event(self, blueprint: EventBlueprint) -> dict[str, Character] | None:
-        """Attempt to cast the blueprint against the current roster."""
-        return cast_event(blueprint, self.state, self.rng)
+    def cast_event(
+        self,
+        blueprint: EventBlueprint,
+        *,
+        pinned: Mapping[str, Character] | None = None,
+    ) -> dict[str, Character] | None:
+        """Attempt to cast the blueprint against the current roster.
+
+        ``pinned`` forces specific characters into specific roles (each
+        must still satisfy that slot's filter); used to carry a cast
+        forward into a chained event.
+        """
+        return cast_event(blueprint, self.state, self.rng, pinned=pinned)
+
+    def cast_chained_event(
+        self,
+        blueprint: EventBlueprint,
+        prior_cast: Mapping[str, Character],
+    ) -> dict[str, Character] | None:
+        """Cast a chained follow-up, carrying the prior cast forward (24D).
+
+        Roles the chained event shares with ``prior_cast`` are pinned to
+        the same characters (continuity); any new role (e.g. "the rival's
+        mate wanders over") is cast fresh, growing the on-screen cast
+        2 → 3 → 4 across a chain. Returns ``None`` if a pinned character
+        no longer satisfies its slot or a new role can't be filled.
+        """
+        shared = {s.role for s in blueprint.participants}
+        pinned = {role: c for role, c in prior_cast.items() if role in shared}
+        return cast_event(blueprint, self.state, self.rng, pinned=pinned)
 
     def resolve_event(
         self,
@@ -759,10 +801,10 @@ class GameSession:
         )
         record = resolve_outcome(blueprint, branch, cast, self.state, prior)
         # Stamp the resolved stance (or the anchor when unresolved) so the
-        # next event can bias toward continuity (Phase 24C), then clear the
-        # per-event cache so it can't leak into the next event.
+        # next event can bias toward continuity (Phase 24C). The per-event
+        # cache stays set until ``close_scene`` so a post-resolve figure
+        # re-frame (Phase 24D result_tone) keeps the same stance.
         record.player_stance = self._active_player_stance(blueprint).value
-        self._current_player_stance = None
 
         if self.schedule is not None:
             slot = self.schedule.slots[slot_index]
@@ -1426,6 +1468,18 @@ class GameSession:
         )
         return beats
 
+    def result_tone_for(
+        self, blueprint: EventBlueprint, record: OutcomeRecord
+    ) -> "EventTone | None":
+        """The tone the resolved branch shifts the scene to (Phase 24D).
+
+        ``None`` when the branch authors no shift — the scene keeps its
+        opening tone. Ren'Py uses this to re-frame the figures (proximity
+        + posture) before the reaction/result beats.
+        """
+        outcome = blueprint.outcomes.get(record.branch_taken)
+        return outcome.result_tone if outcome is not None else None
+
     def scene_intro(
         self,
         blueprint: EventBlueprint,
@@ -1482,6 +1536,9 @@ class GameSession:
         nothing open. Never blocks — deterministic compression is the
         fallback when the LLM is off.
         """
+        # Scene over — drop the per-event stance cache (Phase 24C/D)
+        # regardless of journal state; the next event resolves its own.
+        self._current_player_stance = None
         if not self.journal.has_open_scene():
             return ""
         cast_pronouns: dict[str, str] = {}
@@ -1576,7 +1633,8 @@ class GameSession:
         canvas_w: int,
         canvas_h: int,
         *,
-        distance: FigureDistance = FigureDistance.NORMAL,
+        distance: FigureDistance | None = None,
+        tone_override: "EventTone | None" = None,
         max_npcs: int = 2,
     ) -> list[tuple[str, "FigureBox", str]]:
         """Resolve the figures to composite for an event.
@@ -1586,10 +1644,16 @@ class GameSession:
         Selection maps each cast member's persisted descriptor + the
         event tone to a baked figure; figures with no available asset are
         skipped. Returns ``[]`` if the figure pack isn't loaded.
+
+        Tone drives both posture (figure selection) and proximity
+        (``FigureDistance``) — intimate scenes sit close, confrontations
+        distant (Phase 24D). ``tone_override`` lets a resolved branch
+        re-frame the scene mid-event (a sceptical coach turns angry);
+        ``distance`` still pins proximity explicitly when given.
         """
         if self.figure_manifest is None or not self.figure_manifest.assets:
             return []
-        tone = (
+        tone = tone_override or (
             blueprint.event_id.tone
             if blueprint.event_id is not None
             else EventTone.NEUTRAL
@@ -1634,9 +1698,13 @@ class GameSession:
         framing = _STANCE_TO_FRAMING.get(
             self._active_player_stance(blueprint), PlayerFraming.FOREGROUND
         )
+        resolved_distance = (
+            distance if distance is not None
+            else _TONE_TO_DISTANCE.get(tone, FigureDistance.NORMAL)
+        )
         boxes = compute_layout(
             canvas_w, canvas_h, [s for s, _, _ in resolved],
-            distance=distance,
+            distance=resolved_distance,
             player_framing=framing,
         )
         return [
