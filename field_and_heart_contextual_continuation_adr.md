@@ -60,38 +60,54 @@ weight contributor that **replaces `_chain_bias`**:
    `(domain, nature)` (taxonomy_id), `resolved_tone`, and time/location
    (from `WorldClock` + `current_location`; see open Q1 on storing
    location on the record).
-2. **Perturbation target.** Derive a *target* vector that holds most axes
-   and drifts a small subset (default: one), along per-axis adjacency,
-   honouring correlations (`location ↔ domain`, `location ↔ time`). The
-   perturbation is RNG-weighted, not fixed, so the drifting axis varies.
-3. **Per-axis compatibility score.** Score each eligible candidate
-   blueprint against the target: tone (resolved-target ∈
-   `possible_tones`, or valence-adjacent), domain/nature (match vs
-   adjacency), location (`valid_scene_types` compatible with the target
-   location). The score becomes a multiplicative `contextual_bias` in
-   `compute_weight`.
+2. **Perturbation (continuity-biased cascade — no adjacency tables).** The
+   target holds most axes and drifts a few. Continuity comes from the axes
+   that *hold*, not from constraining how a drifting axis moves — so a
+   drifting axis just takes a different value (selection then finds the
+   nearest available blueprint). Algorithm (`engine.continuation`):
+   - If the prior outcome is **immediate** (not a scheduled event) and
+     pushed an axis (e.g. a `result_tone` shift), apply that drift first
+     and count it.
+   - Consider the remaining axes in random order; each drifts with
+     ``p = 3 / (4 + 2 * changes)``; **stop at the first axis that holds.**
+   - Yields ≈ `0:25% 1:37% 2:23% 3:10% 4:4%` — mostly one or two axes
+     move, ~25% none, a light tail for the occasional dramatic shift.
+   - **Arc / scheduled events override** this entirely: a chained or
+     outcome-scheduled event is respected (its own vector), bypassing the
+     drift.
+3. **Per-axis compatibility score (soft, no adjacency).** Score each
+   eligible candidate by how many of the target axes it matches —
+   domain/nature equality, location via `valid_scene_types`, tone via the
+   existing resolver (`resolved-target ∈ possible_tones`, else valence
+   closeness). *Soft* so that when the exact target has no/few blueprints
+   the nearest available still wins (graceful, avoids starvation). Becomes
+   a multiplicative `contextual_bias` in `compute_weight`.
 4. **Selection.** The existing weighted sampler picks among eligible
-   candidates; high-compatibility (near the drifted target) candidates are
-   favoured, so the realised sequence drifts one axis at a time.
+   candidates; near-target candidates are favoured, so the realised
+   sequence drifts a small number of axes per step.
 
-`VALID_EVENT_COMBINATIONS` is retired as a gate (it remains, if anything,
-an authoring coverage aid). The realised next event is grounded by the
-**journal** (prose continuity) and stamps its own resolved vector for the
-following step.
+`VALID_EVENT_COMBINATIONS` is retired as a gate (at most an authoring
+coverage aid). The realised next event is grounded by the **journal**
+(prose continuity) and stamps its own resolved vector for the next step.
 
 ### Axis model
 
-| Axis | Source | Drift / adjacency |
-|------|--------|-------------------|
-| domain | `EventType.domain` | adjacency table (e.g. SPORT↔RELATIONSHIP common; SECRET rare) |
-| nature | `EventType.nature` | adjacency table (e.g. CONFRONTATION→ADMISSION; INVITATION→COLLABORATION) |
-| tone | resolved tone (`resolve_event_tone`) | `TONE_VALENCE` adjacency (already defined) |
-| time | `WorldClock` | advances as a *consequence* of other drifts (movement cost) |
-| location | `current_location` / `valid_scene_types` | scene-graph adjacency (`engine.scene_taxonomy` already has `SCENE_ADJACENCY`); correlated with domain |
+| Axis | Source | On drift |
+|------|--------|----------|
+| domain | `EventType.domain` | take a different domain (selection finds nearest available) |
+| nature | `EventType.nature` | take a different nature |
+| tone | resolved tone (`resolve_event_tone`) | let the resolver pick freely (don't carry the prior tone); `TONE_VALENCE` still shapes it |
+| time | `WorldClock` | advances as a *consequence* of domain/location drift (movement cost) |
+| location | `current_location` / `valid_scene_types` | a new location — **conservative**: kept often by the cascade, and content must spread events across locations to avoid jarring jumps (see Q2) |
 
-Tone adjacency reuses `TONE_VALENCE`; location adjacency reuses
-`scene_taxonomy.SCENE_ADJACENCY`. Domain and nature adjacency tables are
-**new authored data** (small, like the tone valence map).
+No domain/nature adjacency tables (per the algorithm): the cascade keeps
+most axes, which is what produces continuity. Tone keeps reusing
+`resolve_event_tone` + `TONE_VALENCE`. **Location is the sensitive axis** —
+a jump with no narrative bridge reads badly, so location should drift
+rarely (it does, being one of four cascade axes) and the content library
+needs events spanning locations (open Q2); scene-graph adjacency
+(`scene_taxonomy.SCENE_ADJACENCY`) remains available as a knob if free
+location drift reads wrong.
 
 ## Options Considered
 
@@ -149,9 +165,10 @@ scheduling is the eventual shape but is motivated by **player movement**
 it before movement means maintaining two selection paths. So: **A now**,
 evolving toward B when movement lands. C is out of scope.
 
-The core new surface is small and authored (domain/nature adjacency
-tables, a perturbation policy, a scoring function) — all pure + rng-
-injected + unit-testable, mirroring `resolve_event_tone`.
+The core new surface is small (a perturbation cascade + a soft scoring
+function) — pure + rng-injected + unit-testable, mirroring
+`resolve_event_tone`. No adjacency tables: continuity is carried by the
+*held* axes, so a drifting axis just takes a different value.
 
 ## Consequences
 
@@ -162,12 +179,14 @@ injected + unit-testable, mirroring `resolve_event_tone`.
 - A single scoring surface that movement (later) can reuse.
 
 **Harder / to revisit:**
-- New authored adjacency tables (domain, nature) need taste + tuning, with
-  distribution tests (drift is single-axis-dominant, not chaotic).
 - Bounded by slot tag-routing until movement; the realised drift is within
   a slot's candidate pool.
 - Location axis needs the prior event's location — likely a new
   `OutcomeRecord.location` (open Q1).
+- **Content coverage**: the soft scorer needs blueprints spanning domains/
+  natures/locations, or drift targets find no near match. Location
+  especially — too few cross-location events ⇒ jarring jumps or no drift
+  (Q2).
 
 **Out of scope (separate, sequenced after):**
 - **Outcome-scheduled pending events** (the "future consequence" arc half)
@@ -179,34 +198,37 @@ injected + unit-testable, mirroring `resolve_event_tone`.
 1. **Store location on `OutcomeRecord`?** The location axis of the prior
    vector needs it; `current_location` drifts after. Lean: add
    `OutcomeRecord.location: tuple[str,str] | None`.
-2. **Adjacency tables** — author domain/nature adjacency, or start with
-   "hold or uniform-drift" and add structure once it reads wrong?
-3. **Perturbation count** — strictly one axis per step, or weighted
-   1-mostly-2? The worked example is exactly one.
+2. **Location content coverage** — ensure enough events span locations (or
+   carry open/flexible locations) so location holds or drifts *with a
+   bridge*, never teleports. Possibly constrain location drift to
+   `SCENE_ADJACENCY` if free drift reads wrong.
+3. ~~**Adjacency tables / perturbation count**~~ **Resolved:** no adjacency
+   tables; continuity-biased cascade (stop at first hold), ≈25% no-drift,
+   0-2-change mode. *(Landed: `engine.continuation.drift_axes`, 25.4a.)*
 4. **Coexistence with `BLOCK_TAGS`** — does the contextual target also
    nudge *which slot/tag* is favoured, or only rank within a slot's pool?
 5. **Correlation mechanics** — how a domain drift pulls a location change
    and how that books time (ties into movement-cost accounting in
    `resolve_scene`).
 
-## Action Items (proposed Phase 25.4)
+## Action Items (Phase 25.4)
 
-1. [ ] **Axis adjacency data.** `TONE_VALENCE` (exists),
-       `SCENE_ADJACENCY` (exists); add small authored `DOMAIN_ADJACENCY`
-       and `NATURE_ADJACENCY`. *(Resolves Q2.)*
-2. [ ] **Vector + perturbation.** A `ContinuationVector` (or read axes
-       off the last record + world) and `perturb(vector, rng) → target`
-       (single-axis-dominant, correlated). Pure + rng-injected.
-3. [ ] **Scoring.** `contextual_score(candidate_event_type, valid_scene
-       _types, target) → float` over the axes.
+1. [x] **Perturbation cascade.** `engine.continuation.drift_axes` — the
+       continuity-biased cascade (stop at first hold; outcome-forced drifts
+       pre-counted). No adjacency tables. Distribution-tested. *(25.4a.)*
+2. [ ] **Prior vector + drift values.** Read the prior axes off the last
+       record + world; for each drifted axis pick a new value (domain/
+       nature: a different enum; tone: free-resolve; location: a different
+       location). Add `OutcomeRecord.location` (Q1); stamp on resolve.
+3. [ ] **Soft scoring.** `contextual_score(candidate_event_type,
+       valid_scene_types, target) → float` — count matched target axes
+       (graceful when the exact target is unauthored).
 4. [ ] **Integrate.** Replace `_chain_bias` with `contextual_bias` in
        `compute_weight`, reading the last outcome's resolved vector.
        Retire / demote `VALID_EVENT_COMBINATIONS` + `CHAIN_EDGES`.
-5. [ ] **Location axis.** `OutcomeRecord.location` (Q1); stamp on resolve.
-6. [ ] **Tests.** Perturbation is single-axis-dominant + correlation-
-       respecting; scoring favours near-target candidates; a multi-step
+5. [ ] **Tests.** Scoring favours near-target candidates; a multi-step
        headless run reproduces a drifting sequence; determinism.
-7. [ ] **Docs.** Update `CLAUDE.md` + `IMPLEMENTATION_PLAN.md`; mark the
+6. [ ] **Docs.** Update `CLAUDE.md` + `IMPLEMENTATION_PLAN.md`; mark the
        Phase-17 chain/registry scaffolding superseded.
 
 **Sequenced after:** outcome-scheduled pending events; then player
