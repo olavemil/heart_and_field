@@ -1522,6 +1522,11 @@ class GameSession:
                     self._active_player_stance(blueprint)
                 ),
             )
+            # Safety net: LLM may echo unresolved slots from arc_summary.
+            ctx = NarrationContext(
+                target=cast.get("player"), cast=dict(cast)
+            )
+            intro = _substitute(intro, ctx)
         # The intro opens the scene — record it as the first beat so the
         # outcome narration continues from it (temporal track).
         self.journal.record_beat(intro)

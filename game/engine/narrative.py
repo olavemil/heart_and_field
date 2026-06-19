@@ -570,6 +570,10 @@ def narrate(
             location=ctx.location,
             cast_pronouns=cast_pronouns,
         )
+        # Safety net: the LLM may echo unresolved slots from its context
+        # (e.g. arc_summary carries raw {They:player} tokens). Re-resolve
+        # so nothing reaches Ren'Py as an unknown text tag.
+        filled = _substitute(filled, ctx)
 
     return paginate(filled, max_chars=max_chars)
 
