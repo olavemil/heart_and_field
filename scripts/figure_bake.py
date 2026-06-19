@@ -142,7 +142,7 @@ class Spec:
     frontal: bool
 
 
-def _spec(cat, app, posture, frontal, prompt,
+def _spec(cat, app: FigureAppearance, posture, frontal, prompt,
           context=FigureContext.DEFAULT) -> Spec:
     # Default-context paths stay as before (don't invalidate the existing
     # bake); other contexts get a prefix.
@@ -178,20 +178,23 @@ def enumerate_catalogue() -> list[Spec]:
     # conversations in those scenes have a real frontal partner (not the
     # casual-clothes default, and not a from-behind anonymous figure).
     for ctx, dress, postures in (
-        (FigureContext.LOCKER, "wearing locker-room kit, a towel over the "
-         "shoulder, standing by the lockers",
+        (FigureContext.SHOWER, "undressed, steamy, wet, vibrant, communal shower "
+         "room, approachable",
+         (FigurePosture.WARM, FigurePosture.NEUTRAL)),
+        (FigureContext.SHOWER, "with a towel, steam, communal shower "
+         "room, colorful, skeptical",
+         (FigurePosture.TENSE, FigurePosture.TENSE)),
+        (FigureContext.LOCKER, "wearing locker-room kit, partially dressed,"
+         "standing by the lockers",
          (FigurePosture.WARM, FigurePosture.NEUTRAL, FigurePosture.TENSE)),
-        (FigureContext.SHOWER, "wrapped in a towel, steam, communal shower "
-         "room",
-         (FigurePosture.NEUTRAL, FigurePosture.WARM)),
     ):
-        for g in GENDERS:
-            app = FigureAppearance(g, "light", "dark", "short", "adult")
+        for app in _coarse("adult"):
             for posture in postures:
                 pose = _INTERLOCUTOR[posture].split(",")[0]
-                subj = (f"a {_gender_word(g)} {dress}, {pose}, {GAZE_NPC}")
+                subj = (f"a {_skin_word(app.skin)} {_gender_word(app.gender)} "
+                        f"{dress}, {pose}, {GAZE_NPC}")
                 specs.append(_spec(FigureCategory.INTERLOCUTOR, app, posture,
-                                   True, f"{subj}, {FRONTAL_STYLE}", ctx))
+                                True, f"{subj}, {FRONTAL_STYLE}", ctx))
 
     # Authority — both genders × both ages × four postures.
     for age in ("adult", "older"):
@@ -247,7 +250,7 @@ def enumerate_catalogue() -> list[Spec]:
     # Anonymous (locker/shower), from behind.
     for g in GENDERS:
         for pose, phrase in (("locker", "standing at a locker"),
-                             ("shower", "in a communal shower, steam")):
+                             ("shower", "in a communal shower, steamy")):
             app = FigureAppearance(g, "light", "dark", "short", "adult")
             subj = (f"an anonymous {_gender_word(g)} figure {phrase}, locker "
                     f"room, seen from behind")
