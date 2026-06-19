@@ -1088,16 +1088,33 @@ scaffolding the contextual engine supersedes.
   exact-match scaffolding, clearly labelled. (25.1a rename, 25.1b reshape,
   25.1c natural-identity correction.)
 
-### 25.2+ — remaining (per ADR action items)
+### 25.2 — Tone resolver, wired ✅
 
-- Tone resolver (`resolve_event_tone`) + `OutcomeRecord.resolved_tone`;
-  replace static `event_id.tone` reads. Shares a `weighted_resolve` helper
-  with dynamic roles (deferred item 1).
-- Contextual-continuation engine (perturbation + per-axis scoring over the
-  state vector) — likely its own ADR.
+- `event_taxonomy.resolve_event_tone(event_type, *, rng, carried_tone,
+  morale, momentum)` samples a tone from `possible_tones` (continuity with
+  the carried tone + context mood pull via `TONE_VALENCE` + chance);
+  empty/single-tone is deterministic. (25.2a)
+- Wired through the session: `OutcomeRecord.resolved_tone` (carried to the
+  next event), `session.resolve_tone` resolves+caches at event start,
+  figures + scene-intro read the resolved tone, `resolve_event` stamps it,
+  `close_scene` clears the cache. `drama_block`/`postgame_block` call it.
+  (25.2b)
+
+### 25.3 — Multi-tone content (activates the resolver) ✅
+
+- 17 everyday events declare 2-3 `possible_tones` so the resolver varies
+  tone in play (it was deterministic while all content was single-tone).
+  Folds in the 24E retones (`media_scrum`, `showing_off`) as plain edits.
+  Fixed-tone / rarer events left single-tone (expandable incrementally).
+
+### 25.4+ — remaining (per ADR action items)
+
+- **Contextual-continuation engine** (perturbation + per-axis scoring over
+  the state vector) — the worked example below; likely its own ADR.
+  Supersedes the interim exact-match chains/registry.
 - Outcome-scheduled arc consequences (pending-event scheduler).
-- Content overhaul to real multi-tone sets (folds in the 24E retones);
-  lands only after the continuation engine replaces exact-match chains.
+- A shared `weighted_resolve` helper unifying tone + dynamic-role
+  resolution (deferred item 1).
 - Player-driven movement (future ambition).
 
 ### Target behaviour — worked example (not yet implemented)
