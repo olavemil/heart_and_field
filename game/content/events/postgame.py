@@ -37,7 +37,10 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.SPORT,
-            tone=EventTone.TRIUMPHANT,
+            # A win debrief: triumphant, warm, or loose and playful.
+            possible_tones={
+                EventTone.TRIUMPHANT, EventTone.WARM, EventTone.PLAYFUL,
+            },
         ),
         valid_scene_types=[SceneType.LOCKER_ROOM],
         weight_modifiers=[
@@ -86,7 +89,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.SPORT,
-            tone=EventTone.MELANCHOLY,
+            # Aftermath of a loss: heavy, or brittle and tense.
+            possible_tones={EventTone.MELANCHOLY, EventTone.TENSE},
         ),
         valid_scene_types=[SceneType.LOCKER_ROOM],
         weight_modifiers=[

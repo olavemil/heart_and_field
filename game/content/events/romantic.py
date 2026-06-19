@@ -57,7 +57,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.INVITATION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.ROMANTIC,
+            # A quiet evening leans romantic, or simply warm.
+            possible_tones={EventTone.ROMANTIC, EventTone.WARM},
         ),
         valid_scene_types=[
             SceneType.RESTAURANT, SceneType.CAFE, SceneType.PARK,

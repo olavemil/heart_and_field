@@ -37,7 +37,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.COLLABORATION,
             domain=EventDomain.SPORT,
-            tone=EventTone.WARM,
+            # A team talk rouses (triumphant), steadies (warm), or bites (tense).
+            possible_tones={EventTone.WARM, EventTone.TRIUMPHANT, EventTone.TENSE},
         ),
         valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TUNNEL],
         outcomes={

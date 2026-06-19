@@ -83,7 +83,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.CELEBRATION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.PLAYFUL,
+            # A night out: rowdy/playful or warmly companionable.
+            possible_tones={EventTone.PLAYFUL, EventTone.WARM},
         ),
         valid_scene_types=[SceneType.BAR, SceneType.CLUB, SceneType.RESTAURANT],
         outcomes={
@@ -261,7 +262,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.MELANCHOLY,
+            # A late-night talk: heavy and melancholy, or quietly warm.
+            possible_tones={EventTone.MELANCHOLY, EventTone.WARM},
         ),
         valid_scene_types=[SceneType.APARTMENT, SceneType.HOUSE],
         outcomes={

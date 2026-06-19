@@ -44,7 +44,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.CONFRONTATION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.HOSTILE,
+            # Blame flares hostile, or simmers tense.
+            possible_tones={EventTone.HOSTILE, EventTone.TENSE},
         ),
         valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TRAINING_GROUND],
         boosted_by_aspects=[AspectType.HISTORY],
@@ -128,7 +129,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.ADMISSION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.MELANCHOLY,
+            # An apology opens heavy, or wary.
+            possible_tones={EventTone.MELANCHOLY, EventTone.TENSE},
         ),
         valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.PARK],
         prerequisites=["conflict.blame_assignment"],

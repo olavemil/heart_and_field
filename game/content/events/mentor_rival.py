@@ -61,7 +61,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.CONSOLATION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.WARM,
+            # A mentor's quiet word: warm, or weighted with melancholy.
+            possible_tones={EventTone.WARM, EventTone.MELANCHOLY},
         ),
         valid_scene_types=[SceneType.LOCKER_ROOM, SceneType.TRAINING_GROUND],
         boosted_by_aspects=[AspectType.HISTORY],
@@ -133,7 +134,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.COMPETITION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.TENSE,
+            # A rival's challenge: taut, or openly hostile.
+            possible_tones={EventTone.TENSE, EventTone.HOSTILE},
         ),
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         outcomes={

@@ -40,10 +40,9 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.OBSERVATION,
             domain=EventDomain.INSTITUTIONAL,
-            # NOTE (24E tone audit): a press scrum reads as TENSE, but tone
-            # is part of the EventType triple + VALID_EVENT_COMBINATIONS, so
-            # retoning is a taxonomy change — deferred.
-            tone=EventTone.NEUTRAL,
+            # A press scrum is pressure (was mis-toned NEUTRAL — the 24E
+            # audit retone, now a plain edit since tone left identity).
+            possible_tones={EventTone.TENSE, EventTone.NEUTRAL},
         ),
         valid_scene_types=[SceneType.PRESS_ROOM, SceneType.STUDIO],
         reveals_exposure=0.1,
@@ -95,7 +94,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.NEGOTIATION,
             domain=EventDomain.INSTITUTIONAL,
-            tone=EventTone.TENSE,
+            # Contract talk runs tense, or coldly transactional.
+            possible_tones={EventTone.TENSE, EventTone.NEUTRAL},
         ),
         valid_scene_types=[SceneType.OFFICE],
         outcomes={

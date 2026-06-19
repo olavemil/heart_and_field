@@ -38,7 +38,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.INVITATION,
             domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.WARM,
+            # A shared meal reads warm, loose/playful, or just ordinary.
+            possible_tones={EventTone.WARM, EventTone.PLAYFUL, EventTone.NEUTRAL},
         ),
         valid_scene_types=[
             SceneType.RESTAURANT, SceneType.CAFE, SceneType.HOUSE,
@@ -89,7 +90,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.ISOLATION,
             domain=EventDomain.PERSONAL,
-            tone=EventTone.MELANCHOLY,
+            # Reading alone: pensive, or simply quiet.
+            possible_tones={EventTone.MELANCHOLY, EventTone.NEUTRAL},
         ),
         valid_scene_types=[SceneType.BUS, SceneType.PLANE, SceneType.CAR],
         outcomes={

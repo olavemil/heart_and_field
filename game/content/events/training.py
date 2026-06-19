@@ -36,7 +36,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.COLLABORATION,
             domain=EventDomain.SPORT,
-            tone=EventTone.NEUTRAL,
+            # Routine drills read flat, warm (clicking), or tense (off day).
+            possible_tones={EventTone.NEUTRAL, EventTone.WARM, EventTone.TENSE},
         ),
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.GYM, SceneType.PITCH],
         outcomes={
@@ -95,10 +96,9 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.OBSERVATION,
             domain=EventDomain.SPORT,
-            # NOTE (24E tone audit): showing off reads as PLAYFUL, but tone
-            # is part of the EventType triple + VALID_EVENT_COMBINATIONS, so
-            # retoning is a taxonomy change — deferred.
-            tone=EventTone.NEUTRAL,
+            # Showing off is playful/cocky (was mis-toned NEUTRAL — the 24E
+            # audit retone, now a plain edit since tone left identity).
+            possible_tones={EventTone.PLAYFUL, EventTone.NEUTRAL},
         ),
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         weight_modifiers=[
@@ -146,7 +146,8 @@ BLUEPRINTS = [
         event_id=EventType(
             nature=EventNature.COLLABORATION,
             domain=EventDomain.SPORT,
-            tone=EventTone.WARM,
+            # A coaching note lands warm (supportive) or tense (sharp).
+            possible_tones={EventTone.WARM, EventTone.TENSE},
         ),
         valid_scene_types=[SceneType.TRAINING_GROUND, SceneType.PITCH],
         outcomes={
