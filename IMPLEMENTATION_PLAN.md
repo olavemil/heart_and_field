@@ -1107,11 +1107,30 @@ scaffolding the contextual engine supersedes.
   Folds in the 24E retones (`media_scrum`, `showing_off`) as plain edits.
   Fixed-tone / rarer events left single-tone (expandable incrementally).
 
-### 25.4+ — remaining (per ADR action items)
+### 25.4 — Contextual-continuation engine (ADR-002)
 
-- **Contextual-continuation engine** (perturbation + per-axis scoring over
-  the state vector) — the worked example below; likely its own ADR.
-  Supersedes the interim exact-match chains/registry.
+Design + plan: `field_and_heart_contextual_continuation_adr.md`.
+Perturb-then-score: drift a subset of axes from the last outcome, score
+candidates by per-axis compatibility, fold into selection. **No adjacency
+tables** — continuity comes from the axes that *hold*.
+
+- **25.4a ✅** — `engine.continuation.drift_axes`: continuity-biased
+  cascade (consider axes in random order; each drifts with
+  `3/(4+2*changes)`; stop at the first hold). Outcome-forced drifts
+  pre-counted. Distribution ≈ `0:25% 1:37% 2:24% 3:10% 4:4%`.
+- **25.4b ✅** — wired into `select_event`: `prior_essence` +
+  `contextual_bias` (hold→match / drift→differ over domain+nature) decided
+  once per selection, threaded through `compute_weight`, **replacing the
+  chain-edge bias** (`_chain_bias` removed from `compute_weight`; the
+  function + `CHAIN_EDGES` remain, demoted). Tone stays owned by the
+  resolver.
+- **25.4c (next)** — location axis: `OutcomeRecord.location` + a 3rd
+  scored axis (with `SCENE_ADJACENCY` / content-coverage care to avoid
+  teleports); a multi-step headless drift-sequence test; retire/demote
+  `VALID_EVENT_COMBINATIONS` + `CHAIN_EDGES` in docs.
+
+### Remaining beyond 25.4
+
 - Outcome-scheduled arc consequences (pending-event scheduler).
 - A shared `weighted_resolve` helper unifying tone + dynamic-role
   resolution (deferred item 1).
