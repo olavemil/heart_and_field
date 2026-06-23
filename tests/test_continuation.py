@@ -65,3 +65,76 @@ class TestDriftCascade:
         d = _distribution(axes=("tone",))
         assert d[0] + d[1] == 1.0
         assert 0.23 <= d[0] <= 0.27          # holds ~25%
+
+
+# --- contextual bias (25.4b) ---------------------------------------------
+
+from engine.continuation import CONTEXTUAL_GAIN, contextual_bias, prior_essence
+from engine.event_taxonomy import EventDomain, EventNature, EventType
+from engine.outcomes import OutcomeRecord, WeekPhase
+
+
+def _et(domain, nature):
+    return EventType(nature=nature, domain=domain)
+
+
+class TestContextualBias:
+    PRIOR = (EventDomain.RELATIONSHIP, EventNature.CONFRONTATION)
+
+    def test_none_prior_is_neutral(self):
+        et = _et(EventDomain.SPORT, EventNature.COLLABORATION)
+        assert contextual_bias(et, prior=None, drifted=set()) == 1.0
+
+    def test_hold_both_matching_is_full_boost(self):
+        # Same essence, both axes held → both hit → 1 + gain.
+        et = _et(EventDomain.RELATIONSHIP, EventNature.CONFRONTATION)
+        assert contextual_bias(et, prior=self.PRIOR, drifted=set()) == 1.0 + CONTEXTUAL_GAIN
+
+    def test_hold_both_but_different_is_no_boost(self):
+        # Held axes that DON'T match the prior → no hits → 1.0.
+        et = _et(EventDomain.SPORT, EventNature.INVITATION)
+        assert contextual_bias(et, prior=self.PRIOR, drifted=set()) == 1.0
+
+    def test_drift_axis_rewards_differing(self):
+        # Drift nature: a candidate with a DIFFERENT nature (domain held)
+        # hits both; one matching nature would miss the drift axis.
+        drifted = {"nature"}
+        differ = _et(EventDomain.RELATIONSHIP, EventNature.INVITATION)
+        same = _et(EventDomain.RELATIONSHIP, EventNature.CONFRONTATION)
+        assert contextual_bias(differ, prior=self.PRIOR, drifted=drifted) == 1.0 + CONTEXTUAL_GAIN
+        # same nature: domain hit (held+match) but nature miss (drift+same)
+        assert contextual_bias(same, prior=self.PRIOR, drifted=drifted) == 1.0 + CONTEXTUAL_GAIN / 2
+
+
+class TestPriorEssence:
+    def test_empty_log_is_none(self):
+        assert prior_essence([]) is None
+
+    def test_reads_most_recent_typed_outcome(self):
+        log = [
+            OutcomeRecord(
+                event_id="a", timestamp=WeekPhase(1, 1), participants={},
+                branch_taken="x", summary="s",
+                taxonomy_id=_et(EventDomain.SPORT, EventNature.COLLABORATION),
+            ),
+            OutcomeRecord(
+                event_id="b", timestamp=WeekPhase(1, 1), participants={},
+                branch_taken="x", summary="s",
+                taxonomy_id=_et(EventDomain.RELATIONSHIP, EventNature.ADMISSION),
+            ),
+        ]
+        assert prior_essence(log) == (EventDomain.RELATIONSHIP, EventNature.ADMISSION)
+
+    def test_skips_untyped_outcomes(self):
+        log = [
+            OutcomeRecord(
+                event_id="a", timestamp=WeekPhase(1, 1), participants={},
+                branch_taken="x", summary="s",
+                taxonomy_id=_et(EventDomain.SECRET, EventNature.OBSERVATION),
+            ),
+            OutcomeRecord(  # no taxonomy_id (e.g. a match beat)
+                event_id="b", timestamp=WeekPhase(1, 1), participants={},
+                branch_taken="x", summary="s",
+            ),
+        ]
+        assert prior_essence(log) == (EventDomain.SECRET, EventNature.OBSERVATION)

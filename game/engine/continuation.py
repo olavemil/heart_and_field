@@ -52,6 +52,55 @@ def drift_probability(changes: int) -> float:
     return DRIFT_NUM / (DRIFT_BASE + DRIFT_STEP * changes)
 
 
+# Axes the contextual *selection* bias scores today. tone is owned by the
+# resolver (`resolve_event_tone`); location lands with its own slice
+# (needs the prior event's location on the record). So selection drifts
+# the blueprint-identifying structural axes.
+CONTEXTUAL_AXES: tuple[str, ...] = ("domain", "nature")
+
+# Max selection boost for a candidate fully on the drift target.
+CONTEXTUAL_GAIN = 1.6
+
+
+def prior_essence(outcome_log) -> "tuple | None":
+    """The ``(domain, nature)`` of the most recent outcome that carried an
+    ``EventType`` — the anchor the next event drifts from. ``None`` when
+    no prior typed event exists (e.g. the first event)."""
+    for record in reversed(outcome_log):
+        tid = getattr(record, "taxonomy_id", None)
+        if tid is not None:
+            return (tid.domain, tid.nature)
+    return None
+
+
+def contextual_bias(
+    event_type,
+    *,
+    prior,
+    drifted: set[str],
+    gain: float = CONTEXTUAL_GAIN,
+) -> float:
+    """Selection multiplier favouring candidates that match the drift
+    target: a **held** axis should equal the prior value, a **drifted**
+    axis should differ. Soft (∈ ``[1, 1+gain]``) so non-target candidates
+    stay selectable when the exact target is unauthored. ``1.0`` when there
+    is no prior or no event type.
+    """
+    if prior is None or event_type is None:
+        return 1.0
+    prior_domain, prior_nature = prior
+    axis_vals = {
+        "domain": (event_type.domain, prior_domain),
+        "nature": (event_type.nature, prior_nature),
+    }
+    hits = sum(
+        1
+        for axis in CONTEXTUAL_AXES
+        if (axis_vals[axis][0] == axis_vals[axis][1]) != (axis in drifted)
+    )
+    return 1.0 + gain * (hits / len(CONTEXTUAL_AXES))
+
+
 def drift_axes(
     rng: _random.Random,
     *,

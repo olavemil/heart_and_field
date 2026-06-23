@@ -23,6 +23,12 @@ from typing import Callable, Mapping, Sequence
 
 from .characters import Character, TierACharacter, TierBCharacter
 from .clock import Weekday, WorldClock
+from .continuation import (
+    CONTEXTUAL_AXES,
+    contextual_bias,
+    drift_axes,
+    prior_essence,
+)
 from .outcomes import OutcomeRecord, WeekPhase
 from .stats import StatName, StatTuple
 
@@ -563,6 +569,7 @@ def compute_weight(
     state: GameState,
     *,
     cast: Mapping[str, Character] | None = None,
+    contextual: "tuple | None" = None,
 ) -> float:
     """Compute selection weight for ``blueprint`` under ``context`` /
     ``state``.
@@ -571,6 +578,12 @@ def compute_weight(
     per-character tag multipliers + cast-level affinity/friction bumps.
     When ``cast`` is ``None``, the function is back-compat with pre-quirk
     callers — useful for tests that don't care about quirks.
+
+    ``contextual`` is ``(prior_essence, drifted_axes)`` — the
+    once-per-selection drift target (ADR-002). When given, a
+    ``contextual_bias`` favours candidates near that target. This is the
+    successor to the retired chain-edge bias; ``select_event`` computes the
+    target once and threads it in.
     """
     w = blueprint.base_weight
     w *= recency_penalty(blueprint.id, state.outcome_log)
@@ -590,9 +603,12 @@ def compute_weight(
         w *= cast_event_weight_multiplier(_cast_quirks(cast), blueprint.tags)
         w *= _aspect_boost_multiplier(blueprint, cast, state)
 
-    # Chain bias: boost this blueprint if the most recent outcome chains
-    # into it via an EventChainEdge.
-    w *= _chain_bias(blueprint, state)
+    # Contextual continuation (ADR-002): favour candidates near the drift
+    # target derived from the last outcome. Supersedes the old chain-edge
+    # bias (``_chain_bias`` remains for now, demoted/unwired).
+    if contextual is not None:
+        prior, drifted = contextual
+        w *= contextual_bias(blueprint.event_id, prior=prior, drifted=drifted)
 
     return max(w, 0.0)
 
@@ -626,10 +642,18 @@ def select_event(
         eligible.append(e)
     if not eligible:
         return None
+    # Contextual drift target — decided once per selection (ADR-002):
+    # which axes drift from the last event's essence. Consumes rng before
+    # the weighted draw; both are deterministic for a given rng state.
+    prior = prior_essence(state.outcome_log)
+    drifted = drift_axes(rng, axes=CONTEXTUAL_AXES) if prior is not None else set()
+    contextual = (prior, drifted)
     weights: list[float] = []
     for bp in eligible:
         rep_cast = representative_cast(bp, state)
-        weights.append(compute_weight(bp, context, state, cast=rep_cast))
+        weights.append(
+            compute_weight(bp, context, state, cast=rep_cast, contextual=contextual)
+        )
     if sum(weights) <= 0:
         return None
     return rng.choices(eligible, weights=weights, k=1)[0]

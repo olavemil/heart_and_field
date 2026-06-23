@@ -173,44 +173,29 @@ class TestChainBias:
         )
         assert _chain_bias(bp, state) == 1.0
 
-    def test_chain_bias_affects_compute_weight(self):
-        """compute_weight should apply chain bias multiplier."""
-        from_id = EventType(
-            nature=EventNature.CONFRONTATION,
-            domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.HOSTILE,
-        )
-        to_id = EventType(
-            nature=EventNature.ADMISSION,
-            domain=EventDomain.RELATIONSHIP,
-            tone=EventTone.MELANCHOLY,
-        )
+    def test_contextual_bias_affects_compute_weight(self):
+        """compute_weight applies the contextual drift bias (ADR-002) —
+        the successor to the retired chain bias."""
+        from engine.continuation import CONTEXTUAL_GAIN
+
         bp = EventBlueprint(
             id="test",
-            event_id=to_id,
+            event_id=EventType(
+                nature=EventNature.CONFRONTATION,
+                domain=EventDomain.RELATIONSHIP,
+                tone=EventTone.HOSTILE,
+            ),
             participants=[RoleSlot(role="player")],
             outcomes={"a": BranchOutcome(summary="x")},
         )
-        p = _player()
-        state = _state_with(p)
+        state = _state_with(_player())
         ctx = _context()
 
-        # Weight without chain edge
         w_plain = compute_weight(bp, ctx, state)
-
-        # Add matching outcome
-        state.outcome_log.append(
-            OutcomeRecord(
-                event_id="conflict.blame_assignment",
-                timestamp=WeekPhase(1, 1),
-                participants={},
-                branch_taken="escalate",
-                summary="x",
-                taxonomy_id=from_id,
-            )
-        )
-        w_chained = compute_weight(bp, ctx, state)
-        assert w_chained == pytest.approx(w_plain * CHAIN_BIAS_BOOST)
+        # Prior essence == candidate essence, holding both axes → full boost.
+        prior = (EventDomain.RELATIONSHIP, EventNature.CONFRONTATION)
+        w_ctx = compute_weight(bp, ctx, state, contextual=(prior, set()))
+        assert w_ctx == pytest.approx(w_plain * (1.0 + CONTEXTUAL_GAIN))
 
 
 # ---------------------------------------------------------------------------
